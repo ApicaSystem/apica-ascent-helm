@@ -1,0 +1,32 @@
+options:
+    ca: "/flash/certs/logIQ.crt"
+    cert: "/flash/certs/syslog.crt"
+    key: "/flash/certs/syslog.key"
+    host: 0.0.0.0
+    licencekeyfile: "/flash/certs/license.pub"
+    licencefile: "/flash/certs/license.jws"
+partitions:
+  -
+    name: p_by_day
+    fields:
+      - year
+      - month
+      - day
+credentials:
+  -
+    name: logiq
+    s3:
+      secret_key: logiq_secret
+      access_key: logiq_access
+destinations:
+  -
+    name: default_log_store
+    partition: p_by_day
+    s3:
+      bucket: logiq
+      endpoint: http://logiqs3-minio:9000
+      region: us-east-1
+      credential: logiq
+rules:
+  -
+    destination: default_log_store

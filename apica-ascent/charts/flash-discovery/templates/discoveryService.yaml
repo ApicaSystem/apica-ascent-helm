@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ template "flash-discovery.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ template "flash-discovery.name" . }}
+    chart: {{ template "flash-discovery.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.discoveryHealth.port }}
+      targetPort: {{ .Values.discoveryHealth.port }}
+      protocol: TCP
+      name: {{ .Values.discoveryHealth.name }}
+    - port: {{ .Values.discoveryAPI.port }}
+      targetPort: {{ .Values.discoveryAPI.port }}
+      protocol: TCP
+      name: {{ .Values.discoveryAPI.name }}
+
+  selector:
+    app: {{ template "flash-discovery.name" . }}
+    release: {{ .Release.Name }}

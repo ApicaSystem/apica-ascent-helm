@@ -1,0 +1,82 @@
+# Default values for logiq-flash.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCountDiscovery: 1
+useSecret: false
+pullSecretName:
+
+image:
+  repository: docker.io/logiqai/flash-discovery
+  tag: 1.0.0
+  pullPolicy: IfNotPresent
+
+discoveryService:
+  type: LoadBalancer
+
+discoveryHealth:
+  port: 8081
+  name: discovery-health
+
+discoveryAPI:
+  port: 4000
+  name: discovery-api
+
+## Persist data to a persistent volume
+persistence:
+  enabled: true
+  ## database data Persistent Volume Storage Class
+  ## If defined, storageClassName: <storageClass>
+  ## If set to "-", storageClassName: "", which disables dynamic provisioning
+  ## If undefined (the default) or set to null, no storageClassName spec is
+  ##   set, choosing the default provisioner.  (gp2 on AWS, standard on
+  ##   GKE, AWS & OpenStack)
+  ##
+  ## gp2 - aws
+  #storageClassName: gp2
+  ## do-block-storage - digitalocean
+  #storageClassName: do-block-storage
+  ## standard - minikube
+  storageClassName: standard
+  accessMode: ReadWriteOnce
+  size: 2Gi
+
+configurationFiles: false
+secrets: false
+podPerNode: true
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 100Mi
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #  cpu: 100m
+  #  memory: 128Mi
+  # requests:
+  #  cpu: 100m
+  #  memory: 128Mi
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+global:
+  sharedSecretName: logiq-shared-secret
+  environment:
+    postgres_host: "postgres"
+    postgres_port: "5432"
+    postgres_user: "postgres"
+    postgres_password: "postgres"
+    postgres_db: "postgres"
+    postgres_coffee_db: "coffee"
+    license: "license/license.jws"
+    upload_dashboard: true
+    cluster_id: demo
+  persistence:
+    storageClass: standard

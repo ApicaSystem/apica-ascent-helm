@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ingress-tcp-ports
+  namespace: {{ .Release.Namespace }}
+data:
+{{ if .Values.global.chart.mqtt }}
+  1883: 
+    {{ .Release.Namespace }}/fluent-bit-svc:1883
+{{- end }}
+  9998:
+    {{ .Release.Namespace }}/logiq-flash:9998
+  8081:
+    {{ .Release.Namespace }}/logiq-flash-ml:8081
+  7514:
+    {{ .Release.Namespace }}/logiq-flash:7514
+  517:
+    {{ .Release.Namespace }}/logiq-flash:517
+  25225:
+    {{ .Release.Namespace }}/logiq-flash:25225
+  20514:
+    {{ .Release.Namespace }}/logiq-flash:20514
+  2514:
+    {{ .Release.Namespace }}/logiq-flash:2514
+  14250: 
+    {{ .Release.Namespace }}/logiq-flash:14250
+  14268: 
+    {{ .Release.Namespace }}/logiq-flash:14268
+  {{ if index .Values "kubernetes-ingress" "tcp" }} 
+  {{- range $keys, $value := index .Values "kubernetes-ingress" "tcp" }}
+  {{ $keys }}: {{ $.Release.Namespace }}/{{ $value }}
+  {{- end }}
+  {{ end }}

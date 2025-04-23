@@ -1,0 +1,46 @@
+{{- if .Values.metrics.serviceMonitor.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  labels:
+    app: {{ template "logiq-flash.name" . }}
+    {{- range $key, $value := .Values.metrics.serviceMonitor.selector }}
+    {{ $key }}: {{ $value | quote }}
+    {{- end }}
+  name: prometheus-{{ .Release.Namespace }}-{{ template "logiq-flash.name" . }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  endpoints:
+  - basicAuth:
+      password:
+        key: admin_password
+        name: {{ template "logiq-flash.fullname" . }}
+      username:
+        key: admin_email
+        name: {{ template "logiq-flash.fullname" . }}
+    interval: 2m
+    path: /metrics
+    scheme: https
+    targetPort: 9998
+    tlsConfig:
+      insecureSkipVerify: true
+  - basicAuth:
+      password:
+        key: admin_password
+        name: {{ template "logiq-flash.fullname" . }}
+      username:
+        key: admin_email
+        name: {{ template "logiq-flash.fullname" . }}
+    interval: 2m
+    path: /metrics
+    scheme: https
+    targetPort: 8899
+    tlsConfig:
+      insecureSkipVerify: true
+  namespaceSelector:
+    matchNames:
+    - {{ .Release.Namespace }}
+  selector:
+    matchLabels:
+      promMonitor: {{ template "logiq-flash.name" . }}
+{{- end }}

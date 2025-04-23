@@ -1,0 +1,25 @@
+# Cluster role which grants access to the default pod security policy
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: flash-discovery
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ template "flash-discovery.name" . }}
+rules:
+- apiGroups:
+  - policy
+  resourceNames:
+  - flash-discovery
+  resources:
+  - podsecuritypolicies
+  verbs:
+  - use
+- apiGroups:
+  - extensions
+  resourceNames:
+  - flash-discovery
+  resources:
+  - podsecuritypolicies
+  verbs:
+  - use

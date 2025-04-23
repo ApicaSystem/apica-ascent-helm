@@ -1,0 +1,16 @@
+# Cluster role binding for default pod security policy granting all authenticated users access
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: flash-coffee
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: flash-coffee
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: flash-coffee
+subjects:
+- kind: ServiceAccount
+  name: flash-coffee
+  namespace: {{ .Release.Namespace }}

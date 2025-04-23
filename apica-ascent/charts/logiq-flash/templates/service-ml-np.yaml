@@ -1,0 +1,44 @@
+{{- if .Values.global.enableAwsAlb.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    alb.ingress.kubernetes.io/healthcheck-path: /ready
+    alb.ingress.kubernetes.io/healthcheck-port: {{ .Values.global.enableAwsAlb.flashAlbMlPort | quote }}
+  labels:
+    app: {{ template "logiq-flash.name" . }}-ml-np
+    chart: {{ template "logiq-flash.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+    promMonitor: {{ template "logiq-flash.name" . }}
+  name: logiq-flash-ml-np
+spec:
+  ports:
+    - port: {{ .Values.tracingui.port }}
+      targetPort: 16686
+      protocol: TCP
+      name: {{ .Values.tracingui.name }}
+    - port: {{ .Values.grpc.port }}
+      targetPort: 50054
+      protocol: TCP
+      name: {{ .Values.grpc.name }}
+    - port: {{ .Values.webcli.port }}
+      targetPort: {{ .Values.webcli.port }}
+      protocol: TCP
+      name: {{ .Values.webcli.name }}
+    - port: {{ .Values.api.port }}
+      targetPort: {{ .Values.api.port }}
+      protocol: TCP
+      name: {{ .Values.api.name }}
+    - port: {{ .Values.liveness_port.port }}
+      targetPort: {{ .Values.liveness_port.port }}
+      protocol: TCP
+      name: {{ .Values.liveness_port.name }}
+      nodePort: {{ .Values.global.enableAwsAlb.flashAlbMlPort }}
+  selector:
+    app: {{ template "logiq-flash.name" . }}-ml
+    release: {{ .Release.Name }}
+  sessionAffinity: None
+  type: NodePort 
+  {{- end }}

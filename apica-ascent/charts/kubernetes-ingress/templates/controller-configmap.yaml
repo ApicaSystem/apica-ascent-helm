@@ -1,0 +1,37 @@
+{{- if or .Values.controller.config (or (or .Values.controller.proxySetHeaders .Values.controller.headers) .Values.controller.addHeaders) }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  labels:
+    app: {{ template "nginx-ingress.name" . }}
+    chart: {{ template "nginx-ingress.chart" . }}
+    component: "{{ .Values.controller.name }}"
+    heritage: {{ .Release.Service }}
+    release: {{ template "nginx-ingress.releaseLabel" . }}
+  name: {{ template "nginx-ingress.controller.fullname" . }}
+data:
+  use-gzip: "true" # ENABLE GZIP COMPRESSION
+  gzip-types: "*" 
+  gzip-level: "9"
+  keep-alive: "10"
+  keep-alive-requests: "50"
+  map-hash-bucket-size: "128"
+  ssl-protocols: SSLv2 SSLv3 TLSv1 TLSv1.1 TLSv1.2 TLSv1.3
+  log-format-escape-none: "true"
+  log-format-escape-json: "true"
+  log-format-upstream: '$remote_addr - $remote_user [$time_local] "$request" $status $body_bytes_sent "$http_referer" "$http_user_agent" $request_length $request_time [$proxy_upstream_name] [$proxy_alternative_upstream_name] $upstream_addr $upstream_response_length $upstream_response_time $upstream_status $req_id $request_body'
+  http-snippet: |
+    map $status $loggable {
+          ~^[23]  0;
+          default 1;
+    }
+{{- if .Values.controller.addHeaders }}
+  add-headers: {{ .Release.Namespace }}/{{ template "nginx-ingress.fullname" . }}-custom-add-headers
+{{- end }}
+{{- if or .Values.controller.proxySetHeaders .Values.controller.headers }}
+  proxy-set-headers: {{ .Release.Namespace }}/{{ template "nginx-ingress.fullname" . }}-custom-proxy-headers
+{{- end }}
+{{- if .Values.controller.config }}
+{{ toYaml .Values.controller.config | indent 2 }}
+{{- end }}
+{{- end }}

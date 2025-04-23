@@ -1,0 +1,14 @@
+{{- if eq $.Values.global.persistence.storageClass "ultra-disk-sc" -}}
+kind: StorageClass
+apiVersion: storage.k8s.io/v1
+metadata:
+  name: ultra-disk-sc
+provisioner: kubernetes.io/azure-disk
+volumeBindingMode: WaitForFirstConsumer # optional, but recommended if you want to wait until the pod that will use this disk is created 
+parameters:
+  skuname: UltraSSD_LRS
+  cachingMode: None 
+  kind: managed
+  diskIopsReadWrite: "3000"  # minimum value: 2 IOPS/GiB 
+  diskMbpsReadWrite: "125"   # minimum value: 0.032/GiB
+{{- end }}

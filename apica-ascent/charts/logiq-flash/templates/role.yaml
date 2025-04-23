@@ -1,0 +1,25 @@
+# Cluster role which grants access to the default pod security policy
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: logiq-flash
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ template "logiq-flash.name" . }}
+rules:
+- apiGroups:
+  - policy
+  resourceNames:
+  - logiq-flash
+  resources:
+  - podsecuritypolicies
+  verbs:
+  - use
+- apiGroups:
+  - extensions
+  resourceNames:
+  - logiq-flash
+  resources:
+  - podsecuritypolicies
+  verbs:
+  - use

@@ -1,0 +1,92 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ template "logiq-flash.name" . }}
+  namespace: {{ .Release.Namespace }}
+  {{- if .Values.global.enableAwsAlb.enabled }}
+  annotations:
+     alb.ingress.kubernetes.io/healthcheck-path: "/ready"
+     alb.ingress.kubernetes.io/healthcheck-port: {{ .Values.global.enableAwsAlb.flashAlbPort | quote }}
+  {{- end }}
+  labels:
+    app: logiq-flash
+    chart: {{ template "logiq-flash.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.tracinggrpc.port }}
+      targetPort: 14250
+      protocol: TCP
+      name: {{ .Values.tracinggrpc.name }}
+    - port: {{ .Values.tracingapi.port }}
+      targetPort: 14268
+      protocol: TCP
+      name: {{ .Values.tracingapi.name }}
+    - port: {{ .Values.grpc.port }}
+      targetPort: 50054
+      protocol: TCP
+      name: {{ .Values.grpc.name }}
+    - port: {{ .Values.webcli.port }}
+      targetPort: {{ .Values.webcli.port }}
+      protocol: TCP
+      name: {{ .Values.webcli.name }}
+    - port: {{ .Values.api.port }}
+      targetPort: {{ .Values.api.port }}
+      protocol: TCP
+      name: {{ .Values.api.name }}
+    - port: {{ .Values.syslog.port }}
+      targetPort: {{ .Values.syslog.containerPort }}
+      protocol: TCP
+      name: {{ .Values.syslog.name }}
+    - port: {{ .Values.syslogtls.port }}
+      targetPort: {{ .Values.syslogtls.port }}
+      protocol: TCP
+      name: {{ .Values.syslogtls.name }}
+    - port: {{ .Values.cefport.port }}
+      targetPort: {{ .Values.cefport.containerPort }}
+      protocol: TCP
+      name: {{ .Values.cefport.name }}
+    - port: {{ .Values.cefportls.port }}
+      targetPort: {{ .Values.cefportls.port }}
+      protocol: TCP
+      name: {{ .Values.cefportls.name }}
+    - port: {{ .Values.relptls.port }}
+      targetPort: {{ .Values.relptls.port }}
+      protocol: TCP
+      name: {{ .Values.relptls.name }}
+    - port: {{ .Values.relp.port }}
+      targetPort: {{ .Values.relp.port }}
+      protocol: TCP
+      name: {{ .Values.relp.name }}
+    - port: {{ .Values.fluentfwdtls.port }}
+      targetPort: {{ .Values.fluentfwdtls.port }}
+      protocol: TCP
+      name: {{ .Values.fluentfwdtls.name }}
+    - port: {{ .Values.fluentforward.port }}
+      targetPort: {{ .Values.fluentforward.port }}
+      protocol: TCP
+      name: {{ .Values.fluentforward.name }}
+    - port: {{ .Values.liveness_port.port }}
+      targetPort: {{ .Values.liveness_port.port }}
+      protocol: TCP
+      name: {{ .Values.liveness_port.name }}
+      {{- if .Values.global.enableAwsAlb.enabled }}
+      nodePort: {{ .Values.global.enableAwsAlb.flashAlbPort }}
+      {{- end }}
+    - port: {{ .Values.filebeat.port }}
+      targetPort: {{ .Values.filebeat.port }}
+      protocol: TCP
+      name: {{ .Values.filebeat.name }}
+    - port: {{ .Values.filebeatls.port }}
+      targetPort: {{ .Values.filebeatls.port }}
+      protocol: TCP
+      name: {{ .Values.filebeatls.name }}
+    - port: {{ .Values.rawtcp.port }}
+      targetPort: {{ .Values.rawtcp.containerPort }}
+      protocol: TCP
+      name: {{ .Values.rawtcp.name }}
+  selector:
+    app: {{ template "logiq-flash.name" . }}
+    release: {{ .Release.Name }}

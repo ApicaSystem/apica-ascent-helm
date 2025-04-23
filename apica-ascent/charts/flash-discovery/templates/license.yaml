@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ template "flash-discovery.fullname" . }}-license
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: {{ template "flash-discovery.name" . }}
+    helm.sh/chart: {{ template "flash-discovery.chart" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/version: {{ .Chart.AppVersion }}
+  annotations:
+    "helm.sh/hook": "pre-install"
+    "helm.sh/hook-delete-policy": "before-hook-creation"
+data:
+  license.jws: |-
+  {{- if .Values.global.environment.licenseStr }}
+    {{- if ne .Values.global.environment.licenseStr "" }}
+      {{ .Values.global.environment.licenseStr | b64enc | indent 2 }}
+    {{- else }}
+      {{ .Files.Get .Values.global.environment.license | b64enc | indent 2 }}
+    {{- end }}
+  {{- else }}
+    {{ .Files.Get .Values.global.environment.license | b64enc | indent 2 }}
+  {{- end }}

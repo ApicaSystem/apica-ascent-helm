@@ -1,0 +1,33 @@
+{{- if .Values.global.createStorageClass }}
+{{- if eq $.Values.global.persistence.storageClass "ultra-disk-sc" -}}
+{{- if .Values.global.persistence.createStorageClass.enabled -}}
+kind: StorageClass
+apiVersion: storage.k8s.io/v1
+metadata:
+  name: ultra-disk-sc
+provisioner: kubernetes.io/azure-disk
+volumeBindingMode: WaitForFirstConsumer # optional, but recommended if you want to wait until the pod that will use this disk is created 
+parameters:
+  skuname: UltraSSD_LRS
+  cachingMode: None 
+  kind: managed
+  diskIopsReadWrite: "3000"  # minimum value: 2 IOPS/GiB 
+  diskMbpsReadWrite: "125"   # minimum value: 0.032/GiB
+{{- end }}
+{{- end }}
+{{- end }}
+{{- if .Values.global.createStorageClass }}
+{{- if eq $.Values.global.persistence.storageClass "gp3" -}}
+{{- if .Values.global.persistence.createStorageClass.enabled -}}
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: gp3 
+provisioner: ebs.csi.aws.com
+parameters:
+  type: gp3
+reclaimPolicy: Delete
+volumeBindingMode: WaitForFirstConsumer
+{{- end }}
+{{- end }}
+{{- end }}

@@ -1,0 +1,95 @@
+{{- if .Values.global.environment.upload_dashboard }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ template "logiqctl.fullname" . }}-upload-dashboard-job
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ template "logiqctl.name" . }}-upload-dashboard-job
+    chart: {{ template "logiqctl.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+  annotations:
+    "helm.sh/hook": post-install
+    "helm.sh/hook-weight": "10"
+    "helm.sh/hook-delete-policy": hook-succeeded,before-hook-creation
+    {{- with .Values.uploadDashboardJob.annotations }}
+    {{ toYaml . | indent 4 }}
+    {{- end }}
+spec:
+  {{- if .Capabilities.APIVersions.Has "batch/v1alpha1" }}
+  # Alpha feature since k8s 1.12
+  ttlSecondsAfterFinished: {{ .Values.global.job.ttlSecondsAfterFinished}}
+  {{- end }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "logiqctl.name" . }}-job
+        release: {{ .Release.Name }}
+{{- if .Values.podLabels }}
+{{ toYaml .Values.podLabels | indent 8 }}
+{{- end }}
+    spec:
+      serviceAccountName: {{ template "logiqctl.name" . }}
+      securityContext:
+        fsGroup: 1000
+        runAsUser: 1000
+        runAsGroup: 1000
+      restartPolicy: OnFailure
+{{- if .Values.nodeSelector }}
+      nodeSelector:
+{{ toYaml .Values.nodeSelector | indent 8 }}
+{{- end }}
+{{- with .Values.affinity }}
+      affinity:
+{{ toYaml . | indent 8 }}
+{{- end }}
+{{ if .Values.global.nodeSelectors.enabled }}
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                - key: {{ .Values.global.nodeSelectors.label }}
+                  operator: In
+                  values:
+                    - {{ .Values.global.nodeSelectors.infra }}
+{{ end }}
+{{ if .Values.global.taints.enabled}}
+      tolerations:
+      - key: dedicated
+        operator: Equal
+        value: {{ .Values.global.taints.infra }}
+        effect: NoSchedule 
+{{ end }}
+      volumes:
+        - name: logiqctl-configuration
+          projected:
+            sources:
+            - configMap:
+                name: {{ template "logiqctl.fullname" . }}
+            - secret:
+                name: {{ if .Values.existingSecret }}{{ .Values.existingSecret }}{{ else }}{{ template "logiqctl.fullname" . }}{{ end }}
+      containers:
+      - name: logiqctl
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        command: ["/bin/sh", "-c"]
+        args:
+        - echo uploading;
+          until $(curl --output /dev/null --silent --fail http://coffee); do echo "waiting for coffee"; sleep 10; done;
+          /flash/bin/logiqctl config set-cluster coffee;
+          export ACCESS=$(cat /flash/config/export/admin_email) ; export SECRET=$(cat /flash/config/export/admin_password) ;
+          /flash/bin/logiqctl config set-credential $ACCESS $SECRET ; sleep 5;
+          /flash/bin/logiqctl create dashboard -f /flash/config/export/logiq.json;
+          while [ $? -ne 0 ]; do sleep 5; echo "Waiting for dashboard to create";/flash/bin/logiqctl create dashboard -f /flash/config/export/logiq.json; done;
+          echo done;
+        env:
+          - name: LOGIQ_NS
+            value: {{ .Release.Namespace }}
+        volumeMounts:
+          - name: logiqctl-configuration
+            mountPath: /flash/config/export
+        resources:
+{{ toYaml .Values.resources | indent 10 }}
+{{- end }}

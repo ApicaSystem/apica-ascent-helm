@@ -1,0 +1,492 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ template "logiq-flash.name" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ template "logiq-flash.name" . }}
+    chart: {{ template "logiq-flash.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  serviceName: {{ template "logiq-flash.name" . }}-headless
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ template "logiq-flash.name" . }}
+      release: {{ .Release.Name }}
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes:
+        - ReadWriteOnce
+      resources:
+        requests:
+          storage: {{ .Values.persistence.size | quote }}
+      storageClassName: {{ .Values.global.persistence.storageClass }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configMap.yaml") . | sha256sum }}
+      labels:
+        app: {{ template "logiq-flash.name" . }}
+        release: {{ .Release.Name }}
+    spec:
+      serviceAccountName: logiq-flash
+{{ if .Values.global.nodeSelectors.enabled }}
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                - key: {{ .Values.global.nodeSelectors.label }}
+                  operator: In
+                  values:
+                    - {{ .Values.global.nodeSelectors.ingest }}
+{{ end }}
+      {{ if .Values.global.taints.enabled}}
+      tolerations:
+      - key: dedicated
+        operator: Equal
+        value: {{ .Values.global.taints.ingest }}
+        effect: NoSchedule
+{{ end }}
+      securityContext:
+        fsGroup: 1000
+        runAsUser: 1000
+        runAsGroup: 1000
+      initContainers:
+      - command:
+        - sh
+        - -c
+        - until $(curl --output /dev/null --silent --fail http://flash-discovery:8081/ready); do echo "waiting for discovery"; sleep 1;
+          done;
+        image: {{ .Values.global.toolbox.image.repository }}:{{ .Values.global.toolbox.image.tag }}
+        imagePullPolicy: IfNotPresent
+        name: check-discovery
+      - name: check-redis
+        image: {{ .Values.global.toolbox.image.repository }}:{{ .Values.global.toolbox.image.tag }}
+        imagePullPolicy: IfNotPresent
+        command:
+        - sh
+        - -c
+        - until redis-cli -h {{ .Values.global.environment.redis_host }} ping; do echo "waiting for {{ .Values.global.environment.redis_host }}"; sleep 1;
+          done;
+{{ if .Values.global.chart.s3gateway }}                
+      - command:
+          - sh
+          - -c
+          - until $(curl --output /dev/null --silent --fail http://s3-gateway:9000/minio/health/ready); do echo "waiting for s3-gateway"; sleep 1;
+            done;
+        image: {{ .Values.global.toolbox.image.repository }}:{{ .Values.global.toolbox.image.tag }}
+        imagePullPolicy: IfNotPresent
+        name: check-s3-gateway
+{{ end }}            
+      volumes:
+        {{ if .Values.configurationFiles }}
+        - name: config
+          configMap:
+            {{ if not .Values.configMapName }}
+            name: logiq-config
+            {{ else }}
+            name: {{ .Values.configMapName }}
+            {{ end }}
+        {{ end }}
+        {{ if .Values.secrets_name }}
+        - name: certs
+          secret:
+            secretName: {{ .Values.secrets_name }}
+        {{ end }}
+        {{ if .Values.global.sharedSecretName }}
+        - name: sharedcert
+          secret:
+            secretName: {{ .Values.global.sharedSecretName }}
+        {{ end }}
+      {{ if .Values.podPerNode }}
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app
+                operator: In
+                values:
+                - {{ template "logiq-flash.name" . }}
+            topologyKey: "kubernetes.io/hostname"
+      {{ end }}
+      terminationGracePeriodSeconds: 120
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+          - -c
+          - /flash/bin/flash -config /flash/config/config.yaml -install_root /flash -runtime_folder /flash/db -discovery_domain $(DISCOVERY_DOMAIN) -discovery_url $(DISCOVERY_URL) -discovery_id flash1 -pg_max_idle_conns 190 -pg_max_open_Conns 195 -postgres_timeout 20s -workers 150 -connection_channel_size 10 --pg_conn_max_lifetime 5m {{ .Values.global.environment.extraflag }}
+          command:
+          - /bin/bash
+          env:
+          - name: CONFIG_HASH
+            value: {{ include "logiq-flash.confighash" . | quote }}
+          - name: DISCOVERY_URL
+            value: http://{{ .Values.discoveryService.name }}:4000
+          - name: DISCOVERY_ID
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: DISCOVERY_DOMAIN
+            value: {{ template "logiq-flash.name" . }}-headless
+          {{ if .Values.global.environment.parent_host }}  
+          - name: PARENT_HOST
+            value: {{ .Values.global.environment.parent_host }}
+          {{ end }}
+          {{ if .Values.global.environment.redis_opts }}
+          - name: REDIS_HOST
+            valueFrom:
+              secretKeyRef:
+                name: {{ template "logiq-flash.fullname" . }}
+                key: redis_host
+          - name: REDIS_PORT
+            valueFrom:
+              secretKeyRef:
+                name: {{ template "logiq-flash.fullname" . }}
+                key: redis_port
+          {{ end }}
+          {{ if .Values.global.environment.admin_email }}
+          - name: ADMIN_EMAIL
+            valueFrom:
+              secretKeyRef:
+                name: {{ template "logiq-flash.fullname" . }}
+                key: admin_email
+          {{ end }}
+          {{ if .Values.global.environment.admin_password }}
+          - name: ADMIN_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: {{ template "logiq-flash.fullname" . }}
+                key: admin_password
+          {{ end }}
+          - name: POSTGRES_USER
+            valueFrom:
+              secretKeyRef:
+                name: {{ template "logiq-flash.fullname" . }}
+                key: postgres_user
+          - name: POSTGRES_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: {{ template "logiq-flash.fullname" . }}
+                key: postgres_password
+          - name: POSTGRES_HOST
+            valueFrom:
+              secretKeyRef:
+                name: {{ template "logiq-flash.fullname" . }}
+                key: postgres_host
+          - name: POSTGRES_PORT
+            valueFrom:
+              secretKeyRef:
+                name: {{ template "logiq-flash.fullname" . }}
+                key: postgres_port
+          - name: POSTGRES_DB
+            valueFrom:
+              secretKeyRef:
+                name: {{ template "logiq-flash.fullname" . }}
+                key: postgres_db
+          - name: S3_ACCESS
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Values.global.sharedSecretName  }}
+                key: s3_access
+          - name: S3_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Values.global.sharedSecretName  }}
+                key: s3_secret
+          - name: S3_BUCKET
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Values.global.sharedSecretName  }}
+                key: s3_bucket
+          {{ if .Values.global.environment.cluster_id }}  
+          - name: MY_CLUSTER_ID
+            value: {{ .Values.global.environment.cluster_id }}
+          {{ end }}
+          - name: MY_APP_NAME
+            value: {{ template "logiq-flash.name" . }}
+          - name: MY_NODE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
+          - name: MY_POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: MY_POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          - name: MY_POD_IP
+            valueFrom:
+              fieldRef:
+                fieldPath: status.podIP
+          volumeMounts:
+          - mountPath: /flash/config
+            name: config
+          - mountPath: /flash/db
+            name: data
+          {{ if .Values.secrets_name }}
+          - mountPath: /flash/certs
+            name: certs
+          {{ end }}
+          {{ if .Values.global.sharedSecretName }}
+          - mountPath: /flash/sharedcerts
+            name: sharedcert
+          {{ end }}
+          ports:
+            - name: grpc
+              containerPort: 50054
+              protocol: TCP
+            - name: webcli
+              containerPort: 9998
+              protocol: TCP
+            - name: api
+              containerPort: 9999
+              protocol: TCP
+            - name: syslog
+              containerPort: 1514
+              protocol: TCP
+            - name: syslogtls
+              containerPort: 7514
+              protocol: TCP
+            - name: cefport
+              containerPort: 1515
+              protocol: TCP
+            - name: cefportls
+              containerPort: 7515
+              protocol: TCP
+            - name: tracingapi
+              containerPort: 14268
+              protocol: TCP
+            - name: relp
+              containerPort: 20514
+              protocol: TCP
+            - name: relptls
+              containerPort: 2514
+              protocol: TCP
+            - name: fluentforward
+              containerPort: 24224
+              protocol: TCP
+            - name: fluentfwdtls
+              containerPort: 24225
+              protocol: TCP
+            - name: filebeat
+              containerPort: 25224
+              protocol: TCP
+            - name: filebeatls
+              containerPort: 25225
+              protocol: TCP
+            - name: healthcheck
+              containerPort: 8080
+              protocol: TCP
+            - name: rawtcp
+              containerPort: 517
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            successThreshold: 1
+            failureThreshold: 25
+            timeoutSeconds: 125
+          resources:
+{{ toYaml .Values.resources.ingest | indent 12 }}
+        - name: logiq-flash-query
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+          - -c
+          - /flash/bin/flash -config /flash/config/config.yaml -install_root /flash -runtime_folder /flash/db -discovery_domain $(DISCOVERY_DOMAIN) -discovery_url $(DISCOVERY_URL) -discovery_id $(DISCOVERY_ID) -pg_max_idle_conns 10 -pg_max_open_Conns 10 -postgres_timeout 20s --pg_conn_max_lifetime 5m -grpc_port 51054 -health_check_port 18080 --sidecar-node -api_port 19999 {{ .Values.global.environment.extraflag }}
+          command:
+          - /bin/bash
+          env:
+          - name: CONFIG_HASH
+            value: {{ include "logiq-flash.confighash" . | quote }}
+          - name: DISCOVERY_URL
+            value: http://{{ .Values.discoveryService.name }}:4000
+          - name: DISCOVERY_ID
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: DISCOVERY_DOMAIN
+            value: {{ template "logiq-flash.name" . }}-headless
+          {{ if .Values.global.environment.redis_opts }}
+          - name: REDIS_HOST
+            valueFrom:
+              secretKeyRef:
+                name: {{ template "logiq-flash.fullname" . }}
+                key: redis_host
+          - name: REDIS_PORT
+            valueFrom:
+              secretKeyRef:
+                name: {{ template "logiq-flash.fullname" . }}
+                key: redis_port
+          {{ end }}
+          {{ if .Values.global.environment.admin_email }}
+          - name: ADMIN_EMAIL
+            valueFrom:
+              secretKeyRef:
+                name: {{ template "logiq-flash.fullname" . }}
+                key: admin_email
+          {{ end }}
+          {{ if .Values.global.environment.admin_password }}
+          - name: ADMIN_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: {{ template "logiq-flash.fullname" . }}
+                key: admin_password
+          {{ end }}
+          - name: POSTGRES_USER
+            valueFrom:
+              secretKeyRef:
+                name: {{ template "logiq-flash.fullname" . }}
+                key: postgres_user
+          - name: POSTGRES_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: {{ template "logiq-flash.fullname" . }}
+                key: postgres_password
+          - name: POSTGRES_HOST
+            valueFrom:
+              secretKeyRef:
+                name: {{ template "logiq-flash.fullname" . }}
+                key: postgres_host
+          - name: POSTGRES_PORT
+            valueFrom:
+              secretKeyRef:
+                name: {{ template "logiq-flash.fullname" . }}
+                key: postgres_port
+          - name: POSTGRES_DB
+            valueFrom:
+              secretKeyRef:
+                name: {{ template "logiq-flash.fullname" . }}
+                key: postgres_db
+          - name: S3_ACCESS
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Values.global.sharedSecretName  }}
+                key: s3_access
+          - name: S3_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Values.global.sharedSecretName  }}
+                key: s3_secret
+          - name: S3_BUCKET
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Values.global.sharedSecretName  }}
+                key: s3_bucket
+          {{ if .Values.global.environment.cluster_id }}  
+          - name: MY_CLUSTER_ID
+            value: {{ .Values.global.environment.cluster_id }}
+          {{ end }}
+          - name: MY_APP_NAME
+            value: {{ template "logiq-flash.name" . }}
+          - name: MY_NODE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
+          - name: MY_POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: MY_POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          - name: MY_POD_IP
+            valueFrom:
+              fieldRef:
+                fieldPath: status.podIP
+          ports:
+          - containerPort: 51054
+            name: grpc
+            protocol: TCP
+          - containerPort: 8899
+            name: webcli
+            protocol: TCP
+          - containerPort: 19999
+            name: api
+            protocol: TCP
+          - containerPort: 18080
+            name: healthcheck
+            protocol: TCP
+          readinessProbe:
+            failureThreshold: 25
+            httpGet:
+              path: /ready
+              port: 18080
+              scheme: HTTP
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 125
+          volumeMounts:
+          - mountPath: /flash/config
+            name: config
+          - mountPath: /flash/db
+            name: data
+          {{ if .Values.secrets_name }}
+          - mountPath: /flash/certs
+            name: certs
+          {{ end }}
+          {{ if .Values.global.sharedSecretName }}
+          - mountPath: /flash/sharedcerts
+            name: sharedcert
+          {{ end }}
+          resources:
+{{ toYaml .Values.resources.sidecar | indent 12 }}
+        - name: {{ .Chart.Name }}-tracing
+          image: "{{ .Values.sidecarTracing.image }}:{{ .Values.sidecarTracing.tag }}"
+          imagePullPolicy: {{ .Values.sidecarTracing.pullPolicy }}
+          command:
+          - /bin/sh
+          - -c
+          - |
+            while true 
+            do
+            /go/bin/collector-linux --grpc-storage.server=localhost:50054
+            sleep 5
+            done
+          env:
+          - name: SPAN_STORAGE_TYPE
+            value: grpc-plugin
+          readinessProbe:
+            tcpSocket:
+              port: 14250
+            initialDelaySeconds: 25
+            periodSeconds: 25
+            successThreshold: 1
+            failureThreshold: 3
+            timeoutSeconds: 125
+          resources:
+{{ toYaml .Values.resources.sidecarTracing | indent 12 }}
+          ports:
+          - containerPort: 14250
+            name: tracing-2
+            protocol: TCP
+          - containerPort: 14268
+            name: tracing-1
+            protocol: TCP
+    {{ with .Values.nodeSelector }}
+      nodeSelector:
+{{ toYaml . | indent 8 }}
+    {{ end }}
+    {{ with .Values.affinity }}
+      affinity:
+{{ toYaml . | indent 8 }}
+    {{ end }}
+    {{ with .Values.tolerations }}
+      tolerations:
+{{ toYaml . | indent 8 }}
+    {{ end }}

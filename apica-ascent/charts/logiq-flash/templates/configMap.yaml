@@ -1,0 +1,91 @@
+{{ if not .Values.configMapName }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: logiq-config
+  namespace: {{ .Release.Namespace }}
+data:
+  config.yaml: |
+    
+        options:
+    
+            ca: "/flash/certs/ca.crt"
+    
+            cert: "/flash/certs/syslog.crt"
+    
+            key: "/flash/certs/syslog.key"
+    
+            host: 0.0.0.0
+    
+        partitions:
+    
+          -
+    
+            name: p_scheme
+    
+            fields:
+    
+              - namespace
+    
+              - appname
+    
+              - year
+    
+              - month
+    
+              - day
+    
+        credentials:
+    
+          -
+    
+            name: logiq
+    
+            s3:
+
+{{ if .Values.global.chart.s3gateway }}
+
+              secret_key: {{ .Values.global.environment.s3_secret }}
+    
+              access_key: {{ .Values.global.environment.s3_access}}
+
+{{ else if eq .Values.global.cloudProvider "aws" }}
+
+              secret_key: {{ required "AWS Secret access key" .Values.global.environment.AWS_SECRET_ACCESS_KEY }}
+
+              access_key: {{ required "AWS Access key id" .Values.global.environment.AWS_ACCESS_KEY_ID }}
+
+{{ end }}
+    
+        destinations:
+    
+          -
+    
+            name: default_log_store
+    
+            partition: p_scheme
+    
+            s3:
+    
+              bucket: {{.Values.global.environment.s3_bucket}}
+    
+{{ if .Values.global.chart.s3gateway }}
+
+              endpoint: http://s3-gateway:9000
+
+{{ else if eq .Values.global.cloudProvider "aws" }}
+
+              endpoint: {{ required "AWS S3 Endpoint" .Values.global.environment.awsServiceEndpoint }}
+
+              region: {{ required "AWS Region" .Values.global.environment.s3_region }}
+
+{{ end }}
+    
+              credential: logiq
+    
+        rules:
+    
+          -
+    
+            destination: default_log_store
+{{ end }}

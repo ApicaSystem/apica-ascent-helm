@@ -1,0 +1,41 @@
+---
+# Source: logiq/charts/logiqctl/templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ template "logiqctl.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ template "logiqctl.name" . }}
+    chart: {{ template "logiqctl.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+data:
+  export: |-
+{{- if .Values.global.chart.thanos }}
+  logiq.json: |
+    {
+        "datasources": {
+            "1": {
+                "name": "LogiqMonitoring",
+                "options": {
+                    "url": "http://{{ .Release.Namespace }}-thanos-query:9090"
+                },
+                "type": "logiq_prometheus"
+                }
+            }
+    }
+{{- else }}
+  logiq.json: |
+    {
+        "datasources": {
+            "1": {
+                "name": "LogiqMonitoring",
+                "options": {
+                    "url": "http://prometheus-operated:9090"
+                },
+                "type": "logiq_prometheus"
+                }
+            }
+    }
+{{- end }}

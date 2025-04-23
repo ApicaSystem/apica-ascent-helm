@@ -1,0 +1,432 @@
+{{- if .Values.ingress.enabled -}}
+{{- $fullName := include "logiq.fullname" . -}}
+apiVersion: {{ template "common.capabilities.ingress.apiVersion" . }}
+kind: Ingress
+metadata:
+  name: {{ .Values.ingress.name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "logiq.labels" . | nindent 4 }}
+  annotations:
+    {{- if .Values.global.kubeDistributor.enabled  }}
+    {{- if eq $.Values.global.kubeDistributor.vendor "microk8s" }}
+    ingress.kubernetes.io/app-root: "/"
+    meta.helm.sh/release-name: microk8s
+    {{- else }}
+    ingress.kubernetes.io/app-root: "/"
+    {{- end }}
+    ingress.kubernetes.io/app-root: "/"
+    meta.helm.sh/release-name: microk8s
+    {{- else if .Values.global.enableAwsAlb.enabled }}
+    alb.ingress.kubernetes.io/healthcheck-interval-seconds: "10"
+    alb.ingress.kubernetes.io/healthcheck-timeout-seconds: "5"
+    alb.ingress.kubernetes.io/scheme: {{ .Values.global.enableAwsAlb.albType }}
+    alb.ingress.kubernetes.io/success-codes: 200,302
+    alb.ingress.kubernetes.io/target-type: instance
+    ingress.kubernetes.io/app-root: /
+    kubernetes.io/ingress.class: alb
+    ingress.kubernetes.io/proxy-body-size: 100M
+    {{- else }}
+    kubernetes.io/ingress.class: logiq-ingress-{{ .Release.Namespace }}
+    ingress.kubernetes.io/proxy-body-size: 100M
+    ingress.kubernetes.io/app-root: "/"
+    nginx.ingress.kubernetes.io/connection-proxy-header: keep-alive
+    nginx.ingress.kubernetes.io/load-balance: round_robin
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
+    nginx.ingress.kubernetes.io/session-cookie-expires: "300"
+    nginx.ingress.kubernetes.io/session-cookie-max-age: "300"
+    nginx.ingress.kubernetes.io/client-body-buffer-size: 1M
+    nginx.org/proxy-connect-timeout: 30s
+    nginx.org/proxy-read-timeout: 175s
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      if ($request_uri ~* \.(js|css|gif|jpe?g|png)) {
+        expires 1M;
+        add_header Cache-Control "public";
+      }
+    {{- end }}
+spec:
+  {{ if .Values.ingress.tlsEnabled }}
+  tls:
+    - hosts:
+        - {{ required "A valid domain is required. Use --set global.domain=<domain_name>" .Values.global.domain | quote }}
+      {{ if .Values.ingress.tlsSecretName }}
+      secretName:  {{ .Values.ingress.tlsSecretName }}
+      {{ end }}
+  {{ end }}
+{{- if semverCompare ">=1.19-0" .Capabilities.KubeVersion.GitVersion -}}
+  rules:
+    {{ if .Values.global.enableAwsAlb.enabled }}
+    - http:
+        paths:
+        - path: /dtracing
+          pathType: Prefix
+          backend:
+            service:
+               name: logiq-flash-ml-np
+               port: 
+                   number: 16686          
+        {{ if .Values.global.chart.thanos }} 
+        - path: /api/v1/receive
+          pathType: Prefix
+          backend:
+            service:
+               name: {{ .Release.Namespace }}-thanos-receive
+               port:
+                  number: 19291
+        {{- end }}
+        - path: /v2
+          pathType: Prefix
+          backend:
+            service:
+               name: logiq-flash-ml-np
+               port: 
+                  number: 9999
+        - path: /v1
+          pathType: Prefix
+          backend:
+            service: 
+               name: logiq-flash-ml-np
+               port: 
+                 number: 9999
+        - path: /v1/json_batch
+          pathType: Prefix
+          backend:
+            service:
+               name: logiq-flash
+               port: 
+                 number: 9999
+        - path: /v1/json
+          pathType: Prefix
+          backend:
+            service: 
+              name: logiq-flash
+              port: 
+                number: 9999
+        - path: /v1/tenant
+          pathType: Prefix
+          backend:
+            service: 
+              name: logiq-flash
+              port: 
+                number: 9999
+        - path: /api/traces
+          pathType: Prefix
+          backend:
+            service:
+              name: logiq-flash
+              port:
+                number: 14268
+        - path: /
+          pathType: Prefix
+          backend:
+            service:
+              name: coffee
+              port: 
+                number: 80
+        - path: /live
+          pathType: Prefix
+          backend:
+            service:
+              name: logiq-flash
+              port:
+                number: 9999
+        - path: /ready
+          pathType: Prefix
+          backend:
+            service:
+              name: logiq-flash
+              port:
+                number: 9999
+        - path: /v1/logs
+          pathType: Prefix
+          backend:
+            service:
+              name: logiq-flash
+              port:
+                number: 9999
+        - path: /v1/traces
+          pathType: Prefix
+          backend:
+            service:
+              name: logiq-flash
+              port:
+                number: 9999
+        - path: /v1/metrics
+          pathType: Prefix
+          backend:
+            service:
+              name: logiq-flash
+              port:
+                number: 9999  
+      {{ if .Values.ingress.tlsEnabled }}
+      host: {{ .Values.global.domain | quote }}
+      {{ end }}
+    {{- else }}
+    - http:
+        paths:
+        - path: /
+          pathType: Prefix
+          backend:
+            service:
+              name: coffee
+              port: 
+                 number: 80
+        - path: /v1/json_batch
+          pathType: Prefix
+          backend:
+            service:
+                name: logiq-flash
+                port: 
+                   number: 9999
+        - path: /v1/json
+          pathType: Prefix
+          backend:
+            service:
+               name: logiq-flash
+               port: 
+                  number: 9999
+        - path: /v1/tenant
+          pathType: Prefix
+          backend:
+            service: 
+              name: logiq-flash
+              port: 
+                number: 9999
+        - path: /api/traces
+          pathType: Prefix
+          backend:
+            service:
+              name: logiq-flash
+              port:
+                number: 14268
+        - path: /v1
+          pathType: Prefix
+          backend:
+            service:
+               name: logiq-flash-ml
+               port: 
+                 number: 9999
+        - path: /v2
+          pathType: Prefix
+          backend:
+            service:
+               name: logiq-flash-ml
+               port: 
+                   number: 9999
+        - path: /dtracing
+          pathType: Prefix
+          backend:
+            service:
+               name: logiq-flash-ml
+               port: 
+                   number: 16686          
+        - path: /live
+          pathType: Prefix
+          backend:
+            service:
+              name: logiq-flash
+              port:
+                number: 9999
+        - path: /ready
+          pathType: Prefix
+          backend:
+            service:
+              name: logiq-flash
+              port:
+                number: 9999
+        - path: /v1/logs
+          pathType: Prefix
+          backend:
+            service:
+              name: logiq-flash
+              port:
+                number: 9999
+        - path: /v1/traces
+          pathType: Prefix
+          backend:
+            service:
+              name: logiq-flash
+              port:
+                number: 9999
+        - path: /v1/metrics
+          pathType: Prefix
+          backend:
+            service:
+              name: logiq-flash
+              port:
+                number: 9999
+        {{ if .Values.global.chart.thanos }} 
+        - path: /api/v1/receive
+          pathType: Prefix
+          backend:
+            service:
+               name: {{ .Release.Namespace }}-thanos-receive
+               port:
+                  number: 19291
+        {{- end }}
+        {{- end }}
+{{- else }}
+  rules:
+    {{ if .Values.global.enableAwsAlb.enabled }}
+    - http:
+        paths:
+        - path: /v1
+          backend:
+            serviceName: logiq-flash-ml-np
+            servicePort: 9999
+        - path: /v2
+          backend:
+            serviceName: logiq-flash-ml-np
+            servicePort: 9999
+        - path: /dtracing
+          pathType: Prefix
+          backend:
+            serviceName: logiq-flash-ml-np
+            servicePort: 16686          
+        {{ if .Values.global.chart.thanos }} 
+        - path: /api/v1/receive
+          pathType: Prefix
+          backend:
+            serviceName: {{ .Release.Namespace }}-thanos-receive
+            servicePort: 19291
+        {{- end }}
+        - path: /v1/json_batch
+          backend:
+            serviceName: logiq-flash
+            servicePort: 9999
+        - path: /v1/json
+          backend:
+            serviceName: logiq-flash
+            servicePort: 9999
+        - path: /v1/tenant
+          backend:
+            serviceName: logiq-flash
+            servicePort: 9999
+        - path: /api/traces
+          backend:
+            serviceName: logiq-flash
+            servicePort: 14268
+        - path: /
+          backend:
+            serviceName: coffee
+            servicePort: 80
+        - path: /live
+          pathType: Prefix
+          backend:
+            service:
+              name: logiq-flash
+              port:
+                number: 9999
+        - path: /ready
+          pathType: Prefix
+          backend:
+            service:
+              name: logiq-flash
+              port:
+                number: 9999
+        - path: /v1/logs
+          pathType: Prefix
+          backend:
+            service:
+              name: logiq-flash
+              port:
+                number: 9999
+        - path: /v1/traces
+          pathType: Prefix
+          backend:
+            service:
+              name: logiq-flash
+              port:
+                number: 9999
+        - path: /v1/metrics
+          pathType: Prefix
+          backend:
+            service:
+              name: logiq-flash
+              port:
+                number: 9999
+      {{ if .Values.ingress.tlsEnabled }}
+      host: {{ .Values.global.domain | quote }}
+      {{ end }}
+      {{- else }}
+    - http:
+        paths:
+        - path: /
+          backend:
+            serviceName: coffee
+            servicePort: 80
+        - path: /v1/json_batch
+          backend:
+            serviceName: logiq-flash
+            servicePort: 9999
+        - path: /v1/json
+          backend:
+            serviceName: logiq-flash
+            servicePort: 9999
+        - path: /v1/tenant
+          backend:
+            serviceName: logiq-flash
+            servicePort: 9999
+        - path: /api/traces
+          backend:
+            serviceName: logiq-flash
+            servicePort: 14268
+        - path: /v1
+          backend:
+            serviceName: logiq-flash-ml
+            servicePort: 9999
+        - path: /v2
+          backend:
+            serviceName: logiq-flash-ml
+            servicePort: 9999
+        - path: /dtracing
+          backend:
+              serviceName: logiq-flash-ml
+              servicePort: 16686
+        - path: /live
+          pathType: Prefix
+          backend:
+            service:
+              name: logiq-flash
+              port:
+                number: 9999
+        - path: /ready
+          pathType: Prefix
+          backend:
+            service:
+              name: logiq-flash
+              port:
+                number: 9999
+        - path: /v1/logs
+          pathType: Prefix
+          backend:
+            service:
+              name: logiq-flash
+              port:
+                number: 9999
+        - path: /v1/traces
+          pathType: Prefix
+          backend:
+            service:
+              name: logiq-flash
+              port:
+                number: 9999
+        - path: /v1/metrics
+          pathType: Prefix
+          backend:
+            service:
+              name: logiq-flash
+              port:
+                number: 9999  
+        {{ if .Values.global.chart.thanos }} 
+        - path: /api/v1/receive
+          backend:
+            serviceName: {{ .Release.Namespace }}-thanos-receive
+            servicePort: 19291
+        {{- end }}
+        {{- end }}
+{{- end -}}
+      {{ if .Values.ingress.tlsEnabled }}
+      host: {{ .Values.global.domain | quote }}
+      {{ end }}
+{{- end }}

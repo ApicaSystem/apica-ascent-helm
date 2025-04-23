@@ -1,0 +1,204 @@
+# Default values for logiq-flash.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 3
+replicaCountMl: 1
+
+image:
+  repository: docker.io/logiqai/flash
+  tag: 1.2.0
+  pullPolicy: IfNotPresent
+
+sidecarTracing:
+       image: docker.io/logiqai/tracing
+       tag: v1.35.2-lq1-c
+       imagePullPolicy: Always
+
+sidecarTracingMl:
+       image: docker.io/logiqai/tracing
+       tag: v1.35.2-lq1-q
+       imagePullPolicy: Always
+        
+
+metrics:
+  serviceMonitor:
+    enabled: false
+    selector:
+      release: prometheus
+
+secrets_name:
+pullSecretName: 
+
+discoveryService:
+  name: flash-discovery
+
+service:
+  type: NodePort
+
+
+tracingui:
+  port: 16686
+  name: tracingui
+
+tracinggrpc:
+    port: 14250
+    name: tracinggrpc
+
+tracingapi:
+    port: 14268
+    name: tracingapi
+
+rawtcp:
+   port: 517
+   name: rawtcp
+   containerPort: 1517
+
+grpc:
+  port: 8081
+  name: grpc
+
+liveness_port:
+  port: 8080
+  name: liveness-port
+
+webcli:
+  port: 9998
+  name: webcli
+
+api:
+  port: 9999
+  name: api
+
+syslogtls:
+  port: 7514
+  name: syslogtls
+
+syslog:
+  port: 514
+  name: syslog
+  containerPort: 1514
+
+cefport:
+  port: 515
+  name: cefport
+  containerPort: 1515
+
+cefportls:
+  port: 7515
+  name: cefportls
+
+relp:
+  port: 20514
+  name: relp
+
+relptls:
+  port: 2514
+  name: relptls
+
+fluentforward:
+  port: 24224
+  name: fluentforward
+
+fluentfwdtls:
+  port: 24225
+  name: fluentfwdtls
+
+filebeat:
+  port: 25224
+  name: filebeat
+
+filebeatls:
+  port: 25225
+  name: filebeatls
+
+raftHttp:
+  port: 4001
+  name: raft-http
+
+raft:
+  port: 4002
+  name: raft
+
+## Persist data to a persistent volume
+persistence:
+  enabled: true
+  ## database data Persistent Volume Storage Class
+  ## If defined, storageClassName: <storageClass>
+  ## If set to "-", storageClassName: "", which disables dynamic provisioning
+  ## If undefined (the default) or set to null, no storageClassName spec is
+  ##   set, choosing the default provisioner.  (gp2 on AWS, standard on
+  ##   GKE, AWS & OpenStack)
+  ##
+  ## gp2 - aws
+  #storageClassName: gp2
+  ## do-block-storage - digitalocean
+  #storageClassName: do-block-storage
+  ## standard - minikube
+  storageClassName: standard
+  accessMode: ReadWriteOnce
+  size: "10Gi"
+  ml_size: "10Gi"
+
+
+configurationFiles: true
+configMapName:
+podPerNode: false
+
+resources: 
+   sidecarTracing: {}
+
+   sidecarTracingMl: {}   
+
+   sidecar: {}
+
+
+
+  # requests:
+  #  memory: "3Gi"
+  #  cpu: "1000m"
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #  cpu: 100m
+  #  memory: 128Mi
+  # requests:
+  #  cpu: 100m
+  #  memory: 128Mi
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+global:
+  sharedSecretName: logiq-shared-secret
+  enableAwsAlb: 
+      enabled: false
+      flashAlbPort: "30444"
+      flashAlbMlPort: "30923"
+      
+  environment:
+    redis_opts: true
+    redis_host: "redis-master"
+    redis_port: "6379"
+    postgres_host: "postgres"
+    postgres_port: "5432"
+    postgres_user: "postgres"
+    postgres_password: "postgres"
+    postgres_db: "postgres"
+    postgres_coffee_db: "coffee"
+    s3_url: "http://s3-gateway:9000"
+    s3_access: "logiq_access"
+    s3_secret: "logiq_secret"
+    s3_region: "us-east-1"
+    AWS_ACCESS_KEY_ID: "AWS_ACCESS" 
+    AWS_SECRET_ACCESS_KEY: "AWS_SECRET"
+    extraflag: ""
+  persistence:
+    createStorageClass:
+       enabled: false
+    storageClass: standard
