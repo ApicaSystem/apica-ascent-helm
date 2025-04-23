@@ -3,7 +3,64 @@ entries:
   apica-ascent:
   - apiVersion: v2
     appVersion: v3.10.2
-    created: "2025-04-03T15:11:58.505954293+05:30"
+    created: "2025-04-23T18:59:41.783917718Z"
+    dependencies:
+    - alias: postgres
+      condition: global.chart.postgres
+      name: postgresql
+      repository: https://charts.bitnami.com/bitnami
+      version: 8.7.3
+    - alias: redis
+      condition: global.chart.redis
+      name: redis
+      repository: https://charts.bitnami.com/bitnami
+      version: 10.6.5
+    - alias: s3gateway
+      condition: global.chart.s3gateway
+      name: minio
+      repository: https://kubernetes-charts.storage.googleapis.com
+      version: 5.0.20
+    - alias: prometheus
+      condition: global.chart.prometheus
+      name: kube-prometheus
+      repository: https://charts.bitnami.com/bitnami
+      version: 6.5.3
+    - alias: grafana
+      condition: global.chart.grafana
+      name: grafana
+      repository: https://charts.bitnami.com/bitnami
+      version: 4.2.4
+    - alias: common
+      condition: global.chart.grafana
+      name: common
+      repository: https://charts.bitnami.com/bitnami
+      version: 1.1.1
+    - alias: thanos
+      condition: global.chart.thanos
+      name: thanos
+      repository: https://charts.bitnami.com/bitnami
+      version: 8.2.5
+    description: Apica Ascent Data Fabric HELM chart for Kubernetes
+    digest: 65ce1b7794aed9181126ddda752cbe1829113de48d0d7fa1b4b560f5dd3d3242
+    home: https://apica.io
+    icon: https://www.apica.io/wp-content/uploads/2023/01/apica-logo-white-2022.png
+    maintainers:
+    - email: ranjan.parthasarathy@apica.io
+      name: ranjan
+    - email: kevin.dsouza@apica.io
+      name: kevin
+    - email: kumar.vishnu@apica.io
+      name: vishnu
+    - email: lokesh.sm@apica.io
+      name: lokesh
+    name: apica-ascent
+    type: application
+    urls:
+    - https://apicasystem.github.io/apica-ascent-helm/apica-ascent-2.0.7.tgz
+    version: 2.0.7
+  - apiVersion: v2
+    appVersion: v3.10.2
+    created: "2025-04-23T18:59:41.754021701Z"
     dependencies:
     - alias: postgres
       condition: global.chart.postgres
@@ -56,6 +113,6 @@ entries:
     name: apica-ascent
     type: application
     urls:
-    - https://ApicaSystem.github.io/apica-ascent-helm/apica-ascent-2.0.6.tgz
+    - https://apicasystem.github.io/apica-ascent-helm/apica-ascent-2.0.6.tgz
     version: 2.0.6
-generated: "2025-04-03T15:11:58.478909842+05:30"
+generated: "2025-04-23T18:59:41.720765053Z"
