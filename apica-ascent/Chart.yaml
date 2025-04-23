@@ -40,6 +40,10 @@ description: Apica Ascent Data Fabric HELM chart for Kubernetes
 home: https://apica.io
 icon: https://www.apica.io/wp-content/uploads/2023/01/apica-logo-white-2022.png
 maintainers:
+- email: manchal.sharma@apica.io
+  name: manchal
+- email: support@apica.io
+  name: support
 - email: ranjan.parthasarathy@apica.io
   name: ranjan
 - email: kevin.dsouza@apica.io
