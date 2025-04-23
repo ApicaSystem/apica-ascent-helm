@@ -3,7 +3,7 @@ entries:
   apica-ascent:
   - apiVersion: v2
     appVersion: v3.10.2
-    created: "2025-04-03T15:11:58.505954293+05:30"
+    created: "2025-04-23T19:40:11.850020925Z"
     dependencies:
     - alias: postgres
       condition: global.chart.postgres
@@ -41,10 +41,14 @@ entries:
       repository: https://charts.bitnami.com/bitnami
       version: 8.2.5
     description: Apica Ascent Data Fabric HELM chart for Kubernetes
-    digest: 1c8b468cee4cf09fbb0278b70aae91fbd54a8e27b9d1b8ad3aaa95ac01e16ced
+    digest: 96a23d18f49b090906e821d7f214f881f263b2059ebd039641fe9cfc06de87ca
     home: https://apica.io
     icon: https://www.apica.io/wp-content/uploads/2023/01/apica-logo-white-2022.png
     maintainers:
+    - email: manchal.sharma@apica.io
+      name: manchal
+    - email: support@apica.io
+      name: support
     - email: ranjan.parthasarathy@apica.io
       name: ranjan
     - email: kevin.dsouza@apica.io
@@ -56,6 +60,6 @@ entries:
     name: apica-ascent
     type: application
     urls:
-    - https://ApicaSystem.github.io/apica-ascent-helm/apica-ascent-2.0.6.tgz
-    version: 2.0.6
-generated: "2025-04-03T15:11:58.478909842+05:30"
+    - https://apicasystem.github.io/apica-ascent-helm/apica-ascent-2.0.7.tgz
+    version: 2.0.7
+generated: "2025-04-23T19:40:11.817006885Z"
