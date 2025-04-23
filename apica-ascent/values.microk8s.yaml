@@ -5,7 +5,7 @@ logiq-flash:
   service:
     type: NodePort
   image:
-    tag: v3.12.21
+    tag: v3.14.0
     pullPolicy: IfNotPresent
   persistence:
     enabled: true
@@ -32,7 +32,6 @@ logiq-flash:
         cpu: "250m"
       requests:
         cpu: "100m"
-
 flash-discovery:
   fullnameOverride: flash-discovery
   image:
@@ -42,7 +41,6 @@ flash-discovery:
   persistence:
     enabled: true
     size: 2Gi
-
 redis:
   enabled: true
   fullnameOverride: redis
@@ -104,7 +102,6 @@ redis:
   serviceAccount:
     create: true
     name: redis
-
 postgres:
   enabled: false
   fullnameOverride: postgres
@@ -126,7 +123,7 @@ postgres:
   resources:
     requests:
       memory: "1Gi"
-      cpu: "1000m"  
+      cpu: "1000m"
   securityContext:
     enabled: true
     fsGroup: 1001
@@ -134,14 +131,13 @@ postgres:
   serviceAccount:
     enabled: true
     name: postgres
-
 flash-coffee:
   service:
     type: ClusterIP
   coffee:
     replicaCount: 1
     image:
-      tag: brew.v3.13.49
+      tag: brew.v3.15.3
       pullPolicy: IfNotPresent
     resources:
       requests:
@@ -152,7 +148,7 @@ flash-coffee:
   coffee_worker:
     replicaCount: 1
     image:
-      tag: brew.v3.13.49
+      tag: brew.v3.15.3
       pullPolicy: IfNotPresent
     resources:
       requests:
@@ -160,7 +156,6 @@ flash-coffee:
         cpu: "1000m"
       limits:
         cpu: "1000m"
-
 s3gateway:
   s3gateway:
     enabled: false
@@ -191,13 +186,11 @@ s3gateway:
   serviceAccount:
     create: true
     name: s3-gateway
-
 ingress:
   enabled: true
   name: logiq-ingress
   tlsEnabled: false
   tlsSecretName: null
-
 kubernetes-ingress:
   controller:
     image:
@@ -206,7 +199,7 @@ kubernetes-ingress:
     replicaCount: 1
     ingressClass: logiq-ingress
     service:
-      type: NodePort 
+      type: NodePort
     defaultTLSSecret:
       enabled: false
       secret: null
@@ -217,7 +210,6 @@ kubernetes-ingress:
   serviceAccount:
     create: true
     name: ingress-nginx
-
 prometheus:
   fullnameOverride: prometheus
   persistence:
@@ -244,14 +236,13 @@ prometheus:
     replicaCount: 1
   node-exporter:
     replicaCount: 1
-
 thanos:
   receive:
-    logLevel: debug 
+    logLevel: debug
     service:
-    ## @param receive.service.type Kubernetes service type
-    ##
-       type: ClusterIP 
+      ## @param receive.service.type Kubernetes service type
+      ##
+      type: ClusterIP
     enabled: true
   query:
     enabled: true
@@ -277,23 +268,21 @@ thanos:
     enabled: true
     serviceMonitor:
       enabled: true
-
 logiqctl:
   image:
     repository: logiqai/logiqctl
     tag: 2.0.4
     pullPolicy: IfNotPresent
-
 global:
   domain: null
   cloudProvider: aws
   createStorageClass: false
   kubeDistributor:
-         enabled: true 
-         vendor: "microk8s"
+    enabled: true
+    vendor: "microk8s"
   enableAwsAlb:
-      enabled: false
-      albType: "internet-facing"
+    enabled: false
+    albType: "internet-facing"
   enableMetricsServer: false
   sharedSecretName: logiq-shared-secret
   nodeSelectors:
