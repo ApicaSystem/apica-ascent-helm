@@ -5,7 +5,7 @@ logiq-flash:
   service:
     type: NodePort
   image:
-    tag: v3.12.21
+    tag: v3.14.0
     pullPolicy: IfNotPresent
   persistence:
     enabled: true
@@ -29,11 +29,10 @@ logiq-flash:
       requests:
         cpu: "500m"
     sync:
-      limits: 
+      limits:
         cpu: "250m"
       requests:
         cpu: "100m"
-
 flash-discovery:
   fullnameOverride: flash-discovery
   image:
@@ -43,7 +42,6 @@ flash-discovery:
   persistence:
     enabled: true
     size: 0.5Gi
-
 redis:
   enabled: true
   fullnameOverride: redis
@@ -102,7 +100,6 @@ redis:
   serviceAccount:
     create: true
     name: redis
-
 postgres:
   enabled: true
   fullnameOverride: postgres
@@ -132,14 +129,13 @@ postgres:
   serviceAccount:
     enabled: true
     name: postgres
-
 flash-coffee:
   service:
     type: NodePort
   coffee:
     replicaCount: 1
     image:
-      tag: brew.v3.13.49
+      tag: brew.v3.15.3
       pullPolicy: IfNotPresent
     resources:
       requests:
@@ -148,13 +144,12 @@ flash-coffee:
   coffee_worker:
     replicaCount: 1
     image:
-      tag: brew.v3.13.49
+      tag: brew.v3.15.3
       pullPolicy: IfNotPresent
     resources:
       requests:
         memory: "0.2Gi"
         cpu: "100m"
-
 s3-gateway:
   mode: standalone
   s3gateway:
@@ -163,7 +158,7 @@ s3-gateway:
   defaultBucket:
     enabled: true
   gcsgateway:
-    enabled: false 
+    enabled: false
     replicas: 1
   fullnameOverride: s3-gateway
   accessKey: logiq_access
@@ -190,13 +185,11 @@ s3-gateway:
   serviceAccount:
     create: true
     name: s3-gateway
-
 ingress:
   enabled: true
   name: logiq-ingress
   tlsEnabled: false
   tlsSecretName: null
-
 kubernetes-ingress:
   defaultBackend:
     replicaCount: 1
@@ -207,7 +200,7 @@ kubernetes-ingress:
     replicaCount: 1
     ingressClass: logiq-ingress
     service:
-      type: LoadBalancer 
+      type: LoadBalancer
     defaultTLSSecret:
       enabled: false
       secret: null
@@ -216,7 +209,6 @@ kubernetes-ingress:
   serviceAccount:
     create: true
     name: ingress-nginx
-
 prometheus:
   fullnameOverride: prometheus
   persistence:
@@ -243,14 +235,13 @@ prometheus:
     replicaCount: 1
   node-exporter:
     replicaCount: 1
-
 thanos:
   receive:
-    logLevel: debug 
+    logLevel: debug
     service:
-    ## @param receive.service.type Kubernetes service type
-    ##
-       type: ClusterIP 
+      ## @param receive.service.type Kubernetes service type
+      ##
+      type: ClusterIP
     enabled: true
   query:
     enabled: true
@@ -276,21 +267,19 @@ thanos:
     enabled: true
     serviceMonitor:
       enabled: true
-
 logiqctl:
   image:
     repository: logiqai/logiqctl
     tag: 2.0.4
     pullPolicy: IfNotPresent
-
 global:
   domain: null
   kubeDistributor:
-      enabled: false
+    enabled: false
   cloudProvider: gcp
   enableAwsAlb:
-      enabled: false
-      albType: "internet-facing"
+    enabled: false
+    albType: "internet-facing"
   createStorageClass: false
   enableMetricsServer: false
   sharedSecretName: logiq-shared-secret
@@ -335,7 +324,7 @@ global:
     cluster_id: LOGIQ
     awsServiceEndpoint: https://s3.us-east-1.amazonaws.com
   persistence:
-    storageClass: standard 
+    storageClass: standard
   chart:
     prometheus: true
     postgres: true
