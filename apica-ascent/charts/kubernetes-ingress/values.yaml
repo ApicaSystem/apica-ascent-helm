@@ -580,22 +580,6 @@ imagePullSecrets: []
 # Ref: https://github.com/kubernetes/contrib/tree/master/ingress/controllers/nginx/examples/tcp
 ##
 tcp:
-  514: "logiq-flash:514"
-  515: "logiq-flash:515"
-  2514: "logiq-flash:2514"
-  7514: "logiq-flash:7514"
-  7515: "logiq-flash:7515"
-  8081: "logiq-flash-ml:8081"
-  9998: "logiq-flash:9998"
-  9999: "logiq-flash:9999"
-  14250: "logiq-flash:14250"
-  20514: "logiq-flash:20514"
-  24225: "logiq-flash:24225"
-  24224: "logiq-flash:24224"
-  25225: "logiq-flash:25225"
-  25224: "logiq-flash:25224"
-  14268: "logiq-flash:14268"
-  16686: "logiq-flash:16686"
  
 
 #  8080: "default/example-tcp-svc:9000"
