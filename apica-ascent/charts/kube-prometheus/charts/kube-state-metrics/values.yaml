@@ -68,7 +68,7 @@ serviceAccount:
   ##
   name: ""
 ## Bitnami kube-state-metrics image version
-## ref: https://hub.docker.com/r/bitnami/kube-state-metrics/tags/
+## ref: https://hub.docker.com/r/bitnamilegacy/kube-state-metrics/tags/
 ## @param image.registry kube-state-metrics image registry
 ## @param image.repository kube-state-metrics image repository
 ## @param image.tag kube-state-metrics Image tag (immutable tags are recommended)
@@ -77,8 +77,8 @@ serviceAccount:
 ##
 image:
   registry: docker.io
-  repository: bitnami/kube-state-metrics
-  tag: 2.3.0-debian-10-r0
+  repository: bitnamilegacy/kube-state-metrics
+  tag: 2.3.0
   ## Specify a imagePullPolicy
   ## Defaults to 'Always' if image tag is 'latest', else set to 'IfNotPresent'
   ## ref: https://kubernetes.io/docs/user-guide/images/#pre-pulling-images

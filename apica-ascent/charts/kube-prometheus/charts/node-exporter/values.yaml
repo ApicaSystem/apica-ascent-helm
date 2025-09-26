@@ -61,7 +61,7 @@ serviceAccount:
   ## If not set and create is true, a name is generated using the common.names.fullname template
   name: ""
 ## Bitnami Node Exporter image version
-## ref: https://hub.docker.com/r/bitnami/node-exporter/tags/
+## ref: https://hub.docker.com/r/bitnamilegacy/node-exporter/tags/
 ## @param image.registry Node Exporter image registry
 ## @param image.repository Node Exporter image repository
 ## @param image.tag Node Exporter Image tag (immutable tags are recommended)
@@ -70,8 +70,8 @@ serviceAccount:
 ##
 image:
   registry: docker.io
-  repository: bitnami/node-exporter
-  tag: 1.3.1-debian-10-r0
+  repository: bitnamilegacy/node-exporter
+  tag: 1.3.1
   ## Specify a imagePullPolicy
   ## Defaults to 'Always' if image tag is 'latest', else set to 'IfNotPresent'
   ## ref: https://kubernetes.io/docs/user-guide/images/#pre-pulling-images
