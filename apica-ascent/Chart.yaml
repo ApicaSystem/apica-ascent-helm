@@ -44,8 +44,6 @@ maintainers:
     name: manchal
   - email: support@apica.io
     name: support
-  - email: ranjan.parthasarathy@apica.io
-    name: ranjan
   - email: kevin.dsouza@apica.io
     name: kevin
   - email: kumar.vishnu@apica.io
@@ -54,4 +52,4 @@ maintainers:
     name: lokesh
 name: apica-ascent
 type: application
-version: 2.0.9
+version: 2.0.10
