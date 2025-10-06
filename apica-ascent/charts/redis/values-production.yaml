@@ -14,11 +14,11 @@ global:
 ##
 image:
   registry: docker.io
-  repository: bitnami/redis
+  repository: bitnamilegacy/redis
   ## Bitnami Redis image tag
   ## ref: https://github.com/bitnami/bitnami-docker-redis#supported-tags-and-respective-dockerfile-links
   ##
-  tag: 5.0.8-debian-10-r36
+  tag: 5.0.8
   ## Specify a imagePullPolicy
   ## Defaults to 'Always' if image tag is 'latest', else set to 'IfNotPresent'
   ## ref: http://kubernetes.io/docs/user-guide/images/#pre-pulling-images
@@ -56,11 +56,11 @@ sentinel:
   ##
   image:
     registry: docker.io
-    repository: bitnami/redis-sentinel
+    repository: bitnamilegacy/redis-sentinel
     ## Bitnami Redis image tag
     ## ref: https://github.com/bitnami/bitnami-docker-redis-sentinel#supported-tags-and-respective-dockerfile-links
     ##
-    tag: 5.0.8-debian-10-r28
+    tag: 5.0.8
     ## Specify a imagePullPolicy
     ## Defaults to 'Always' if image tag is 'latest', else set to 'IfNotPresent'
     ## ref: http://kubernetes.io/docs/user-guide/images/#pre-pulling-images
@@ -479,8 +479,8 @@ metrics:
 
   image:
     registry: docker.io
-    repository: bitnami/redis-exporter
-    tag: 1.5.2-debian-10-r24
+    repository: bitnamilegacy/redis-exporter
+    tag: 1.5.2
     pullPolicy: IfNotPresent
     ## Optionally specify an array of imagePullSecrets.
     ## Secrets must be manually created in the namespace.
