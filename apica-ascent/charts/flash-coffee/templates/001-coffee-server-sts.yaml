@@ -296,4 +296,17 @@ spec:
           {{- if .Values.coffee.resources }}
           resources: {{- toYaml .Values.coffee.resources | nindent 12 }}
           {{- end }}
+        - env:
+          - name: SSR_HOST
+            value: 0.0.0.0
+          - name: __VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS
+            value: coffee
+          image: logiqai/ssr-server:v7
+          imagePullPolicy: IfNotPresent
+          name: ssr-report-gen
+          ports:
+            - containerPort: 5173
+              name: ssr
+              protocol: TCP
+          resources: {}
       restartPolicy: Always
