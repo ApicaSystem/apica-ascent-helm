@@ -317,13 +317,13 @@ global:
     postgres_password: "postgres"
     postgres_db: "postgres"
     postgres_coffee_db: "coffee"
-    s3_url: "http://s3-gateway:9000"
-    s3_access: "logiq_access"
-    s3_secret: "logiq_secret"
-    AWS_ACCESS_KEY_ID: "logiq_access"
-    AWS_SECRET_ACCESS_KEY: "logiq_secret"
-    s3_bucket: "logiq"
-    s3_region: "us-east-1"
+    s3_url: <+secrets.getValue("account.s3-url")>
+    s3_access: <+secrets.getValue("account.apica_s3_access_key")>
+    s3_secret: <+secrets.getValue("account.apica_s3_secret_key")>
+    AWS_ACCESS_KEY_ID: <+secrets.getValue("account.apica_s3_access_key")>
+    AWS_SECRET_ACCESS_KEY: <+secrets.getValue("account.apica_s3_secret_key")>
+    s3_bucket: <+secrets.getValue("account.bucket-name")>
+    s3_region: <+secrets.getValue("account.s3-region")>
     admin_name: "flash-admin@foo.com"
     admin_password: "flash-password"
     admin_org: "flash-org"
