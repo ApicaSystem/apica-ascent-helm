@@ -336,7 +336,7 @@ global:
   persistence:
     createStorageClass:
       enabled: true
-    storageClass: standard
+    storageClass: oci-bv
   chart:
     prometheus: true
     thanos: true
