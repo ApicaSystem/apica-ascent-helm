@@ -9,7 +9,7 @@ global:
 #   storageClass: myStorageClass
   redis: {}
   persistence:
-    storageClass: standard
+    storageClass: oci-bv
   chart:
     redis: true
 
