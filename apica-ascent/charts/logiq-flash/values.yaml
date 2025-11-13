@@ -201,4 +201,4 @@ global:
   persistence:
     createStorageClass:
        enabled: false
-    storageClass: standard
+    storageClass: oci-bv
