@@ -1,14 +1,31 @@
 ---
 description: >-
-  This page describes the APICA.IO deployment on Kubernetes cluster using HELM 3
-  charts.
+  Apica Ascent deployment on Kubernetes using HELM 3 with Envoy Gateway
 ---
 
-# K8S Quickstart guide
+# Apica Ascent - Kubernetes Deployment Guide
+
+## Overview
+
+Apica Ascent is a cloud-native observability platform that provides unified logging, monitoring, tracing, and analytics. This chart uses **Envoy Gateway v1.6.0**for modern standards-based ingress management. 
 
 ## 1 - Prerequisites
 
-APICA.IO K8S components are made available as helm charts. Instructions below assume you are using HELM 3. Please read and agree to the [EULA](https://docs.apica.ai/eula/eula) before proceeding.
+- Kubernetes cluster version >= 1.30.0
+- HELM 3 installed
+- kubectl configured to access your cluster
+- Envoy Gateway v1.6.0 ()
+
+```bash
+helm install eg oci://docker.io/envoyproxy/gateway-helm --version v1.6.0 -n envoy-gateway-system --create-namespace
+```
+Ref:
+https://gateway.envoyproxy.io/docs/install/install-helm/
+
+Note: Envoy Chart create crds and controller not gatewayclass & gateways that need to create by our own apica ascent chart.
+
+
+Please read and agree to the [EULA](https://docs.apica.ai/eula/eula) before proceeding.
 
 ### 1.1 Add APICA.IO helm repository
 
@@ -73,41 +90,36 @@ Besides the web based UI, APICA.IO also offers [apicactl, APICA.IO CLI](https://
 
 ## 3 Customizing the deployment
 
-### 3.1 Enabling https for the UI
+### 3.1 Enabling HTTPS for the UI
+
+Create a TLS secret with your certificate:
+
+```bash
+kubectl create secret tls apica-tls \
+  --cert=path/to/tls.crt \
+  --key=path/to/tls.key \
+  -n apica
+```
+
+Install with HTTPS enabled:
 
 ```bash
 helm install apica --namespace apica \
 --set global.domain=apica.my-domain.com \
---set ingress.tlsEnabled=true \
---set kubernetes-ingress.controller.defaultTLSSecret.enabled=true \
+--set gateway.tls.enabled=true \
+--set gateway.tls.secretName=apica-tls \
 --set global.persistence.storageClass=<storage class name> apica-repo/apica
 ```
 
-> You should now be able to login to APICA.IO UI at your domain using `https://apica.my-domain.com` that you set in the ingress after you have updated your DNS server to point to the Ingress controller service IP
->
-> The default login and password to use is `flash-admin@foo.com` and `flash-password`. You can change these in the UI once logged in.
+> Access the UI at `https://apica.my-domain.com` after updating your DNS to point to the LoadBalancer IP
 
-> The `apica.my-domain.com` also fronts all the APICA.IO service ports as described in the [port details section](quickstart-guide.md#ports).
-
-| HELM Option | Description | Defaults |
+| HELM Option | Description | Default |
 | :--- | :--- | :--- |
-| `global.domain` | DNS domain where the APICA.IO service will be running. This is required for HTTPS | No default |
-| `ingress.tlsEnabled` | Enable the ingress controller to front HTTPS for services | false |
-| `kubernetes-ingress.controller.defaultTLSSecret.enabled` | Specify if a default certificate is enabled for the ingress gateway | false |
-| `kubernetes-ingress.controller.defaultTLSSecret.secret` | Specify the name of a TLS Secret for the ingress gateway. If this is not specified, a secret is automatically generated of option `kubernetes-ingress.controller.defaultTLSSecret.enabled` above is enabled. |  |
-
-#### 3.1.1 Passing an ingress secret
-
-If you want to pass your own ingress secret, you can do so when installing the HELM chart
-
-```bash
-helm install apica --namespace apica \
---set global.domain=apica.my-domain.com \
---set ingress.tlsEnabled=true \
---set kubernetes-ingress.controller.defaultTLSSecret.enabled=true \
---set kubernetes-ingress.controller.defaultTLSSecret.secret=<secret_name> \
---set global.persistence.storageClass=<storage class name> apica-repo/apica
-```
+| `global.domain` | DNS domain for the Apica Ascent service | No default |
+| `gateway.tls.enabled` | Enable HTTPS on the Gateway | false |
+| `gateway.tls.secretName` | Name of the TLS Secret (must be in same namespace) | No default |
+| `envoyGateway.enabled` | Enable Envoy Gateway (required) | true |
+| `envoyGateway.createGatewayClass` | Auto-create GatewayClass | true |
 
 ### 3.2 Using an AWS S3 bucket
 
@@ -303,33 +315,25 @@ When deploying APICA.IO, size your infrastructure to provide appropriate vcpu an
 | medium  | 20| 56 gb | 5 |
 | large  | 32| 88 gb | 8 |
 
-### 3.11 NodePort/ClusterIP/LoadBalancer
+### 3.11 Service Type Configuration
 
-The service type configurations are exposed in values.yaml as below 
-
-```bash
-flash-coffee:
-  service:
-    type: ClusterIP
-apica-flash:
-  service:
-    type: NodePort
-kubernetes-ingress:
-  controller:
-    service:
-      type: LoadBalancer
-
-```
-
-For e.g. if you are running on bare-metal and want an external LB to front APICA.IO, configure all services as `NodePort`
+The Envoy Gateway service type can be configured:
 
 ```bash
-helm install apica -n apica -f values.yaml \
---set flash-coffee.service.type=NodePort \
---set apica-flash.service.type=NodePort \
---set kubernetes-ingress.controller.service.type=NodePort \
+helm install apica -n apica \
+--set envoyGateway.gateway.service.type=LoadBalancer \
 apica-repo/apica
 ```
+
+Supported service types:
+- `LoadBalancer` (default) - For cloud providers
+- `NodePort` - For bare-metal or custom load balancers
+- `ClusterIP` - For internal-only access
+
+For cloud-specific configurations, see the platform-specific values files:
+- `values.aws.yaml` - AWS EKS
+- `values.azure.yaml` - Azure AKS
+- `values.oke.yaml` - Oracle Cloud (OKE)
 
 ### 3.12 Using Node Selectors
 

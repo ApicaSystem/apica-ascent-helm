@@ -186,30 +186,30 @@ s3gateway:
   serviceAccount:
     create: true
     name: s3-gateway
-ingress:
+# Gateway API configuration
+gateway:
+  tls:
+    enabled: false
+    secretName: null
+# Envoy Gateway Configuration for MicroK8s
+envoyGateway:
   enabled: true
-  name: logiq-ingress
-  tlsEnabled: false
-  tlsSecretName: null
-kubernetes-ingress:
-  controller:
-    image:
-      repository: k8s.gcr.io/ingress-nginx/controller
-      tag: "v1.2.0"
-    replicaCount: 1
-    ingressClass: logiq-ingress
+  # Create GatewayClass resource (set to true to auto-create)
+  createGatewayClass: true
+  gatewayClassName: envoy
+  controllerName: gateway.envoyproxy.io/gatewayclass-controller
+  gatewayClassDescription: "Envoy Gateway for Apica Ascent"
+  gateway:
+    name: apica-gateway
     service:
-      type: NodePort
-    defaultTLSSecret:
-      enabled: false
-      secret: null
-  defaultBackend:
-    replicaCount: 2
-  podSecurityPolicy:
-    enabled: true
-  serviceAccount:
-    create: true
-    name: ingress-nginx
+      type: NodePort  # MicroK8s uses NodePort
+    listeners:
+      http:
+        port: 80
+        protocol: HTTP
+      https:
+        port: 443
+        protocol: HTTPS
 prometheus:
   fullnameOverride: prometheus
   persistence:

@@ -1,0 +1,33 @@
+{{- if .Values.envoyGateway.enabled -}}
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: BackendTrafficPolicy
+metadata:
+  name: {{ .Values.envoyGateway.gateway.name }}-policy
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "logiq.labels" . | nindent 4 }}
+spec:
+  targetRef:
+    group: gateway.networking.k8s.io
+    kind: Gateway
+    name: {{ .Values.envoyGateway.gateway.name }}
+  
+  # Timeout configuration (from NGINX annotations)
+  timeout:
+    http:
+      # nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
+      requestTimeout: 300s
+      # nginx.org/proxy-connect-timeout: 30s (mapped to connectionIdleTimeout)
+      connectionIdleTimeout: 30s
+      # Note: requestRecvTimeout is not supported in BackendTrafficPolicy v1alpha1
+  
+  # Connection settings (from NGINX annotations)
+  connection:
+    # nginx.ingress.kubernetes.io/connection-proxy-header: keep-alive
+    bufferLimit: 1Mi  # nginx.ingress.kubernetes.io/client-body-buffer-size: 1M
+  
+  # Load balancing (from NGINX annotations)
+  loadBalancer:
+    # nginx.ingress.kubernetes.io/load-balance: round_robin
+    type: RoundRobin
+{{- end }}

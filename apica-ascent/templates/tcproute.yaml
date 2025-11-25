@@ -1,0 +1,36 @@
+{{- if .Values.envoyGateway.enabled -}}
+---
+# TCPRoute for port 9999 - logiq-flash (API/Ingest)
+apiVersion: gateway.networking.k8s.io/v1alpha2
+kind: TCPRoute
+metadata:
+  name: {{ .Values.envoyGateway.gateway.name }}-tcp-9999
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "logiq.labels" . | nindent 4 }}
+spec:
+  parentRefs:
+  - name: {{ .Values.envoyGateway.gateway.name }}
+    sectionName: tcp-9999
+  rules:
+  - backendRefs:
+    - name: logiq-flash
+      port: 9999
+---
+# TCPRoute for port 8081 - logiq-flash-ml (ML/Analytics)
+apiVersion: gateway.networking.k8s.io/v1alpha2
+kind: TCPRoute
+metadata:
+  name: {{ .Values.envoyGateway.gateway.name }}-tcp-8081
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "logiq.labels" . | nindent 4 }}
+spec:
+  parentRefs:
+  - name: {{ .Values.envoyGateway.gateway.name }}
+    sectionName: tcp-8081
+  rules:
+  - backendRefs:
+    - name: logiq-flash-ml
+      port: 8081
+{{- end }}

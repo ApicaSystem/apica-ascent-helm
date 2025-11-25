@@ -1,0 +1,35 @@
+{{- if .Values.envoyGateway.enabled -}}
+---
+# EnvoyProxy Configuration
+# Configures the Envoy Gateway LoadBalancer service with cloud-specific settings
+# This resource is created before the GatewayClass (hook-weight: -10)
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: EnvoyProxy
+metadata:
+  name: {{ .Values.envoyGateway.gateway.name }}-config
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "-10"
+  labels:
+    {{- include "logiq.labels" . | nindent 4 }}
+spec:
+  provider:
+    type: Kubernetes
+    kubernetes:
+      envoyService:
+        type: {{ .Values.envoyGateway.gateway.service.type | default "LoadBalancer" }}
+        {{- if .Values.envoyGateway.gateway.service.annotations }}
+        # Cloud provider annotations (e.g., OCI Load Balancer shape, health check port)
+        annotations:
+          {{- toYaml .Values.envoyGateway.gateway.service.annotations | nindent 10 }}
+        {{- end }}
+        # Strategic merge patch to configure service behavior
+        # externalTrafficPolicy: Cluster prevents automatic healthCheckNodePort assignment
+        # This allows cloud providers to use custom health check ports (e.g., OCI port 10256)
+        patch:
+          type: StrategicMerge
+          value:
+            spec:
+              externalTrafficPolicy: Cluster
+{{- end }}

@@ -185,30 +185,31 @@ s3-gateway:
   serviceAccount:
     create: true
     name: s3-gateway
-ingress:
+# Gateway API configuration
+gateway:
+  tls:
+    enabled: false
+    secretName: null
+# Envoy Gateway Configuration for Single Node
+envoyGateway:
   enabled: true
-  name: logiq-ingress
-  tlsEnabled: false
-  tlsSecretName: null
-kubernetes-ingress:
-  defaultBackend:
-    replicaCount: 1
-  controller:
-    image:
-      repository: k8s.gcr.io/ingress-nginx/controller
-      tag: "v1.2.0"
-    replicaCount: 1
-    ingressClass: logiq-ingress
+  # Create GatewayClass resource (set to true to auto-create)
+  createGatewayClass: true
+  gatewayClassName: envoy
+  controllerName: gateway.envoyproxy.io/gatewayclass-controller
+  gatewayClassDescription: "Envoy Gateway for Apica Ascent"
+  gateway:
+    name: apica-gateway
+    replicas: 1  # Single node deployment
     service:
       type: LoadBalancer
-    defaultTLSSecret:
-      enabled: false
-      secret: null
-  podSecurityPolicy:
-    enabled: true
-  serviceAccount:
-    create: true
-    name: ingress-nginx
+    listeners:
+      http:
+        port: 80
+        protocol: HTTP
+      https:
+        port: 443
+        protocol: HTTPS
 prometheus:
   fullnameOverride: prometheus
   persistence:

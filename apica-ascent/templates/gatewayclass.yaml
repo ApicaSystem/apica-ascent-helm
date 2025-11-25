@@ -1,0 +1,27 @@
+{{- if .Values.envoyGateway.createGatewayClass }}
+---
+# GatewayClass Resource
+# Defines the Envoy Gateway controller and links to EnvoyProxy configuration
+# This resource is created after EnvoyProxy (hook-weight: -5) but before Gateway
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+  name: {{ .Values.envoyGateway.gatewayClassName | default "envoy" }}
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "-5"
+  labels:
+    {{- include "logiq.labels" . | nindent 4 }}
+spec:
+  # Envoy Gateway controller name (v1.4.5)
+  controllerName: {{ .Values.envoyGateway.controllerName | default "gateway.envoyproxy.io/gatewayclass-controller" }}
+  {{- if .Values.envoyGateway.gatewayClassDescription }}
+  description: {{ .Values.envoyGateway.gatewayClassDescription }}
+  {{- end }}
+  # Reference to EnvoyProxy configuration for cloud-specific settings
+  parametersRef:
+    group: gateway.envoyproxy.io
+    kind: EnvoyProxy
+    name: {{ .Values.envoyGateway.gateway.name }}-config
+    namespace: {{ .Release.Namespace }}
+{{- end }}

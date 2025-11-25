@@ -301,7 +301,7 @@ spec:
             value: 0.0.0.0
           - name: __VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS
             value: coffee
-          image: logiqai/ssr-server:v7
+          image: logiqai/ssr-server:v12
           imagePullPolicy: IfNotPresent
           name: ssr-report-gen
           ports:
