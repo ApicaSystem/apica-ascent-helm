@@ -29,10 +29,11 @@ spec:
   
   # HTTPS Listener (Port 443)
   # Handles: Secure Web UI, REST APIs (when TLS enabled)
+  # Only created when TLS is enabled to ensure Gateway API compliance
+  {{- if .Values.gateway.tls.enabled }}
   - name: https
     protocol: HTTPS
     port: {{ .Values.envoyGateway.gateway.listeners.https.port | default 443 }}
-    {{- if .Values.gateway.tls.enabled }}
     tls:
       mode: Terminate
       certificateRefs:
@@ -45,10 +46,10 @@ spec:
       - name: {{ .Values.gateway.tls.secretName }}
         kind: Secret
       {{- end }}
-    {{- end }}
     allowedRoutes:
       namespaces:
         from: Same
+  {{- end }}
   
   # ============================================================================
   # TCP Listeners - Data Ingestion and Analytics
