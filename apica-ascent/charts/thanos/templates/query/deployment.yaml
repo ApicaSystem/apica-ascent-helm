@@ -121,7 +121,7 @@ spec:
             - --store.sd-files=/conf/servicediscovery.yml
             {{- end }}
             {{- if and .Values.query.dnsDiscovery.enabled }}
-            - --store=dnssrv+_grpc._tcp.{{ .Release.Namespace }}-prometheus-prometheus-thanos.{{ .Release.Namespace }}.svc.cluster.local
+            - --store=dnssrv+_grpc._tcp.{{ .Release.Name }}-prometheus-prometheus-thanos.{{ .Release.Namespace }}.svc.cluster.local
             {{- end }}
             {{- if and .Values.storegateway.enabled .Values.storegateway.sharded.enabled }}
             {{- $shards := int 0 }}
