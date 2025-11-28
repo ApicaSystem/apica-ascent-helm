@@ -257,7 +257,7 @@ ingress:
             number: 9999
       path: /v1/metrics
       pathType: Prefix
-  tlsEnabled: true
+  tlsEnabled: false
   tlsSecretName: bitnami-test-tls-cert
 
 kubernetes-ingress:
