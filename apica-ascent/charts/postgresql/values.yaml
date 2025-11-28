@@ -17,7 +17,7 @@ global:
     postgres_coffee_db: "coffee"
     cluster_id: demo
   persistence:
-    storageClass: standard
+    storageClass: oci-bv
   chart:
     prometheus: true
 

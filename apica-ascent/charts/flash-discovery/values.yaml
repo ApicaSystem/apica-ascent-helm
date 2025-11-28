@@ -79,4 +79,4 @@ global:
     upload_dashboard: true
     cluster_id: demo
   persistence:
-    storageClass: standard
+    storageClass: oci-bv

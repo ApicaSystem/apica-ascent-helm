@@ -91,4 +91,4 @@ global:
     cluster_id: demo
     gacode: ""
   persistence:
-    storageClass: standard
+    storageClass: oci-bv
