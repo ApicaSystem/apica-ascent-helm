@@ -169,7 +169,7 @@ s3gateway:
     serviceMonitor:
       enabled: false
   buckets:
-    - name: logiq
+    - name: apc-ap8994-d04ea622-e721-4a4c-90f7-bc229eaa1b07
       policy: none
       purge: false
   persistence:
@@ -322,7 +322,7 @@ global:
     s3_secret: "logiq_secret"
     AWS_ACCESS_KEY_ID: "logiq_access"
     AWS_SECRET_ACCESS_KEY: "logiq_secret"
-    s3_bucket: "logiq"
+    s3_bucket: "apc-ap8994-d04ea622-e721-4a4c-90f7-bc229eaa1b07"
     s3_region: "us-east-1"
     admin_name: "flash-admin@foo.com"
     admin_password: "flash-password"
