@@ -315,6 +315,6 @@ metrics:
 
 global:
   persistence:
-    storageClass: standard
+    storageClass: oci-bv
   chart:
     s3-gateway: true
