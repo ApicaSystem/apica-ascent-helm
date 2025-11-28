@@ -176,10 +176,12 @@ affinity: {}
 
 global:
   sharedSecretName: logiq-shared-secret
-  enableAwsAlb: 
-      enabled: false
-      flashAlbPort: "30444"
-      flashAlbMlPort: "30923"
+  # NodePort Configuration
+  nodePort:
+    enabled: false
+    ports:
+      flash: null
+      flashMl: null
       
   environment:
     redis_opts: true

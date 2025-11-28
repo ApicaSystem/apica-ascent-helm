@@ -223,39 +223,48 @@ gateway:
   tls:
     enabled: true
     # secretName: Set via --set gateway.tls.secretName=your-tls-secret
-  # extraRoutes removed - all routes are now in the base HTTPRoute template
-  # The base template already includes /live, /ready, /v1/logs, /v1/traces, /v1/metrics
 
 # Envoy Gateway Configuration for Oracle Cloud (OKE)
 envoyGateway:
   enabled: true
-  # Create GatewayClass resource (set to true to auto-create)
-  createGatewayClass: true
-  gatewayClassName: envoy
-  controllerName: gateway.envoyproxy.io/gatewayclass-controller
-  gatewayClassDescription: "Envoy Gateway for Apica Ascent"
-  gateway:
-    name: apica-gateway
-    replicas: 2
-    service:
-      type: LoadBalancer
-      annotations:
-        service.beta.kubernetes.io/oci-load-balancer-shape: flexible
-        service.beta.kubernetes.io/oci-load-balancer-shape-flex-max: "20"
-        service.beta.kubernetes.io/oci-load-balancer-shape-flex-min: "10"
-        # Health check on port 10256
-        service.beta.kubernetes.io/oci-load-balancer-health-check-port: "10256"
-    listeners:
-      http:
-        port: 80
-        protocol: HTTP
-      https:
-        port: 443
-        protocol: HTTPS
-        # tls.certificateRefs: Set via --set if needed, otherwise uses gateway.tls.secretName
+  
+  # GatewayClass configuration
+  gatewayClass:
+    controllerName: gateway.envoyproxy.io/gatewayclass-controller
+    description: "Envoy Gateway for Apica Ascent"
+  
+  # EnvoyProxy configuration
+  envoyProxy:
+    provider:
+      type: Kubernetes
+      service:
+        type: LoadBalancer
+        # OCI Load Balancer annotations
+        annotations:
+          service.beta.kubernetes.io/oci-load-balancer-health-check-port: "10256"
+          service.beta.kubernetes.io/oci-load-balancer-shape: flexible
+          service.beta.kubernetes.io/oci-load-balancer-shape-flex-max: "30"
+          service.beta.kubernetes.io/oci-load-balancer-shape-flex-min: "10"
+        externalTrafficPolicy: Cluster
+  
+  # Gateway listeners configuration
+  listeners:
+    http:
+      port: 80
+      protocol: HTTP
+    https:
+      port: 443
+      protocol: HTTPS
+    tcp:
+      - name: tcp-9999
+        port: 9999
+        protocol: TCP
+      - name: tcp-8081
+        port: 8081
+        protocol: TCP
 apicaTLSSecret:
   enabled: true
-prometheus: 
+prometheus:
   fullnameOverride: prometheus
   persistence:
     enabled: true
@@ -274,8 +283,15 @@ prometheus:
     replicaCount: 1
   kube-state-metrics:
     replicaCount: 1
+  # Disable node-exporter via exporters section
+  exporters:
+    node-exporter:
+      enabled: false
+    kube-state-metrics:
+      enabled: true
   node-exporter:
-    replicaCount: 1
+    enabled: false
+    replicaCount: 0
 
 grafana:
   fullnameOverride: grafana
@@ -291,15 +307,19 @@ global:
   kubeDistributor:
          enabled: false
   cloudProvider: aws
-  enableAwsAlb:
-    enabled: true
-    albType: "internet-facing"
+  # NodePort Configuration
+  nodePort:
+    enabled: true  # Set to true to enable NodePort services
+    ports:
+      flash: null   # null = Kubernetes auto-assigns (recommended for multi-tenancy)
+      flashMl: null # or set to specific port for manual assignment
   createStorageClass: false
   enableMetricsServer: false
   sharedSecretName: logiq-shared-secret
   nodeSelectors:
     enabled: false
-    ingest: injest
+    label: apica-node-pool
+    ingest: ingest
     infra: base
     other: base
     db: common
@@ -343,7 +363,7 @@ global:
     admin_org: "flash-org"
     admin_email: "flash-admin@foo.com"
     license: "license/license.jws"
-    upload_dashboard: true
+    upload_dashboard: false
     cluster_id: LOGIQ
     awsServiceEndpoint: "https://<bucket-namespace>.compat.objectstorage.<region>.oraclecloud.com"
   persistence:

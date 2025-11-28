@@ -1,8 +1,8 @@
-{{- if .Values.envoyGateway.enabled -}}
+{{- if .Values.envoyGateway.enabled }}
 apiVersion: gateway.envoyproxy.io/v1alpha1
 kind: ClientTrafficPolicy
 metadata:
-  name: {{ .Values.envoyGateway.gateway.name }}-client-policy
+  name: {{ .Release.Name }}-client-policy
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "logiq.labels" . | nindent 4 }}
@@ -10,7 +10,7 @@ spec:
   targetRef:
     group: gateway.networking.k8s.io
     kind: Gateway
-    name: {{ .Values.envoyGateway.gateway.name }}
+    name: {{ .Release.Name }}-gateway
   
   # Request body size limit (from NGINX annotation)
   # ingress.kubernetes.io/proxy-body-size: 100M

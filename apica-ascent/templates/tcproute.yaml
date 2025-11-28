@@ -1,16 +1,16 @@
-{{- if .Values.envoyGateway.enabled -}}
+{{- if .Values.envoyGateway.enabled }}
 ---
 # TCPRoute for port 9999 - logiq-flash (API/Ingest)
 apiVersion: gateway.networking.k8s.io/v1alpha2
 kind: TCPRoute
 metadata:
-  name: {{ .Values.envoyGateway.gateway.name }}-tcp-9999
+  name: {{ .Release.Name }}-tcp-9999
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "logiq.labels" . | nindent 4 }}
 spec:
   parentRefs:
-  - name: {{ .Values.envoyGateway.gateway.name }}
+  - name: {{ .Release.Name }}-gateway
     sectionName: tcp-9999
   rules:
   - backendRefs:
@@ -21,13 +21,13 @@ spec:
 apiVersion: gateway.networking.k8s.io/v1alpha2
 kind: TCPRoute
 metadata:
-  name: {{ .Values.envoyGateway.gateway.name }}-tcp-8081
+  name: {{ .Release.Name }}-tcp-8081
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "logiq.labels" . | nindent 4 }}
 spec:
   parentRefs:
-  - name: {{ .Values.envoyGateway.gateway.name }}
+  - name: {{ .Release.Name }}-gateway
     sectionName: tcp-8081
   rules:
   - backendRefs:

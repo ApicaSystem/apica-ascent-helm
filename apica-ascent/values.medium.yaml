@@ -192,26 +192,34 @@ gateway:
   tls:
     enabled: false
     secretName: null
-# Envoy Gateway Configuration for Medium Deployment
+
+# Envoy Gateway configuration
 envoyGateway:
   enabled: true
-  # Create GatewayClass resource (set to true to auto-create)
-  createGatewayClass: true
-  gatewayClassName: envoy
-  controllerName: gateway.envoyproxy.io/gatewayclass-controller
-  gatewayClassDescription: "Envoy Gateway for Apica Ascent"
-  gateway:
-    name: apica-gateway
-    replicas: 2
-    service:
-      type: LoadBalancer
-    listeners:
-      http:
-        port: 80
-        protocol: HTTP
-      https:
-        port: 443
-        protocol: HTTPS
+  gatewayClass:
+    controllerName: gateway.envoyproxy.io/gatewayclass-controller
+    description: "Envoy Gateway for Apica Ascent"
+  envoyProxy:
+    provider:
+      type: Kubernetes
+      service:
+        type: LoadBalancer
+        annotations: {}
+        externalTrafficPolicy: Cluster
+  listeners:
+    http:
+      port: 80
+      protocol: HTTP
+    https:
+      port: 443
+      protocol: HTTPS
+    tcp:
+      - name: tcp-9999
+        port: 9999
+        protocol: TCP
+      - name: tcp-8081
+        port: 8081
+        protocol: TCP
 prometheus:
   fullnameOverride: prometheus
   persistence:
@@ -236,8 +244,15 @@ prometheus:
     replicaCount: 1
   kube-state-metrics:
     replicaCount: 1
+  # Disable node-exporter via exporters section
+  exporters:
+    node-exporter:
+      enabled: false
+    kube-state-metrics:
+      enabled: true
   node-exporter:
-    replicaCount: 1
+    enabled: false
+    replicaCount: 0
 thanos:
   receive:
     logLevel: debug
@@ -281,9 +296,11 @@ global:
   domain: null
   kubeDistributor:
     enabled: false
-  enableAwsAlb:
+  nodePort:
     enabled: false
-    albType: "internet-facing"
+    ports:
+      flash: null
+      flashMl: null
   cloudProvider: aws
   createStorageClass: false
   enableMetricsServer: false

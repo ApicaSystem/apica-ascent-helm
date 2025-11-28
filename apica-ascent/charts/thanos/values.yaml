@@ -3741,6 +3741,8 @@ networkPolicy:
   explicitNamespacesSelector: {}
 
 global:
-     enableAwsAlb:
-        enabled: false
-        flashThanosPort: "30369"
+     nodePort:
+       enabled: false
+       ports:
+         flash: null
+         flashMl: null

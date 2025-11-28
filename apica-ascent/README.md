@@ -7,23 +7,116 @@ description: >-
 
 ## Overview
 
-Apica Ascent is a cloud-native observability platform that provides unified logging, monitoring, tracing, and analytics. This chart uses **Envoy Gateway v1.6.0**for modern standards-based ingress management. 
+Apica Ascent is a cloud-native observability platform that provides unified logging, monitoring, tracing, and analytics. This chart uses **Envoy Gateway v1.6.0** for modern standards-based ingress management.
+
+## Architecture
+
+This chart supports two deployment patterns using Envoy Gateway:
+
+### Single-Namespace Deployment (Default)
+```
+┌──────────────────────────────────────────────────────┐
+│    Namespace: envoy-gateway-system                   │
+│  ┌────────────────────────────────────────────────┐  │
+│  │     Envoy Gateway Controller                   │  │
+│  │  (watches GatewayClass, Gateway, Routes)       │  │
+│  └────────────────────┬───────────────────────────┘  │
+└───────────────────────┼──────────────────────────────┘
+                        │ manages
+┌───────────────────────▼──────────────────────────────┐
+│         Namespace: apica                             │
+│                                                      │
+│  ┌──────────────┐   ┌────────────────┐              │
+│  │ GatewayClass │   │  EnvoyProxy    │              │
+│  │  (apica-gc)  │◄──│   Config       │              │
+│  └──────┬───────┘   └────────────────┘              │
+│         │                                            │
+│  ┌──────▼───────┐                                   │
+│  │   Gateway    │                                   │
+│  │ (apica-gw)   │                                   │
+│  └──────┬───────┘                                   │
+│         │                                            │
+│  ┌──────▼───────┐   ┌────────────────┐              │
+│  │  HTTPRoute   │   │   TCPRoute     │              │
+│  │              │   │                │              │
+│  └──────┬───────┘   └────┬───────────┘              │
+│         │                │                          │
+│  ┌──────▼────────────────▼───────────┐              │
+│  │     Backend Services              │              │
+│  │  (flash, coffee, prometheus...)   │              │
+│  └───────────────────────────────────┘              │
+└──────────────────────────────────────────────────────┘
+```
+
+**Characteristics:**
+- One GatewayClass per namespace
+- One Gateway per release
+- All resources use `{{ .Release.Name }}` prefix
+- Isolated per namespace
+- Recommended for single-tenant deployments
+
+### Multi-Namespace Deployment
+```
+┌──────────────────────────────────────────────────────┐
+│    Namespace: envoy-gateway-system                   │
+│  ┌────────────────────────────────────────────────┐  │
+│  │     Envoy Gateway Controller                   │  │
+│  │  (watches all GatewayClasses & Gateways)       │  │
+│  └────────┬───────────────────┬───────────────────┘  │
+└───────────┼───────────────────┼──────────────────────┘
+            │ manages           │ manages
+┌───────────▼──────────────┐ ┌──▼──────────────────────┐
+│  Namespace: apica-prod   │ │  Namespace: apica-dev   │
+│  ┌──────────────┐        │ │  ┌──────────────┐       │
+│  │ GatewayClass │        │ │  │ GatewayClass │       │
+│  │(apica-prod-gc│◄─┐     │ │  │(apica-dev-gc)│◄─┐    │
+│  └──────┬───────┘  │     │ │  └──────┬───────┘  │    │
+│         │   ┌──────┴────┐│ │         │   ┌──────┴───┐│
+│  ┌──────▼───┤EnvoyProxy ││ │  ┌──────▼───┤EnvoyProxy││
+│  │ Gateway  │  Config   ││ │  │ Gateway  │  Config  ││
+│  │(prod-gw) └───────────┘│ │  │(dev-gw)  └──────────┘│
+│  └──────┬───────┐        │ │  └──────┬───────┐       │
+│  ┌──────▼───┐   │        │ │  ┌──────▼───┐   │       │
+│  │HTTPRoute │   │        │ │  │HTTPRoute │   │       │
+│  └──────┬───┘   │        │ │  └──────┬───┘   │       │
+│  ┌──────▼───────▼──────┐ │ │  ┌──────▼───────▼─────┐ │
+│  │  Backend Services   │ │ │  │  Backend Services  │ │
+│  └─────────────────────┘ │ │  └────────────────────┘ │
+└──────────────────────────┘ └─────────────────────────┘
+```
+
+**Characteristics:**
+- Independent GatewayClass per namespace
+- Separate Gateway per environment
+- Different cloud provider configs per namespace
+- Full isolation between deployments
+- Recommended for multi-tenant or multi-environment setups
+
+**Key Components:**
+1. **GatewayClass** - Defines controller and links to EnvoyProxy config
+2. **EnvoyProxy** - Contains service type and cloud provider annotations
+3. **Gateway** - Actual gateway instance with listeners (HTTP/HTTPS/TCP)
+4. **Routes** - HTTPRoute and TCPRoute for traffic routing
 
 ## 1 - Prerequisites
 
 - Kubernetes cluster version >= 1.30.0
 - HELM 3 installed
 - kubectl configured to access your cluster
-- Envoy Gateway v1.6.0 ()
+- **Envoy Gateway v1.6.0** (required)
+
+### Install envoy-gateway-system CRDs
 
 ```bash
-helm install eg oci://docker.io/envoyproxy/gateway-helm --version v1.6.0 -n envoy-gateway-system --create-namespace
+helm install eg oci://docker.io/envoyproxy/gateway-helm \
+  --version v1.6.0 \
+  -n envoy-gateway-system \
+  --create-namespace
 ```
-Ref:
-https://gateway.envoyproxy.io/docs/install/install-helm/
 
-Note: Envoy Chart create crds and controller not gatewayclass & gateways that need to create by our own apica ascent chart.
+**Reference**: https://gateway.envoyproxy.io/docs/install/install-helm/
 
+> **Note**: The Envoy Gateway chart creates CRDs and the controller, but NOT the GatewayClass or Gateway resources. Those are created by the Apica Ascent chart.
 
 Please read and agree to the [EULA](https://docs.apica.ai/eula/eula) before proceeding.
 
@@ -31,6 +124,7 @@ Please read and agree to the [EULA](https://docs.apica.ai/eula/eula) before proc
 
 ```bash
 helm repo add apica-repo https://github.com/ApicaSystem/apica-ascent-helm
+helm repo update
 ```
 
 > The HELM repository will be named `apica-repo`. For installing charts from this repository please make sure to use the repository name as the prefix e.g.
@@ -43,7 +137,7 @@ You can now run `helm search repo apica-repo` to see the available helm charts
 ```bash
 $ helm search repo apica-repo
 NAME                CHART VERSION        APP VERSION                     DESCRIPTION
-apica-repo/apica       v2.0.6              v3.12.21      APICA.IO Observability Data Fabric for Kubernetes
+apica-repo/apica    apica-ascent-3.0.0    v3.10.2      APICA.IO Observability Data Fabric for Kubernetes
 ```
 
 ### 1.2 Create namespace where APICA.IO will be deployed
@@ -79,7 +173,7 @@ helm install apica --namespace apica \
 --set global.persistence.storageClass=<storage class name> apica-repo/apica
 ```
 
-This will install APICA.IO and expose the APICA.IO services and UI on the ingress IP. Please refer [Section 3.4 ](k8s-quickstart-guide.md#3-4-changing-the-storage-class)for details about storage class. Service ports are described in the [Port details section](https://docs.apica.ai/apica-server/quickstart-guide#ports). You should now be able to go to `http://ingress-ip/`
+This will install APICA.IO and expose the APICA.IO services and UI via Envoy Gateway. Service ports are described in the [Port details section](https://docs.apica.ai/apica-server/quickstart-guide#ports). You should now be able to go to `http://gateway-ip/`
 
 > The default login and password to use is `flash-admin@foo.com` and `flash-password`. You can change these in the UI once logged in. Helm chart can override the default admin settings as well. See section[ 3.7](k8s-quickstart-guide.md#3-7-customize-admin-account) on customizing the admin settings
 
@@ -111,7 +205,7 @@ helm install apica --namespace apica \
 --set global.persistence.storageClass=<storage class name> apica-repo/apica
 ```
 
-> Access the UI at `https://apica.my-domain.com` after updating your DNS to point to the LoadBalancer IP
+> Access the UI at `https://apica.my-domain.com` after updating your DNS to point to the Gateway IP
 
 | HELM Option | Description | Default |
 | :--- | :--- | :--- |
@@ -119,7 +213,6 @@ helm install apica --namespace apica \
 | `gateway.tls.enabled` | Enable HTTPS on the Gateway | false |
 | `gateway.tls.secretName` | Name of the TLS Secret (must be in same namespace) | No default |
 | `envoyGateway.enabled` | Enable Envoy Gateway (required) | true |
-| `envoyGateway.createGatewayClass` | Auto-create GatewayClass | true |
 
 ### 3.2 Using an AWS S3 bucket
 
@@ -243,17 +336,17 @@ The deployment described above offers 30 days trial license. Email `license@apic
 ![Apica Ascent Login Api-token ](https://github.com/logiqai/docs/raw/master/.gitbook/assets/Screen-Shot-2020-08-09-ALERT.png)
 
 ```bash
-Setup your APICA.IO Cluster endpoint
-- apicactl config set-cluster apica.my-domain.com
+# Setup your APICA.IO Cluster endpoint
+apicactl config set-cluster apica.my-domain.com
 
-Sets a apica ui api token
-- apicactl config set-token api_token
+# Sets a apica ui api token
+apicactl config set-token api_token
 
-Upload your APICA.IO deployment license
-- apicactl license set -l=license.jws
+# Upload your APICA.IO deployment license
+apicactl license set -l=license.jws
 
-View License information
- - apicactl license get
+# View License information
+apicactl license get
 ```
 
 ### 3.7 Customize Admin account
@@ -315,25 +408,29 @@ When deploying APICA.IO, size your infrastructure to provide appropriate vcpu an
 | medium  | 20| 56 gb | 5 |
 | large  | 32| 88 gb | 8 |
 
-### 3.11 Service Type Configuration
+### 3.11 Gateway Service Type Configuration
 
 The Envoy Gateway service type can be configured:
 
 ```bash
 helm install apica -n apica \
---set envoyGateway.gateway.service.type=LoadBalancer \
+--set envoyGateway.envoyProxy.provider.service.type=LoadBalancer \
 apica-repo/apica
 ```
 
-Supported service types:
-- `LoadBalancer` (default) - For cloud providers
-- `NodePort` - For bare-metal or custom load balancers
+**Supported service types:**
+- `LoadBalancer` (default) - For cloud providers with load balancer support
+- `NodePort` - For bare-metal, K3s, or custom load balancers
 - `ClusterIP` - For internal-only access
 
+**Cloud-specific configurations:**
+
 For cloud-specific configurations, see the platform-specific values files:
-- `values.aws.yaml` - AWS EKS
-- `values.azure.yaml` - Azure AKS
-- `values.oke.yaml` - Oracle Cloud (OKE)
+- `values.aws.yaml` - AWS EKS with LoadBalancer
+- `values.azure.yaml` - Azure AKS with LoadBalancer
+- `values.oke.yaml` - Oracle Cloud (OKE) with NodePort + OCI annotations
+- `values.k3s.yaml` - K3s with NodePort
+- `values.microk8s.yaml` - MicroK8s with NodePort
 
 ### 3.12 Using Node Selectors
 
@@ -386,4 +483,3 @@ kubectl delete namespace apica
 ```
 
 If you followed installation steps in section 3.1 - Using an AWS S3 bucket, you may want to delete the s3 bucket that was specified at deployment time.
-

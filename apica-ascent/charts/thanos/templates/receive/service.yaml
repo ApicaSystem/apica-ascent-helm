@@ -16,10 +16,10 @@ metadata:
     {{- if .Values.receive.service.annotations }}
     {{- include "common.tplvalues.render" (dict "value" .Values.receive.service.annotations "context" $) | nindent 4 }}
     {{- end }}
-    {{- if .Values.global.enableAwsAlb.enabled }}
+    {{- if .Values.global.nodePort.enabled }}
     alb.ingress.kubernetes.io/healthcheck-path: "/-/ready"
     alb.ingress.kubernetes.io/healthcheck-port: {{ .Values.receive.service.nodePorts.http | quote }}
-    {{- end }}    
+    {{- end }}
 spec:
   type: {{ .Values.receive.service.type }}
   {{- if and .Values.receive.service.clusterIP (eq .Values.receive.service.type "ClusterIP") }}

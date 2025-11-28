@@ -1,27 +1,25 @@
-{{- if .Values.envoyGateway.createGatewayClass }}
+{{- if .Values.envoyGateway.enabled }}
 ---
-# GatewayClass Resource
-# Defines the Envoy Gateway controller and links to EnvoyProxy configuration
-# This resource is created after EnvoyProxy (hook-weight: -5) but before Gateway
+# Per-Namespace GatewayClass Resource
+# Each namespace/release gets its own GatewayClass that references its EnvoyProxy configuration
+# This enables per-namespace Load Balancer customization (annotations, health check ports, etc.)
 apiVersion: gateway.networking.k8s.io/v1
 kind: GatewayClass
 metadata:
-  name: {{ .Values.envoyGateway.gatewayClassName | default "envoy" }}
-  annotations:
-    "helm.sh/hook": pre-install,pre-upgrade
-    "helm.sh/hook-weight": "-5"
+  name: {{ .Release.Name }}-gateway-class
   labels:
     {{- include "logiq.labels" . | nindent 4 }}
 spec:
-  # Envoy Gateway controller name (v1.4.5)
-  controllerName: {{ .Values.envoyGateway.controllerName | default "gateway.envoyproxy.io/gatewayclass-controller" }}
-  {{- if .Values.envoyGateway.gatewayClassDescription }}
-  description: {{ .Values.envoyGateway.gatewayClassDescription }}
-  {{- end }}
-  # Reference to EnvoyProxy configuration for cloud-specific settings
+  # Envoy Gateway controller name
+  controllerName: {{ .Values.envoyGateway.gatewayClass.controllerName | default "gateway.envoyproxy.io/gatewayclass-controller" }}
+  
+  # Reference to namespace-scoped EnvoyProxy configuration
+  # This is the KEY to making per-namespace LB annotations work
   parametersRef:
     group: gateway.envoyproxy.io
     kind: EnvoyProxy
-    name: {{ .Values.envoyGateway.gateway.name }}-config
+    name: {{ .Release.Name }}-envoy-config
     namespace: {{ .Release.Namespace }}
+  
+  description: {{ .Values.envoyGateway.gatewayClass.description | default "Envoy Gateway for Apica Ascent" }}
 {{- end }}

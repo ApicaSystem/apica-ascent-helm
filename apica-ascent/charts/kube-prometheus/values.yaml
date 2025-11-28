@@ -1561,7 +1561,7 @@ exporters:
   node-exporter:
     ## @param exporters.node-exporter.enabled Enable node-exporter
     ##
-    enabled: true
+    enabled: false
   kube-state-metrics:
     ## @param exporters.kube-state-metrics.enabled Enable kube-state-metrics
     ##

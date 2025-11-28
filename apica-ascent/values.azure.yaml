@@ -235,8 +235,15 @@ prometheus:
     replicaCount: 1
   kube-state-metrics:
     replicaCount: 1
+  # Disable node-exporter via exporters section
+  exporters:
+    node-exporter:
+      enabled: false
+    kube-state-metrics:
+      enabled: true
   node-exporter:
-    replicaCount: 1
+    enabled: false
+    replicaCount: 0
 thanos:
   receive:
     logLevel: debug
@@ -280,9 +287,11 @@ global:
   domain: null
   kubeDistributor:
     enabled: false
-  enableAwsAlb:
+  nodePort:
     enabled: false
-    albType: "internet-facing"
+    ports:
+      flash: null
+      flashMl: null
   cloudProvider: aws
   createStorageClass: true
   enableMetricsServer: false

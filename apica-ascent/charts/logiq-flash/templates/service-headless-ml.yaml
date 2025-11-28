@@ -3,11 +3,6 @@ kind: Service
 metadata:
   name: {{ template "logiq-flash.name" . }}-ml
   namespace: {{ .Release.Namespace }}
-  {{- if .Values.global.enableAwsAlb.enabled }}
-  annotations:
-     alb.ingress.kubernetes.io/healthcheck-path: /ready
-     alb.ingress.kubernetes.io/healthcheck-port: "8080"
-  {{- end }}
   labels:
     app: {{ template "logiq-flash.name" . }}-ml
     chart: {{ template "logiq-flash.chart" . }}

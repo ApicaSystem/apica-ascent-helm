@@ -1,14 +1,14 @@
-{{- if .Values.envoyGateway.enabled -}}
+{{- if .Values.envoyGateway.enabled }}
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
-  name: {{ .Values.envoyGateway.gateway.name }}-http
+  name: {{ .Release.Name }}-http
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "logiq.labels" . | nindent 4 }}
 spec:
   parentRefs:
-  - name: {{ .Values.envoyGateway.gateway.name }}
+  - name: {{ .Release.Name }}-gateway
     sectionName: {{ if .Values.gateway.tls.enabled }}https{{ else }}http{{ end }}
   {{- if .Values.global.domain }}
   hostnames:
@@ -58,7 +58,7 @@ spec:
         type: PathPrefix
         value: /dtracing
     backendRefs:
-    {{- if .Values.global.enableAwsAlb.enabled }}
+    {{- if .Values.global.nodePort.enabled }}
     - name: logiq-flash-ml-np
       port: 16686
     {{- else }}
@@ -81,7 +81,7 @@ spec:
         type: PathPrefix
         value: /v2
     backendRefs:
-    {{- if .Values.global.enableAwsAlb.enabled }}
+    {{- if .Values.global.nodePort.enabled }}
     - name: logiq-flash-ml-np
       port: 9999
     {{- else }}
@@ -94,7 +94,7 @@ spec:
         type: PathPrefix
         value: /v1
     backendRefs:
-    {{- if .Values.global.enableAwsAlb.enabled }}
+    {{- if .Values.global.nodePort.enabled }}
     - name: logiq-flash-ml-np
       port: 9999
     {{- else }}

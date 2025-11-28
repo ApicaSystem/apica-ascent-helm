@@ -1,4 +1,4 @@
-{{- if .Values.envoyGateway.enabled -}}
+{{- if .Values.envoyGateway.enabled }}
 ---
 # EnvoyProxy Configuration
 # Configures the Envoy Gateway LoadBalancer service with cloud-specific settings
@@ -6,23 +6,24 @@
 apiVersion: gateway.envoyproxy.io/v1alpha1
 kind: EnvoyProxy
 metadata:
-  name: {{ .Values.envoyGateway.gateway.name }}-config
+  name: {{ .Release.Name }}-envoy-config
   namespace: {{ .Release.Namespace }}
   annotations:
     "helm.sh/hook": pre-install,pre-upgrade
     "helm.sh/hook-weight": "-10"
+    "helm.sh/hook-delete-policy": before-hook-creation
   labels:
     {{- include "logiq.labels" . | nindent 4 }}
 spec:
   provider:
-    type: Kubernetes
+    type: {{ .Values.envoyGateway.envoyProxy.provider.type | default "Kubernetes" }}
     kubernetes:
       envoyService:
-        type: {{ .Values.envoyGateway.gateway.service.type | default "LoadBalancer" }}
-        {{- if .Values.envoyGateway.gateway.service.annotations }}
+        type: {{ .Values.envoyGateway.envoyProxy.provider.service.type | default "LoadBalancer" }}
+        {{- if .Values.envoyGateway.envoyProxy.provider.service.annotations }}
         # Cloud provider annotations (e.g., OCI Load Balancer shape, health check port)
         annotations:
-          {{- toYaml .Values.envoyGateway.gateway.service.annotations | nindent 10 }}
+          {{- toYaml .Values.envoyGateway.envoyProxy.provider.service.annotations | nindent 10 }}
         {{- end }}
         # Strategic merge patch to configure service behavior
         # externalTrafficPolicy: Cluster prevents automatic healthCheckNodePort assignment
@@ -31,5 +32,5 @@ spec:
           type: StrategicMerge
           value:
             spec:
-              externalTrafficPolicy: Cluster
+              externalTrafficPolicy: {{ .Values.envoyGateway.envoyProxy.provider.service.externalTrafficPolicy | default "Cluster" }}
 {{- end }}
