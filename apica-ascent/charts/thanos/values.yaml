@@ -3156,7 +3156,7 @@ receive:
     ## ref: https://kubernetes.io/docs/concepts/services-networking/service/#type-nodeport
     ##
     nodePorts:
-      http: "30369"
+      http: ""
       grpc: ""
       remote: ""
     ## @param receive.service.clusterIP Thanos Ruler service clusterIP IP

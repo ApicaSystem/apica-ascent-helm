@@ -120,7 +120,7 @@ helm install eg oci://docker.io/envoyproxy/gateway-helm \
 
 Please read and agree to the [EULA](https://docs.apica.ai/eula/eula) before proceeding.
 
-### 1.1 Add APICA.IO helm repository
+### 1.1 Add Ascent helm repository
 
 ```bash
 helm repo add apica-repo https://github.com/ApicaSystem/apica-ascent-helm
@@ -137,10 +137,10 @@ You can now run `helm search repo apica-repo` to see the available helm charts
 ```bash
 $ helm search repo apica-repo
 NAME                CHART VERSION        APP VERSION                     DESCRIPTION
-apica-repo/apica    apica-ascent-3.0.0    v3.10.2      APICA.IO Observability Data Fabric for Kubernetes
+apica-repo/apica    apica-ascent-3.0.0    v3.10.2      Ascent Observability Data Fabric for Kubernetes
 ```
 
-### 1.2 Create namespace where APICA.IO will be deployed
+### 1.2 Create namespace where Ascent will be deployed
 
 > NOTE: Namespace name cannot be more than 15 characters in length
 
@@ -148,7 +148,7 @@ apica-repo/apica    apica-ascent-3.0.0    v3.10.2      APICA.IO Observability Da
 kubectl create namespace apica
 ```
 
-This will create a namespace **`apica`** where we will deploy the APICA.IO Log Insights stack.
+This will create a namespace **`apica`** where we will deploy the Ascent Log Insights stack.
 
 > If you choose a different name for the namespace, please remember to use the same namespace for the remainder of the steps
 
@@ -156,7 +156,7 @@ This will create a namespace **`apica`** where we will deploy the APICA.IO Log I
 
 Sample YAML files for small, medium, large cluster configs can be downloaded at the links below
 
-[APICA.IO Sample Values.yaml files](https://docs.logiq.ai/deploying-apica-data-fabric/logiq-paas-deployment#prepare-your-values-file)
+[Ascent Sample Values.yaml files](https://docs.logiq.ai/deploying-apica-data-fabric/logiq-paas-deployment#prepare-your-values-file)
 
 These YAML files can be used for deployment with -f parameter as shown below in the description.
 
@@ -164,23 +164,23 @@ These YAML files can be used for deployment with -f parameter as shown below in 
 helm install apica --namespace apica \
 --set global.persistence.storageClass=<storage class name> apica-repo/apica -f values.small.yaml
 ```
-Please refer [Section 3.10 ](k8s-quickstart-guide.md#3-10-sizing-your-APICA.IO-cluster) for sizing your APICA.IO cluster as specified  in these yaml files.
+Please refer [Section 3.10 ](k8s-quickstart-guide.md#3-10-sizing-your-Ascent-cluster) for sizing your Ascent cluster as specified  in these yaml files.
 
-## 2. Install APICA.IO
+## 2. Install Ascent
 
 ```bash
 helm install apica --namespace apica \
 --set global.persistence.storageClass=<storage class name> apica-repo/apica
 ```
 
-This will install APICA.IO and expose the APICA.IO services and UI via Envoy Gateway. Service ports are described in the [Port details section](https://docs.apica.ai/apica-server/quickstart-guide#ports). You should now be able to go to `http://gateway-ip/`
+This will install Ascent and expose the Ascent services and UI via Envoy Gateway. Service ports are described in the [Port details section](https://docs.apica.ai/apica-server/quickstart-guide#ports). You should now be able to go to `http://gateway-ip/`
 
 > The default login and password to use is `flash-admin@foo.com` and `flash-password`. You can change these in the UI once logged in. Helm chart can override the default admin settings as well. See section[ 3.7](k8s-quickstart-guide.md#3-7-customize-admin-account) on customizing the admin settings
 
 ![Apica Ascent Login UI ](https://4019754726-files.gitbook.io/~/files/v0/b/gitbook-x-prod.appspot.com/o/spaces%2F-LmzGprckLqwd5v6bs6m%2Fuploads%2FJUfoTuyiUlzfAlAcTmEY%2FScreen%20Shot%202024-02-14%20at%2010.55.14%20AM.png?alt=media&token=d5ce1e9f-70e6-4a50-8bb3-0f8b0e4191cd)
 
-APICA.IO server provides Ingest, log tailing, data indexing, query and search capabilities.  
-Besides the web based UI, APICA.IO also offers [apicactl, APICA.IO CLI](https://docs.apica.ai/apica-cli) for accessing the above features.
+Ascent server provides Ingest, log tailing, data indexing, query and search capabilities.  
+Besides the web based UI, Ascent also offers [apicactl, Ascent CLI](https://docs.apica.ai/apica-cli) for accessing the above features.
 
 ## 3 Customizing the deployment
 
@@ -218,20 +218,20 @@ helm install apica --namespace apica \
 
 Depending on your requirements, you may want to host your storage in your own K8S cluster or create a bucket in a cloud provider like AWS.
 
-> Please note that cloud providers may charge data transfer costs between regions. It is important that the APICA.IO cluster be deployed in the same region where the S3 bucket is hosted
+> Please note that cloud providers may charge data transfer costs between regions. It is important that the Ascent cluster be deployed in the same region where the S3 bucket is hosted
 
 #### 3.2.1 Create an access/secret key pair for creating and managing your bucket <a id="3-1-1"></a>
 
 Go to AWS IAM console and create an access key and secret key that can be used to create your bucket and manage access to the bucket for writing and reading your log files
 
-#### 3.2.2 Deploy the APICA.IO helm in gateway mode
+#### 3.2.2 Deploy the Ascent helm in gateway mode
 
 Make sure to pass your `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` and give a bucket name. The S3 gateway acts as a caching gateway and helps reduce API costs.  
 Create a bucket in AWS s3 with a unique bucket name in the region where you plan to host the deployment.
 
 > You do not need to create the bucket, we will automatically provision it for you. Just provide the bucket name and access credentials in the step below.
 >
-> If the bucket already exists, APICA.IO will use it. Check to make sure the access and secret key work with it. Additionally, provide a valid amazon service endpoint for s3 else the config defaults to [https://s3.us-east-1.amazonaws.com](https://s3.us-east-1.amazonaws.com)
+> If the bucket already exists, Ascent will use it. Check to make sure the access and secret key work with it. Additionally, provide a valid amazon service endpoint for s3 else the config defaults to [https://s3.us-east-1.amazonaws.com](https://s3.us-east-1.amazonaws.com)
 
 ```bash
 helm install apica --namespace apica --set global.domain=apica.my-domain.com \
@@ -252,11 +252,11 @@ helm install apica --namespace apica --set global.domain=apica.my-domain.com \
 
 > S3 providers may have restrictions on bucket names for e.g. AWS S3 bucket names are globally unique.
 
-### 3.3 Install APICA.IO server certificates and Client CA `[OPTIONAL]`
+### 3.3 Install Ascent server certificates and Client CA `[OPTIONAL]`
 
-APICA.IO supports TLS for all ingest. We also enable non-TLS ports by default. It is however recommended that non-TLS ports not be used unless running in a secure VPC or cluster. The certificates can be provided to the cluster using K8S secrets. Replace the template sections below with your Base64 encoded secret files.
+Ascent supports TLS for all ingest. We also enable non-TLS ports by default. It is however recommended that non-TLS ports not be used unless running in a secure VPC or cluster. The certificates can be provided to the cluster using K8S secrets. Replace the template sections below with your Base64 encoded secret files.
 
-> If you skip this step, the APICA.IO server automatically generates a ca and a pair of client and server certificates for you to use. you can get them from the ingest server pods under the folder `/flash/certs`
+> If you skip this step, the Ascent server automatically generates a ca and a pair of client and server certificates for you to use. you can get them from the ingest server pods under the folder `/flash/certs`
 
 ```yaml
 apiVersion: v1
@@ -270,9 +270,9 @@ data:
   syslog.key: Server certificate signing key goes here
 ```
 
-Save the secret file e.g. `apica-certs.yaml`. Proceed to install the secret in the same namespace where you want to deploy APICA.IO
+Save the secret file e.g. `apica-certs.yaml`. Proceed to install the secret in the same namespace where you want to deploy Ascent
 
-The secret can now be passed into the APICA.IO deployment
+The secret can now be passed into the Ascent deployment
 
 ```bash
 helm install apica --namespace apica --set global.domain=apica.my-domain.com \
@@ -286,7 +286,7 @@ helm install apica --namespace apica --set global.domain=apica.my-domain.com \
 
 ### 3.4 Changing the storage class
 
-If you are planning on using a specific storage class for your volumes, you can customize it for the APICA.IO deployment. By default, APICA.IO uses the `standard` storage class
+If you are planning on using a specific storage class for your volumes, you can customize it for the Ascent deployment. By default, Ascent uses the `standard` storage class
 
 > It is quite possible that your environment may use a different storage class name for the provisioner. In that case please use the appropriate storage class name. E.g. if a user creates a storage class `ebs-volume` for the EBS provisioner for their cluster, you can use `ebs-volume` instead of `gp2` as suggested below
 
@@ -306,7 +306,7 @@ apica apica-repo/apica
 
 ### 3.5 Using external AWS RDS Postgres database instance
 
-To use external AWS RDS Postgres database for your APICA.IO deployment, execute the following command.
+To use external AWS RDS Postgres database for your Ascent deployment, execute the following command.
 
 ```bash
 helm install apica --namespace apica \
@@ -319,7 +319,7 @@ helm install apica --namespace apica \
 
 | HELM Option | Description | Default |
 | :--- | :--- | :--- |
-| `global.chart.postgres` | Deploy Postgres which is needed for APICA.IO metadata. Set this to false if an external Postgres cluster is being used | true |
+| `global.chart.postgres` | Deploy Postgres which is needed for Ascent metadata. Set this to false if an external Postgres cluster is being used | true |
 | `global.environment.postgres_host` | Host IP/DNS for external Postgres | postgres |
 | `global.environment.postgres_user` | Postgres admin user | postgres |
 | `global.environment.postgres_password` | Postgres admin user password | postgres |
@@ -329,20 +329,20 @@ helm install apica --namespace apica \
 >
 > Auto vacuum automates the execution of `VACUUM` and `ANALYZE` \(to gather statistics\) commands. Auto vacuum checks for bloated tables in the database and reclaims the space for reuse.
 
-### 3.6 Upload APICA.IO professional license
+### 3.6 Upload Ascent professional license
 
-The deployment described above offers 30 days trial license. Email `license@apica.ai` to obtain a professional license. After obtaining the license, use the apicactl tool to apply the license to the deployment. Please refer `apicactl` details at [https://apicactl.apica.ai/](https://apicactl.apica.ai/). You will need API-token from APICA.IO UI as shown below
+The deployment described above offers 30 days trial license. Email `license@apica.ai` to obtain a professional license. After obtaining the license, use the apicactl tool to apply the license to the deployment. Please refer `apicactl` details at [https://apicactl.apica.ai/](https://apicactl.apica.ai/). You will need API-token from Ascent UI as shown below
 
 ![Apica Ascent Login Api-token ](https://github.com/logiqai/docs/raw/master/.gitbook/assets/Screen-Shot-2020-08-09-ALERT.png)
 
 ```bash
-# Setup your APICA.IO Cluster endpoint
+# Setup your Ascent Cluster endpoint
 apicactl config set-cluster apica.my-domain.com
 
 # Sets a apica ui api token
 apicactl config set-token api_token
 
-# Upload your APICA.IO deployment license
+# Upload your Ascent deployment license
 apicactl license set -l=license.jws
 
 # View License information
@@ -353,7 +353,7 @@ apicactl license get
 
 ```bash
 helm install apica --namespace apica \
---set global.environment.admin_name="APICA.IO Administrator" \
+--set global.environment.admin_name="Ascent Administrator" \
 --set global.environment.admin_password="admin_password" \
 --set global.environment.admin_email="admin@example.com" \
 --set global.persistence.storageClass=<storage class name> apica-repo/apica
@@ -361,15 +361,15 @@ helm install apica --namespace apica \
 
 | HELM Option | Description | Default |
 | :--- | :--- | :--- |
-| `global.environment.admin_name` | APICA.IO Administrator name | flash-admin@foo.com |
-| `global.environment.admin_password` | APICA.IO Administrator password | flash-password |
-| `global.environment.admin_email` | APICA.IO Administrator e-mail | flash-admin@foo.com |
+| `global.environment.admin_name` | Ascent Administrator name | flash-admin@foo.com |
+| `global.environment.admin_password` | Ascent Administrator password | flash-password |
+| `global.environment.admin_email` | Ascent Administrator e-mail | flash-admin@foo.com |
 
 ### 3.8 Using external Redis instance
 
-To use external Redis for your APICA.IO deployment, execute the following command.
+To use external Redis for your Ascent deployment, execute the following command.
 
-> NOTE: At this time APICA.IO only supports connecting to a Redis cluster in a local VPC without authentication
+> NOTE: At this time Ascent only supports connecting to a Redis cluster in a local VPC without authentication
 
 ```bash
 helm install apica --namespace apica \
@@ -386,7 +386,7 @@ helm install apica --namespace apica \
 
 ### 3.9 Configuring cluster id
 
-When deploying APICA.IO, configure the cluster id to monitor your own APICA.IO deployment. For details about the `cluster_id` refer to section [Managing multiple K8S clusters](agentless.md#managing-multiple-k-8-s-clusters-in-a-single-apica-instance)
+When deploying Ascent, configure the cluster id to monitor your own Ascent deployment. For details about the `cluster_id` refer to section [Managing multiple K8S clusters](agentless.md#managing-multiple-k-8-s-clusters-in-a-single-apica-instance)
 
 ```bash
 helm install apica --namespace apica \
@@ -396,13 +396,13 @@ helm install apica --namespace apica \
 
 | HELM Option | Description | Default |
 | :--- | :--- | :--- |
-| global.environment.cluster\_id | Cluster Id being used for the K8S cluster running APICA.IO. See Section on [Managing multiple K8S](agentless.md#managing-multiple-k-8-s-clusters-in-a-single-apica-instance) clusters for more details. | APICA.IO |
+| global.environment.cluster\_id | Cluster Id being used for the K8S cluster running Ascent. See Section on [Managing multiple K8S](agentless.md#managing-multiple-k-8-s-clusters-in-a-single-apica-instance) clusters for more details. | Ascent |
 
-### 3.10 Sizing your APICA.IO cluster
+### 3.10 Sizing your Ascent cluster
 
-When deploying APICA.IO, size your infrastructure to provide appropriate vcpu and memory requirements. We recommened the following minimum size for small. medium and large cluster specification from [Section 1.3 ](k8s-quickstart-guide.md#1-3-prepare-your-values-YAML-file) values yaml files.
+When deploying Ascent, size your infrastructure to provide appropriate vcpu and memory requirements. We recommened the following minimum size for small. medium and large cluster specification from [Section 1.3 ](k8s-quickstart-guide.md#1-3-prepare-your-values-YAML-file) values yaml files.
 
-| APICA.IO Cluster | vCPU| Memory | NodeCount |
+| Ascent Cluster | vCPU| Memory | NodeCount |
 | :--- | :--- | :--- | :--- |
 | small | 12| 32 gb | 3 |
 | medium  | 20| 56 gb | 5 |
@@ -434,7 +434,7 @@ For cloud-specific configurations, see the platform-specific values files:
 
 ### 3.12 Using Node Selectors
 
-The APICA.IO stack deployment can be optimized using node labels and node selectors to place various components of the stack optimally
+The Ascent stack deployment can be optimized using node labels and node selectors to place various components of the stack optimally
 
 ```bash
 apica.ai/node=ingest
@@ -462,7 +462,7 @@ In the example above, there are two node selectors in use - `ingest` and `common
 
 ### 3.13 Installing Thanos
 
-The APICA.IO stack includes Thanos as part of the deployment as an optional component for larger deployments. To enable Thanos, follow the steps below
+The Ascent stack includes Thanos as part of the deployment as an optional component for larger deployments. To enable Thanos, follow the steps below
 
 ```bash
 helm upgrade --install apica --namespace apica \

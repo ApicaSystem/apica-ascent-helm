@@ -298,6 +298,9 @@ global:
     ports:
       flash: null
       flashMl: null
+      thanosReceiveHttp: null
+      thanosReceiveGrpc: null
+      thanosReceiveRemote: null
   createStorageClass: false
   enableMetricsServer: false
   sharedSecretName: logiq-shared-secret

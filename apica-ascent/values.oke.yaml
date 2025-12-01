@@ -311,8 +311,11 @@ global:
   nodePort:
     enabled: true  # Set to true to enable NodePort services
     ports:
-      flash: null   # null = Kubernetes auto-assigns (recommended for multi-tenancy)
-      flashMl: null # or set to specific port for manual assignment
+      flash: null              # null = Kubernetes auto-assigns (recommended for multi-tenancy)
+      flashMl: null            # or set to specific port for manual assignment
+      thanosReceiveHttp: null  # Thanos Receive HTTP port (default: auto-assign)
+      thanosReceiveGrpc: null  # Thanos Receive gRPC port (default: auto-assign)
+      thanosReceiveRemote: null # Thanos Receive remote write port (default: auto-assign)
   createStorageClass: false
   enableMetricsServer: false
   sharedSecretName: logiq-shared-secret
