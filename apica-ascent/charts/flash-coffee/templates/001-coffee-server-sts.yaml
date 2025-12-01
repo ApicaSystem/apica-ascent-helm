@@ -351,11 +351,7 @@ spec:
           resources:
             {{- toYaml .Values.coffee.resources | nindent 12 }}
           {{- end }}
-        - env:
-          - name: SSR_HOST
-            value: 0.0.0.0
-          - name: __VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS
-            value: coffee
+        - name: ssr-report-gen
           image: logiqai/ssr-server:v12
           imagePullPolicy: IfNotPresent
           env:
