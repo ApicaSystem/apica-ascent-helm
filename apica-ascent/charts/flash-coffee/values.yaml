@@ -57,8 +57,11 @@ affinity: {}
 
 global:
   domain: null
-  enableAwsAlb:
-        enabled: false
+  nodePort:
+    enabled: false
+    ports:
+      flash: null
+      flashMl: null
   sharedSecretName: logiq-shared-secret
   environment:
     logiq_flash_host: logiq-flash

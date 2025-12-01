@@ -1,0 +1,29 @@
+{{- if .Values.envoyGateway.enabled }}
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: ClientTrafficPolicy
+metadata:
+  name: {{ .Release.Name }}-client-policy
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "logiq.labels" . | nindent 4 }}
+spec:
+  targetRef:
+    group: gateway.networking.k8s.io
+    kind: Gateway
+    name: {{ .Release.Name }}-gateway
+  
+  # Request body size limit (from NGINX annotation)
+  # ingress.kubernetes.io/proxy-body-size: 100M
+  http1:
+    http10:
+      useDefaultHost: false
+  
+  # Client IP detection for proper forwarding
+  clientIPDetection:
+    xForwardedFor:
+      numTrustedHops: 1
+  
+  # Connection settings
+  connection:
+    bufferLimit: 104857600  # 100MB (100 * 1024 * 1024)
+{{- end }}

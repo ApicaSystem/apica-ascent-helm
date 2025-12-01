@@ -1,0 +1,62 @@
+{{- if .Values.envoyGateway.enabled }}
+---
+# Gateway API Gateway Resource
+# Defines the entry point for all traffic into the Apica Ascent platform
+# References per-namespace GatewayClass which contains EnvoyProxy configuration
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: {{ .Release.Name }}-gateway
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "logiq.labels" . | nindent 4 }}
+spec:
+  # Reference to per-namespace GatewayClass
+  # The GatewayClass has parametersRef pointing to EnvoyProxy config
+  gatewayClassName: {{ .Release.Name }}-gateway-class
+  listeners:
+  
+  # ============================================================================
+  # HTTP/HTTPS Listeners - Web UI and API Access
+  # ============================================================================
+  
+  # HTTP Listener
+  - name: http
+    protocol: {{ .Values.envoyGateway.listeners.http.protocol | default "HTTP" }}
+    port: {{ .Values.envoyGateway.listeners.http.port | default 80 }}
+    allowedRoutes:
+      namespaces:
+        from: Same
+  
+  # HTTPS Listener (only when TLS is enabled)
+  {{- if .Values.gateway.tls.enabled }}
+  - name: https
+    protocol: {{ .Values.envoyGateway.listeners.https.protocol | default "HTTPS" }}
+    port: {{ .Values.envoyGateway.listeners.https.port | default 443 }}
+    tls:
+      mode: Terminate
+      certificateRefs:
+      {{- if .Values.gateway.tls.secretName }}
+      - name: {{ .Values.gateway.tls.secretName }}
+        kind: Secret
+      {{- end }}
+    allowedRoutes:
+      namespaces:
+        from: Same
+  {{- end }}
+  
+  # ============================================================================
+  # TCP Listeners - Data Ingestion and Analytics
+  # ============================================================================
+  
+  {{- range .Values.envoyGateway.listeners.tcp }}
+  - name: {{ .name }}
+    protocol: {{ .protocol | default "TCP" }}
+    port: {{ .port }}
+    allowedRoutes:
+      kinds:
+      - kind: TCPRoute
+      namespaces:
+        from: Same
+  {{- end }}
+{{- end }}

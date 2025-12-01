@@ -1,11 +1,8 @@
-{{- if .Values.global.enableAwsAlb.enabled }}
+{{- if .Values.global.nodePort.enabled }}
 apiVersion: v1
 kind: Service
 metadata:
   namespace: {{ .Release.Namespace }}
-  annotations:
-    alb.ingress.kubernetes.io/healthcheck-path: /ready
-    alb.ingress.kubernetes.io/healthcheck-port: {{ .Values.global.enableAwsAlb.flashAlbMlPort | quote }}
   labels:
     app: {{ template "logiq-flash.name" . }}-ml-np
     chart: {{ template "logiq-flash.chart" . }}
@@ -35,7 +32,9 @@ spec:
       targetPort: {{ .Values.liveness_port.port }}
       protocol: TCP
       name: {{ .Values.liveness_port.name }}
-      nodePort: {{ .Values.global.enableAwsAlb.flashAlbMlPort }}
+      {{- if .Values.global.nodePort.ports.flashMl }}
+      nodePort: {{ .Values.global.nodePort.ports.flashMl }}
+      {{- end }}
   selector:
     app: {{ template "logiq-flash.name" . }}-ml
     release: {{ .Release.Name }}

@@ -183,30 +183,49 @@ s3gateway:
   serviceAccount:
     create: true
     name: s3-gateway
-ingress:
+# Gateway API configuration
+gateway:
+  tls:
+    enabled: false
+    secretName: null
+  
+# Envoy Gateway Configuration
+envoyGateway:
   enabled: true
-  name: logiq-ingress
-  tlsEnabled: false
-  tlsSecretName: null
-kubernetes-ingress:
-  controller:
-    image:
-      repository: k8s.gcr.io/ingress-nginx/controller
-      tag: "v1.2.0"
-    replicaCount: 2
-    ingressClass: logiq-ingress
-    service:
-      type: LoadBalancer
-    defaultTLSSecret:
-      enabled: false
-      secret: null
-  defaultBackend:
-    replicaCount: 2
-  podSecurityPolicy:
-    enabled: true
-  serviceAccount:
-    create: true
-    name: ingress-nginx
+  
+  # GatewayClass configuration
+  gatewayClass:
+    controllerName: gateway.envoyproxy.io/gatewayclass-controller
+    description: "Envoy Gateway for Apica Ascent"
+  
+  # EnvoyProxy configuration
+  envoyProxy:
+    provider:
+      type: Kubernetes
+      service:
+        type: LoadBalancer
+        annotations:
+          service.beta.kubernetes.io/oci-load-balancer-health-check-port: "10256"
+          service.beta.kubernetes.io/oci-load-balancer-shape: flexible
+          service.beta.kubernetes.io/oci-load-balancer-shape-flex-max: "30"
+          service.beta.kubernetes.io/oci-load-balancer-shape-flex-min: "10"
+        externalTrafficPolicy: Cluster
+  
+  # Gateway listeners configuration
+  listeners:
+    http:
+      port: 80
+      protocol: HTTP
+    https:
+      port: 443
+      protocol: HTTPS
+    tcp:
+      - name: tcp-9999
+        port: 9999
+        protocol: TCP
+      - name: tcp-8081
+        port: 8081
+        protocol: TCP
 prometheus:
   fullnameOverride: prometheus
   persistence:
@@ -231,8 +250,15 @@ prometheus:
     replicaCount: 1
   kube-state-metrics:
     replicaCount: 1
+  # Disable node-exporter via exporters section
+  exporters:
+    node-exporter:
+      enabled: false
+    kube-state-metrics:
+      enabled: true
   node-exporter:
-    replicaCount: 1
+    enabled: false
+    replicaCount: 0
 thanos:
   receive:
     logLevel: debug
@@ -277,9 +303,20 @@ global:
   kubeDistributor:
     enabled: false
   cloudProvider: aws
-  enableAwsAlb:
+  
+  # NodePort Configuration
+  nodePort:
+    # Enable NodePort services (if false, services are ClusterIP)
     enabled: false
-    albType: "internet-facing"
+    # Port assignment mode:
+    # - If ports are NOT set (null): Kubernetes auto-assigns (recommended for multi-tenancy)
+    # - If ports are set: Manual assignment (single-tenant or specific requirements)
+    ports:
+      flash: null              # Set to specific port (e.g., 30444) for manual assignment
+      flashMl: null            # Set to specific port (e.g., 30923) for manual assignment
+      thanosReceiveHttp: null  # Thanos Receive HTTP port (default: auto-assign)
+      thanosReceiveGrpc: null  # Thanos Receive gRPC port (default: auto-assign)
+      thanosReceiveRemote: null # Thanos Receive remote write port (default: auto-assign)
   createStorageClass: false
   enableMetricsServer: false
   sharedSecretName: logiq-shared-secret

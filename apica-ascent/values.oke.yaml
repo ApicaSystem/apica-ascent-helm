@@ -5,7 +5,7 @@ logiq-flash:
   service:
     type: NodePort
   image:
-    tag: v3.17.1
+    tag: v3.19.2
     pullPolicy: IfNotPresent
   persistence:
     enabled: true
@@ -140,7 +140,7 @@ flash-coffee:
   coffee:
     replicaCount: 2
     image:
-      tag: brew.v3.18.2
+      tag: brew.v3.20.1
       pullPolicy: IfNotPresent
     resources:
       requests:
@@ -151,7 +151,7 @@ flash-coffee:
   coffee_worker:
     replicaCount: 2
     image:
-      tag: brew.v3.18.2
+      tag: brew.v3.20.1
       pullPolicy: IfNotPresent
     resources:
       requests:
@@ -218,72 +218,53 @@ s3gateway:
 #           rules:
 #             - alert: "PrometheusDown"
 #               expr: absent(up{prometheus="bitnami-test/bitnami-test-prometheus-prometheus"})
-ingress:
-  enabled: true
-  name: logiq-ingress
-  extraRules:
-    - backend:
-        service:
-          name: logiq-flash
-          port:
-            number: 8080
-      path: /live
-      pathType: Prefix
-    - backend:
-        service:
-          name: logiq-flash
-          port:
-            number: 8080
-      path: /ready
-      pathType: Prefix
-    - backend:
-        service:
-          name: logiq-flash
-          port:
-            number: 9999
-      path: /v1/logs
-      pathType: Prefix
-    - backend:
-        service:
-          name: logiq-flash
-          port:
-            number: 9999
-      path: /v1/traces
-      pathType: Prefix
-    - backend:
-        service:
-          name: logiq-flash
-          port:
-            number: 9999
-      path: /v1/metrics
-      pathType: Prefix
-  tlsEnabled: true
-  tlsSecretName: bitnami-test-tls-cert
-
-kubernetes-ingress:
-  controller:
-    replicaCount: 2
-    ingressClass: logiq-ingress
-    service:
-      type: LoadBalancer
-    defaultTLSSecret:
-      enabled: true
-      secret: bitnami-test-tls-cert
-  defaultBackend:
-    replicaCount: 2
-    service:
-      annotations:
-        service.beta.kubernetes.io/oci-load-balancer-shape: flexible
-        service.beta.kubernetes.io/oci-load-balancer-shape-flex-max: "20"
-        service.beta.kubernetes.io/oci-load-balancer-shape-flex-min: "10"
-  podSecurityPolicy:
+# Gateway API configuration
+gateway:
+  tls:
     enabled: true
-  serviceAccount:
-    create: true
-    name: ingress-nginx
+    # secretName: Set via --set gateway.tls.secretName=your-tls-secret
+
+# Envoy Gateway Configuration for Oracle Cloud (OKE)
+envoyGateway:
+  enabled: true
+  
+  # GatewayClass configuration
+  gatewayClass:
+    controllerName: gateway.envoyproxy.io/gatewayclass-controller
+    description: "Envoy Gateway for Apica Ascent"
+  
+  # EnvoyProxy configuration
+  envoyProxy:
+    provider:
+      type: Kubernetes
+      service:
+        type: LoadBalancer
+        # OCI Load Balancer annotations
+        annotations:
+          service.beta.kubernetes.io/oci-load-balancer-health-check-port: "10256"
+          service.beta.kubernetes.io/oci-load-balancer-shape: flexible
+          service.beta.kubernetes.io/oci-load-balancer-shape-flex-max: "30"
+          service.beta.kubernetes.io/oci-load-balancer-shape-flex-min: "10"
+        externalTrafficPolicy: Cluster
+  
+  # Gateway listeners configuration
+  listeners:
+    http:
+      port: 80
+      protocol: HTTP
+    https:
+      port: 443
+      protocol: HTTPS
+    tcp:
+      - name: tcp-9999
+        port: 9999
+        protocol: TCP
+      - name: tcp-8081
+        port: 8081
+        protocol: TCP
 apicaTLSSecret:
   enabled: true
-prometheus: 
+prometheus:
   fullnameOverride: prometheus
   persistence:
     enabled: true
@@ -302,8 +283,15 @@ prometheus:
     replicaCount: 1
   kube-state-metrics:
     replicaCount: 1
+  # Disable node-exporter via exporters section
+  exporters:
+    node-exporter:
+      enabled: false
+    kube-state-metrics:
+      enabled: true
   node-exporter:
-    replicaCount: 1
+    enabled: false
+    replicaCount: 0
 
 grafana:
   fullnameOverride: grafana
@@ -319,15 +307,22 @@ global:
   kubeDistributor:
          enabled: false
   cloudProvider: aws
-  enableAwsAlb:
-    enabled: true
-    albType: "internet-facing"
+  # NodePort Configuration
+  nodePort:
+    enabled: true  # Set to true to enable NodePort services
+    ports:
+      flash: null              # null = Kubernetes auto-assigns (recommended for multi-tenancy)
+      flashMl: null            # or set to specific port for manual assignment
+      thanosReceiveHttp: null  # Thanos Receive HTTP port (default: auto-assign)
+      thanosReceiveGrpc: null  # Thanos Receive gRPC port (default: auto-assign)
+      thanosReceiveRemote: null # Thanos Receive remote write port (default: auto-assign)
   createStorageClass: false
   enableMetricsServer: false
   sharedSecretName: logiq-shared-secret
   nodeSelectors:
     enabled: false
-    ingest: injest
+    label: apica-node-pool
+    ingest: ingest
     infra: base
     other: base
     db: common
@@ -359,19 +354,21 @@ global:
     postgres_password: "postgres"
     postgres_db: "postgres"
     postgres_coffee_db: "coffee"
-    s3_url: "https://axmwgykzxj25.compat.objectstorage.us-sanjose-1.oraclecloud.com"
-    s3_access: "logiq_access"
-    s3_secret: "logiq_secret"
-    s3_bucket: "logiq"
-    s3_region: "us-sanjose-1"
+    s3_url: "https://<bucket-namespace>.compat.objectstorage.<region>.oraclecloud.com"
+    s3_access: "s3_access"
+    s3_secret: "s3_secret"
+    AWS_ACCESS_KEY_ID: "s3_access"
+    AWS_SECRET_ACCESS_KEY: "s3_secret"
+    s3_bucket: "bucket-name"
+    s3_region: "region"
     admin_name: "devops@apica.io"
     admin_password: "password"
     admin_org: "flash-org"
     admin_email: "flash-admin@foo.com"
     license: "license/license.jws"
-    upload_dashboard: true
+    upload_dashboard: false
     cluster_id: LOGIQ
-    awsServiceEndpoint: https://axmwgykzxj25.compat.objectstorage.us-sanjose-1.oraclecloud.com
+    awsServiceEndpoint: "https://<bucket-namespace>.compat.objectstorage.<region>.oraclecloud.com"
   persistence:
     storageClass: oci-bv
   chart:

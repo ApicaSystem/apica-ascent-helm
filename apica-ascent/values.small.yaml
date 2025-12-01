@@ -187,30 +187,39 @@ s3gateway:
   serviceAccount:
     create: true
     name: s3-gateway
-ingress:
+# Gateway API configuration
+gateway:
+  tls:
+    enabled: false
+    secretName: null
+
+# Envoy Gateway configuration
+envoyGateway:
   enabled: true
-  name: logiq-ingress
-  tlsEnabled: false
-  tlsSecretName: null
-kubernetes-ingress:
-  controller:
-    image:
-      repository: k8s.gcr.io/ingress-nginx/controller
-      tag: "v1.2.0"
-    replicaCount: 2
-    ingressClass: logiq-ingress
-    service:
-      type: LoadBalancer
-    defaultTLSSecret:
-      enabled: false
-      secret: null
-  defaultBackend:
-    replicaCount: 2
-  podSecurityPolicy:
-    enabled: true
-  serviceAccount:
-    create: true
-    name: ingress-nginx
+  gatewayClass:
+    controllerName: gateway.envoyproxy.io/gatewayclass-controller
+    description: "Envoy Gateway for Apica Ascent"
+  envoyProxy:
+    provider:
+      type: Kubernetes
+      service:
+        type: LoadBalancer
+        annotations: {}
+        externalTrafficPolicy: Cluster
+  listeners:
+    http:
+      port: 80
+      protocol: HTTP
+    https:
+      port: 443
+      protocol: HTTPS
+    tcp:
+      - name: tcp-9999
+        port: 9999
+        protocol: TCP
+      - name: tcp-8081
+        port: 8081
+        protocol: TCP
 prometheus:
   fullnameOverride: prometheus
   persistence:
@@ -235,8 +244,15 @@ prometheus:
     replicaCount: 1
   kube-state-metrics:
     replicaCount: 1
+  # Disable node-exporter via exporters section
+  exporters:
+    node-exporter:
+      enabled: false
+    kube-state-metrics:
+      enabled: true
   node-exporter:
-    replicaCount: 1
+    enabled: false
+    replicaCount: 0
 thanos:
   receive:
     logLevel: debug
@@ -281,9 +297,14 @@ global:
   kubeDistributor:
     enabled: false
   cloudProvider: aws
-  enableAwsAlb:
+  nodePort:
     enabled: false
-    albType: "internet-facing"
+    ports:
+      flash: null
+      flashMl: null
+      thanosReceiveHttp: null
+      thanosReceiveGrpc: null
+      thanosReceiveRemote: null
   createStorageClass: false
   enableMetricsServer: false
   sharedSecretName: logiq-shared-secret

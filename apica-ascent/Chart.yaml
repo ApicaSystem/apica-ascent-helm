@@ -1,6 +1,33 @@
 apiVersion: v2
 appVersion: v3.10.2
+version: 3.0.0
+description: Apica Ascent Data Fabric - Cloud-native observability platform with Envoy Gateway
+keywords:
+  - apica
+  - ascent
+  - observability
+  - logging
+  - monitoring
+  - tracing
+  - metrics
+  - gateway-api
+  - envoy-gateway
+annotations:
+  category: Observability
+  licenses: Apache-2.0
 dependencies:
+  - name: flash-coffee
+    version: 1.0.0
+    condition: global.chart.flash-coffee
+  - name: logiq-flash
+    version: 1.0.0
+    condition: global.chart.logiq-flash
+  - name: logiqctl
+    version: 1.0.0
+    condition: global.chart.logiqctl
+  - name: flash-discovery
+    version: 1.0.0
+    condition: global.chart.flash-discovery
   - alias: postgres
     condition: global.chart.postgres
     name: postgresql
@@ -36,8 +63,9 @@ dependencies:
     name: thanos
     repository: https://charts.bitnami.com/bitnami
     version: 8.2.5
-description: Apica Ascent Data Fabric HELM chart for Kubernetes
 home: https://apica.io
+sources:
+  - https://github.com/apica-io/apica-ascent-helm
 icon: https://www.apica.io/wp-content/uploads/2023/01/apica-logo-white-2022.png
 maintainers:
   - email: manchal.sharma@apica.io
@@ -52,4 +80,4 @@ maintainers:
     name: lokesh
 name: apica-ascent
 type: application
-version: 2.0.11
+kubeVersion: ">=1.24.0-0"
