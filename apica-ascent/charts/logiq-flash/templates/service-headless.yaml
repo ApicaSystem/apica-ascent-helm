@@ -8,7 +8,6 @@ metadata:
     chart: {{ template "logiq-flash.chart" . }}
     release: {{ .Release.Name }}
     heritage: {{ .Release.Service }}
-    promMonitor: {{ template "logiq-flash.name" . }}
 spec:
   clusterIP: None
   ports:
