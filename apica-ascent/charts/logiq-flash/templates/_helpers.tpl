@@ -32,7 +32,10 @@ Create chart name and version as used by the chart label.
 {{- end -}}
 
 {{- define "logiq-flash.confighash" -}}
-{{- $pghash := printf "postgresql://%s:%s@%s:%s/%s" .Values.global.environment.postgres_user .Values.global.environment.postgres_password .Values.global.environment.postgres_host .Values.global.environment.postgres_port .Values.global.environment.postgres_db -}}
-{{- $redishash := printf "redis://%s:%s" .Values.global.environment.redis_host .Values.global.environment.redis_port -}}
-{{- printf "%s-%s" $pghash $redishash | sha256sum -}}
-{{- end -}}
+{{- $secret := lookup "v1" "Secret" .Release.Namespace "ascentSecrets" }}
+{{- if $secret }}
+{{- $secret.metadata.resourceVersion | sha256sum }}
+{{- else }}
+"initial"
+{{- end }}
+{{- end }}
