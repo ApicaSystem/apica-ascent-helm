@@ -67,7 +67,6 @@ tolerations: []
 affinity: {}
 
 global:
-  sharedSecretName: logiq-shared-secret
   environment:
     postgres_host: "postgres"
     postgres_port: "5432"

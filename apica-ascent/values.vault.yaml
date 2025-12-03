@@ -9,8 +9,8 @@ logiq-flash:
     pullPolicy: IfNotPresent
   persistence:
     enabled: true
-    size: 100Gi
-    ml_size: 20Gi
+    size: 25Gi
+    ml_size: 25Gi
   metrics:
     serviceMonitor:
       enabled: true
@@ -21,18 +21,18 @@ logiq-flash:
       limits:
         cpu: "1250m"
       requests:
-        cpu: "1250m"
+        cpu: "250m"
         memory: "2750Mi"
     ml:
       limits:
         cpu: "1000m"
       requests:
-        cpu: "500m"
+        cpu: "250m"
     sync:
       limits:
         cpu: "250m"
       requests:
-        cpu: "100m"
+        cpu: "50m"
 flash-discovery:
   fullnameOverride: flash-discovery
   image:
@@ -120,7 +120,7 @@ postgres:
     additionalLabels:
       release: prometheus
   persistence:
-    size: 20Gi
+    size: 10Gi
   resources:
     requests:
       memory: "4Gi"
@@ -144,8 +144,6 @@ flash-coffee:
       requests:
         memory: "4Gi"
         cpu: "1000m"
-      limits:
-        cpu: "1000m"
   coffee_worker:
     replicaCount: 1
     image:
@@ -154,8 +152,6 @@ flash-coffee:
     resources:
       requests:
         memory: "1Gi"
-        cpu: "1000m"
-      limits:
         cpu: "1000m"
 s3gateway:
   s3gateway:
@@ -187,45 +183,45 @@ s3gateway:
   serviceAccount:
     create: true
     name: s3-gateway
-# Gateway API configuration
-gateway:
-  tls:
-    enabled: false
-    secretName: null
-# Envoy Gateway Configuration for Azure
-envoyGateway:
+ingress:
   enabled: true
-  # Create GatewayClass resource (set to true to auto-create)
-  createGatewayClass: true
-  gatewayClassName: envoy
-  controllerName: gateway.envoyproxy.io/gatewayclass-controller
-  gatewayClassDescription: "Envoy Gateway for Apica Ascent"
-  gateway:
-    name: apica-gateway
+  name: logiq-ingress
+  tlsEnabled: false
+  tlsSecretName: null
+kubernetes-ingress:
+  controller:
+    image:
+      repository: k8s.gcr.io/ingress-nginx/controller
+      tag: "v1.2.0"
+    replicaCount: 2
+    ingressClass: logiq-ingress
     service:
       type: LoadBalancer
-    listeners:
-      http:
-        port: 80
-        protocol: HTTP
-      https:
-        port: 443
-        protocol: HTTPS
+    defaultTLSSecret:
+      enabled: false
+      secret: null
+  defaultBackend:
+    replicaCount: 2
+  podSecurityPolicy:
+    enabled: true
+  serviceAccount:
+    create: true
+    name: ingress-nginx
 prometheus:
   fullnameOverride: prometheus
   persistence:
     enabled: true
-    size: 20Gi
+    size: 5Gi
   alertmanager:
     replicaCount: 1
     persistence:
       enabled: true
-      size: 20Gi
+      size: 5Gi
   prometheus:
-    replicaCount: 1
+    replicaCount: 2
     persistence:
       enabled: true
-      size: 20Gi
+      size: 5Gi
     thanos:
       create: true
       objectStorageConfig:
@@ -235,15 +231,8 @@ prometheus:
     replicaCount: 1
   kube-state-metrics:
     replicaCount: 1
-  # Disable node-exporter via exporters section
-  exporters:
-    node-exporter:
-      enabled: false
-    kube-state-metrics:
-      enabled: true
   node-exporter:
-    enabled: false
-    replicaCount: 0
+    replicaCount: 1
 thanos:
   receive:
     logLevel: debug
@@ -287,18 +276,13 @@ global:
   domain: null
   kubeDistributor:
     enabled: false
-  nodePort:
-    enabled: false
-    ports:
-      flash: null
-      flashMl: null
-      thanosReceiveHttp: null
-      thanosReceiveGrpc: null
-      thanosReceiveRemote: null
   cloudProvider: aws
-  createStorageClass: true
+  enableAwsAlb:
+    enabled: false
+    albType: "internet-facing"
+  createStorageClass: false
   enableMetricsServer: false
-  sharedSecretName: logiq-shared-secret
+  sharedSecretName: ascent-secrets
   nodeSelectors:
     enabled: false
     ingest: flash
@@ -345,16 +329,23 @@ global:
     admin_org: "flash-org"
     admin_email: "flash-admin@foo.com"
     license: "license/license.jws"
+    licenseStr: ""
     upload_dashboard: true
     cluster_id: LOGIQ
     awsServiceEndpoint: https://s3.us-east-1.amazonaws.com
   persistence:
-    storageClass: ultra-disk-sc
+    createStorageClass:
+      enabled: true
+    storageClass: standard
   chart:
     prometheus: true
+    thanos: true
     postgres: true
     redis: true
     s3gateway: true
     grafana: false
 vault:
-  enabled: false
+  enabled: true
+  server_ca_certificate: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUViRENDQXRTZ0F3SUJBZ0lKQVAzd0luQnVjWkJtTUEwR0NTcUdTSWIzRFFFQkN3VUFNRTR4Q3pBSkJnTlYKQkFZVEFsTkZNUkl3RUFZRFZRUUhEQWxUZEc5amEyaHZiRzB4RGpBTUJnTlZCQW9NQlVGd2FXTmhNUnN3R1FZRApWUVFEREJKQmNHbGpZU0JTYjI5MElFTkJJRUpsZEdFd0hoY05NakV3TVRFME1UWXdOekF3V2hjTk16RXdNVEV5Ck1UWXdOekF3V2pBNE1RNHdEQVlEVlFRS0RBVkJjR2xqWVRFV01CUUdBMVVFQ3d3TlZtRjFiSFFnUTBFZ1FtVjAKWVRFT01Bd0dBMVVFQXd3RlFYQnBZMkV3Z2dHaU1BMEdDU3FHU0liM0RRRUJBUVVBQTRJQmp3QXdnZ0dLQW9JQgpnUURlRVRzWjBpcElVZkxRU3Zac0FqTEJpOXFCRllOK0Zza2xaQmpVR0hXajRJQktJYzE4TVM2K0NETWRLaUdLCnpuNVpkbHpjU1d5OHd5TGMyRlU0bUhFM0dVa1dCQytEbUg5M3l5eTVQMnc4ajFUNXoydTg0TmU3eDhmU1pkanAKUkNQWTBtaFFVSTlrTmFWV3MwNlI3M1ZnMFdkMWlBZ2FmbGdueG51L2VYS2MyQ25NdHcvSHVQZFRBSExyQ2RrMApOUnhPV3ZncTFINEw0Yk1nOE9LekY2cHN1UzZLSDBkaWlLNkl5KzZ3ZFpDUW5pTGZHZE1JMTZtZUZ6aHEzTS8zCk1OQ0l6QkNXWTR5K2ZhL2VQeVAyUHBYazFhNDlqNEZNYXptS1VYSzdVSk4xcWQ2TzJLU1kvWVlzRlI0MUtVMXkKOHYzOCsvY0M1M3ZLVXk4bVd5dnZILzJ4UUREUDY0Nk16WGM0NGVZalpmcnd0K1RiUlpzNkt4dDFpWEtlVWc2UApyTHhQSlVzSm5PQldhZzVCclRmcXhYZUNqVnAzWTBaSzlmckRXaGFLZUwrQlIzRlVYRUl6NzBaYnZ5b3Y3Tng0Cmltc2Z5YVIrWTBXWWJ4MkVsQ21mb3kzRXZLaE1lRjBKaDcwKzR0U0FYVWxodVMzSXEyVy8rT0lmdVVHQmljNVMKRzFNQ0F3RUFBYU5qTUdFd0RnWURWUjBQQVFIL0JBUURBZ0VHTUE4R0ExVWRFd0VCL3dRRk1BTUJBZjh3SFFZRApWUjBPQkJZRUZEVEc4RjY3REU0UEtOdmdGSkxUdmJXeUhXeVRNQjhHQTFVZEl3UVlNQmFBRkxNRmFCRUx0WXFLCjZndi8wem1PNjNOc1RwVXBNQTBHQ1NxR1NJYjNEUUVCQ3dVQUE0SUJnUUFzSWVGQ2diZ3h2SWJNWmo0ZzdPeVoKTnl6Y1RxcENid2RyK2Y5TXErK2srZ2xEYnFpRUYyeEZlcEJWYm12MUthR1ZmSVB3R2lWVllxTC9kNG5jSDJIbQpLU2pJdWZHSlNZOE9Td3dxcElKckxweFM2MUYrNjhpL2lIWGdKRGJVVE1EWVBJNzV2ZHdGMUlPRUs1UkNWVFpWCmYvRThab2Q5Z1JhTzcyUEdNZEZ0MnhwMEtVV2hIcFZ5cGgvNGRId1lQQnlTL2M4T3U0VER4KzhSUXhuSTI3NjMKanJxQWN1ZDFmb2JIL2kzVDJLcGxwUXJPWC9pbkNVZDF2bWZKWi8ya3hPaU0wMjdsY3VNRng2K1lMb0N2dXIvUQpsd25wR0cvZ1dHZ25zM0huMFdHeW5wU2JIdEQwaFl3MlhuRC8yNGZ0WjFLQ3BCTGcwRFdLNlZvWTE1NkhLQnZVCmQ4UUFqTEVLdDVhcnZNWHlhQzQvWWNwb1RTak9yVnRuRUMrTHN1R0NHa1ZZUFBiS1FuNStBUnlZUmFUUkNodXYKU2EyaC9Mc2F5dnV0VjJ3TUh1eDQwOVdzcHNaTUVqYzVBbDFpOEFyNjQ0YnFtWUJTQ2IvenFPeWhJbUdnVG1mMgo5QTlIUXlpUmNxL2lzdkgzbGhyRDJFbjdYS1JETWwvRXE0Rm91NHpsZEhjPQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==
+  server_address: https://beta-vault.apicasystem.com
+  auth_mount: k8s-inmuoc-oke-01d

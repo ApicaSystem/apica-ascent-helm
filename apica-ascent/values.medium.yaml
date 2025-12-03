@@ -365,3 +365,5 @@ global:
     redis: true
     s3gateway: true
     grafana: true
+vault:
+  enabled: false
