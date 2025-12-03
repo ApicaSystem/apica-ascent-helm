@@ -14,10 +14,10 @@ spec:
   - basicAuth:
       password:
         key: admin_password
-        name: {{ template "logiq-flash.fullname" . }}
+        name: ascentSecrets
       username:
         key: admin_email
-        name: {{ template "logiq-flash.fullname" . }}
+        name: ascentSecrets
     interval: 2m
     path: /metrics
     scheme: https
@@ -27,10 +27,10 @@ spec:
   - basicAuth:
       password:
         key: admin_password
-        name: {{ template "logiq-flash.fullname" . }}
+        name: ascentSecrets
       username:
         key: admin_email
-        name: {{ template "logiq-flash.fullname" . }}
+        name: ascentSecrets
     interval: 2m
     path: /metrics
     scheme: https

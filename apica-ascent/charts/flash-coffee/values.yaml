@@ -10,12 +10,11 @@ coffee:
   targetPort: 5000
   replicaCount: 2
   web_workers: 4
-  image: 
+  image:
     repository: docker.io/logiqai/flash-brew-coffee
     tag: brew.1.2.0
     pullPolicy: IfNotPresent
   resources: {}
-    
 
 coffee_worker:
   image:
@@ -62,7 +61,6 @@ global:
     ports:
       flash: null
       flashMl: null
-  sharedSecretName: logiq-shared-secret
   environment:
     logiq_flash_host: logiq-flash
     logiq_flash_port: 9999

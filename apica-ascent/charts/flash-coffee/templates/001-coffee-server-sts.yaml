@@ -51,12 +51,18 @@ spec:
         - name: check-redis
           image: {{ .Values.global.toolbox.image.repository }}:{{ .Values.global.toolbox.image.tag }}
           imagePullPolicy: IfNotPresent
+          env:
+            - name: REDIS_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: ascentSecrets
+                  key: redis_host
           command:
             - sh
             - -c
             - >
-              until redis-cli -h {{ .Values.global.environment.redis_host }} ping;
-              do echo "waiting for {{ .Values.global.environment.redis_host }}"; sleep 1; done;
+              until redis-cli -h $(REDIS_HOST) ping;
+              do echo "waiting for $(REDIS_HOST)"; sleep 1; done;
 
         - name: check-postgres
           image: {{ .Values.global.toolbox.image.repository }}:{{ .Values.global.toolbox.image.tag }}
@@ -65,31 +71,34 @@ spec:
             - name: POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ template "flash-coffee.fullname" . }}
+                  name: ascentSecrets
                   key: postgres_password
             - name: POSTGRES_HOST
               valueFrom:
                 secretKeyRef:
-                  name: {{ template "flash-coffee.fullname" . }}
+                  name: ascentSecrets
                   key: postgres_host
+            - name: POSTGRES_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: ascentSecrets
+                  key: postgres_port
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
-                  name: {{ template "flash-coffee.fullname" . }}
+                  name: ascentSecrets
                   key: database_url
           command:
             - sh
             - -c
             - >
-              until pg_isready -h $(POSTGRES_HOST) -p {{ .Values.global.environment.postgres_port }}
+              until pg_isready -h $(POSTGRES_HOST) -p $(POSTGRES_PORT)
               -d $(DATABASE_URL); do echo waiting for database; sleep 1; done;
 
       volumes:
-        {{- if .Values.global.sharedSecretName }}
         - name: sharedcert
           secret:
-            secretName: {{ .Values.global.sharedSecretName }}
-        {{- end }}
+            secretName: ascentInternalCert
 
       containers:
         - name: coffee
@@ -149,95 +158,98 @@ spec:
             - name: LOGIQ_FLASH_HOST
               valueFrom:
                 secretKeyRef:
-                  name: {{ template "flash-coffee.fullname" . }}
-                  key: logiq_flash_host
+                  name: ascentSecrets
+                  key: flash_host
 
             - name: LOGIQ_FLASH_PORT
               valueFrom:
                 secretKeyRef:
-                  name: {{ template "flash-coffee.fullname" . }}
-                  key: logiq_flash_port
+                  name: ascentSecrets
+                  key: flash_port
 
             - name: REDIS_HOST
               valueFrom:
                 secretKeyRef:
-                  name: {{ template "flash-coffee.fullname" . }}
+                  name: ascentSecrets
                   key: redis_host
 
             - name: REDIS_URL
-              value: redis://{{ .Values.global.environment.redis_host }}:{{ .Values.global.environment.redis_port }}/0
+              valueFrom:
+                secretKeyRef:
+                  name: ascentSecrets
+                  key: redis_url
 
             - name: POSTGRES_USER
               valueFrom:
                 secretKeyRef:
-                  name: {{ template "flash-coffee.fullname" . }}
+                  name: ascentSecrets
                   key: postgres_user
 
             - name: POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ template "flash-coffee.fullname" . }}
+                  name: ascentSecrets
                   key: postgres_password
 
             - name: POSTGRES_HOST
               valueFrom:
                 secretKeyRef:
-                  name: {{ template "flash-coffee.fullname" . }}
+                  name: ascentSecrets
                   key: postgres_host
 
             - name: POSTGRES_PORT
               valueFrom:
                 secretKeyRef:
-                  name: {{ template "flash-coffee.fullname" . }}
+                  name: ascentSecrets
                   key: postgres_port
 
             - name: POSTGRES_DB
               valueFrom:
                 secretKeyRef:
-                  name: {{ template "flash-coffee.fullname" . }}
+                  name: ascentSecrets
                   key: postgres_db
 
             - name: POSTGRES_COFFEE_DB
               valueFrom:
                 secretKeyRef:
-                  name: {{ template "flash-coffee.fullname" . }}
+                  name: ascentSecrets
                   key: postgres_coffee_db
 
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
-                  name: {{ template "flash-coffee.fullname" . }}
+                  name: ascentSecrets
                   key: coffee_database_url
 
             - name: S3_URL
               valueFrom:
                 secretKeyRef:
-                  name: {{ template "flash-coffee.fullname" . }}
+                  name: ascentS3Secrets
                   key: s3_url
 
             - name: S3_ACCESS
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.global.sharedSecretName }}
+                  name: ascentS3Secrets
                   key: s3_access
 
             - name: S3_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.global.sharedSecretName }}
+                  name: ascentS3Secrets
                   key: s3_secret
 
             - name: S3_BUCKET
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.global.sharedSecretName }}
+                  name: ascentS3Secrets
                   key: s3_bucket
 
             {{- if .Values.global.environment.admin_name }}
             - name: ADMIN_NAME
               valueFrom:
                 secretKeyRef:
-                  name: {{ template "flash-coffee.fullname" . }}
+                  name: ascentSecrets
                   key: admin_name
             {{- end }}
 
@@ -245,7 +257,7 @@ spec:
             - name: ADMIN_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ template "flash-coffee.fullname" . }}
+                  name: ascentSecrets
                   key: admin_password
             {{- end }}
 
@@ -253,7 +265,7 @@ spec:
             - name: ADMIN_ORG
               valueFrom:
                 secretKeyRef:
-                  name: {{ template "flash-coffee.fullname" . }}
+                  name: ascentSecrets
                   key: admin_org
             {{- end }}
 
@@ -261,7 +273,7 @@ spec:
             - name: ADMIN_EMAIL
               valueFrom:
                 secretKeyRef:
-                  name: {{ template "flash-coffee.fullname" . }}
+                  name: ascentSecrets
                   key: admin_email
             {{- end }}
 
@@ -269,7 +281,7 @@ spec:
             - name: MAIL_SERVER
               valueFrom:
                 secretKeyRef:
-                  name: {{ template "flash-coffee.fullname" . }}
+                  name: ascentSecrets
                   key: mail_server
             {{- end }}
 
@@ -277,7 +289,7 @@ spec:
             - name: MAIL_PORT
               valueFrom:
                 secretKeyRef:
-                  name: {{ template "flash-coffee.fullname" . }}
+                  name: ascentSecrets
                   key: mail_port
             {{- end }}
 
@@ -285,7 +297,7 @@ spec:
             - name: MAIL_USERNAME
               valueFrom:
                 secretKeyRef:
-                  name: {{ template "flash-coffee.fullname" . }}
+                  name: ascentSecrets
                   key: mail_username
             {{- end }}
 
@@ -293,7 +305,7 @@ spec:
             - name: MAIL_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ template "flash-coffee.fullname" . }}
+                  name: ascentSecrets
                   key: mail_password
             {{- end }}
 
@@ -301,7 +313,7 @@ spec:
             - name: MAIL_DEFAULT_SENDER
               valueFrom:
                 secretKeyRef:
-                  name: {{ template "flash-coffee.fullname" . }}
+                  name: ascentSecrets
                   key: mail_default_sender
             {{- end }}
 
@@ -329,10 +341,8 @@ spec:
               value: logiq-audit
 
           volumeMounts:
-            {{- if .Values.global.sharedSecretName }}
             - name: sharedcert
               mountPath: /app/sharedcerts
-            {{- end }}
 
           ports:
             - containerPort: {{ .Values.coffee.targetPort }}

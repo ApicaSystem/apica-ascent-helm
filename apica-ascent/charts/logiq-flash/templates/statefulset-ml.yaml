@@ -47,7 +47,7 @@ spec:
         - -c
         - until redis-cli -h {{ .Values.global.environment.redis_host }} ping; do echo "waiting for {{ .Values.global.environment.redis_host }}"; sleep 1;
           done;
-{{ if .Values.global.chart.s3gateway }}          
+{{ if .Values.global.chart.s3gateway }}
       - command:
           - sh
           - -c
@@ -56,7 +56,7 @@ spec:
         image: {{ .Values.global.toolbox.image.repository }}:{{ .Values.global.toolbox.image.tag }}
         imagePullPolicy: IfNotPresent
         name: check-s3-gateway
-{{ end }}        
+{{ end }}
       - command:
         - sh
         - -c
@@ -113,7 +113,7 @@ spec:
             value: {{ include "logiq-flash.confighash" . | quote }}
           - name: DISCOVERY_DOMAIN
             value: {{ template "logiq-flash.name" . }}-ml
-          {{ if .Values.global.environment.parent_host }}  
+          {{ if .Values.global.environment.parent_host }}
           - name: PARENT_HOST
             value: {{ .Values.global.environment.parent_host }}
           {{ end }}
@@ -121,69 +121,69 @@ spec:
           - name: REDIS_HOST
             valueFrom:
               secretKeyRef:
-                name: {{ template "logiq-flash.fullname" . }}
+                name: ascentSecrets
                 key: redis_host
           - name: REDIS_PORT
             valueFrom:
               secretKeyRef:
-                name: {{ template "logiq-flash.fullname" . }}
+                name: ascentSecrets
                 key: redis_port
           {{ end }}
           {{ if .Values.global.environment.admin_email }}
           - name: ADMIN_EMAIL
             valueFrom:
               secretKeyRef:
-                name: {{ template "logiq-flash.fullname" . }}
+                name: ascentSecrets
                 key: admin_email
           {{ end }}
           {{ if .Values.global.environment.admin_password }}
           - name: ADMIN_PASSWORD
             valueFrom:
               secretKeyRef:
-                name: {{ template "logiq-flash.fullname" . }}
+                name: ascentSecrets
                 key: admin_password
           {{ end }}
           - name: POSTGRES_USER
             valueFrom:
               secretKeyRef:
-                name: {{ template "logiq-flash.fullname" . }}
+                name: ascentSecrets
                 key: postgres_user
           - name: POSTGRES_PASSWORD
             valueFrom:
               secretKeyRef:
-                name: {{ template "logiq-flash.fullname" . }}
+                name: ascentSecrets
                 key: postgres_password
           - name: POSTGRES_HOST
             valueFrom:
               secretKeyRef:
-                name: {{ template "logiq-flash.fullname" . }}
+                name: ascentSecrets
                 key: postgres_host
           - name: POSTGRES_PORT
             valueFrom:
               secretKeyRef:
-                name: {{ template "logiq-flash.fullname" . }}
+                name: ascentSecrets
                 key: postgres_port
           - name: POSTGRES_DB
             valueFrom:
               secretKeyRef:
-                name: {{ template "logiq-flash.fullname" . }}
+                name: ascentSecrets
                 key: postgres_db
           - name: S3_ACCESS
             valueFrom:
               secretKeyRef:
-                name: {{ .Values.global.sharedSecretName  }}
+                name: ascentS3Secrets
                 key: s3_access
           - name: S3_SECRET
             valueFrom:
               secretKeyRef:
-                name: {{ .Values.global.sharedSecretName  }}
+                name: ascentS3Secrets
                 key: s3_secret
           - name: S3_BUCKET
             valueFrom:
               secretKeyRef:
-                name: {{ .Values.global.sharedSecretName  }}
+                name: ascentS3Secrets
                 key: s3_bucket
-          {{ if .Values.global.environment.cluster_id }}  
+          {{ if .Values.global.environment.cluster_id }}
           - name: MY_CLUSTER_ID
             value: {{ .Values.global.environment.cluster_id }}
           {{ end }}
@@ -249,12 +249,12 @@ spec:
           - /bin/sh
           - -c
           - |
-            while true 
-            do   
+            while true
+            do
             /go/bin/query-linux --grpc-storage.server=localhost:50054 --query.bearer-token-propagation=true --query.base-path=/dtracing
             sleep 5
             done
-          env:          
+          env:
           - name: SPAN_STORAGE_TYPE
             value: grpc-plugin
           ports:
