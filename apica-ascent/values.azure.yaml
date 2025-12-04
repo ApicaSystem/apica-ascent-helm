@@ -358,7 +358,7 @@ global:
     grafana: false
 vault:
   enabled: false
-  serverCaCertificate:
+  serverCaCertificateB64: ""
   serverAddress: https://vault.example.com
   authMount: "k8s-clustername"
   kafkaClientCertDomain: example.com
