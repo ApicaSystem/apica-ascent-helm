@@ -188,16 +188,16 @@ gateway:
   tls:
     enabled: false
     secretName: null
-  
+
 # Envoy Gateway Configuration
 envoyGateway:
   enabled: true
-  
+
   # GatewayClass configuration
   gatewayClass:
     controllerName: gateway.envoyproxy.io/gatewayclass-controller
     description: "Envoy Gateway for Apica Ascent"
-  
+
   # EnvoyProxy configuration
   envoyProxy:
     provider:
@@ -210,7 +210,7 @@ envoyGateway:
           service.beta.kubernetes.io/oci-load-balancer-shape-flex-max: "30"
           service.beta.kubernetes.io/oci-load-balancer-shape-flex-min: "10"
         externalTrafficPolicy: Cluster
-  
+
   # Gateway listeners configuration
   listeners:
     http:
@@ -303,7 +303,7 @@ global:
   kubeDistributor:
     enabled: false
   cloudProvider: aws
-  
+
   # NodePort Configuration
   nodePort:
     # Enable NodePort services (if false, services are ClusterIP)
@@ -312,10 +312,10 @@ global:
     # - If ports are NOT set (null): Kubernetes auto-assigns (recommended for multi-tenancy)
     # - If ports are set: Manual assignment (single-tenant or specific requirements)
     ports:
-      flash: null              # Set to specific port (e.g., 30444) for manual assignment
-      flashMl: null            # Set to specific port (e.g., 30923) for manual assignment
-      thanosReceiveHttp: null  # Thanos Receive HTTP port (default: auto-assign)
-      thanosReceiveGrpc: null  # Thanos Receive gRPC port (default: auto-assign)
+      flash: null # Set to specific port (e.g., 30444) for manual assignment
+      flashMl: null # Set to specific port (e.g., 30923) for manual assignment
+      thanosReceiveHttp: null # Thanos Receive HTTP port (default: auto-assign)
+      thanosReceiveGrpc: null # Thanos Receive gRPC port (default: auto-assign)
       thanosReceiveRemote: null # Thanos Receive remote write port (default: auto-assign)
   createStorageClass: false
   enableMetricsServer: false
@@ -381,3 +381,9 @@ global:
     redis: true
     s3gateway: true
     grafana: false
+vault:
+  enabled: false
+  serverCaCertificate: ""
+  serverAddress: https://vault.example.com
+  authMount: "k8s-clustername"
+  kafkaClientCertDomain: example.com

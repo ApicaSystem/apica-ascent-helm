@@ -365,3 +365,9 @@ global:
     redis: true
     s3gateway: true
     grafana: true
+vault:
+  enabled: false
+  serverCaCertificate:
+  serverAddress: https://vault.example.com
+  authMount: "k8s-clustername"
+  kafkaClientCertDomain: example.com
