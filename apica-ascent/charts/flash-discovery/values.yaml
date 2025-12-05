@@ -7,7 +7,7 @@ useSecret: false
 pullSecretName:
 
 image:
-  repository: docker.io/logiqai/flash-discovery
+  repository: logiqai/flash-discovery
   tag: 1.0.0
   pullPolicy: IfNotPresent
 
