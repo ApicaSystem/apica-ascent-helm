@@ -340,7 +340,7 @@ global:
     ttlSecondsAfterFinished: 100
   toolbox:
     image:
-      repository: logiqai/toolbox
+      repository: docker.io/logiqai/toolbox
       tag: 2.0.1
   environment:
     logiq_flash_host: logiq-flash
