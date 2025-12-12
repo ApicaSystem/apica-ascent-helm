@@ -222,7 +222,7 @@ s3gateway:
 gateway:
   tls:
     enabled: true
-    secretName: ascentExternalCert
+    secretName: ascent-external-cert
 
 # Envoy Gateway Configuration for Oracle Cloud (OKE)
 envoyGateway:
