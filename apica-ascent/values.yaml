@@ -222,7 +222,7 @@ s3gateway:
 gateway:
   tls:
     enabled: true
-    # secretName: Set via --set gateway.tls.secretName=your-tls-secret
+    secretName: ascentExternalCert
 
 # Envoy Gateway Configuration for Oracle Cloud (OKE)
 envoyGateway:
@@ -369,6 +369,8 @@ global:
     upload_dashboard: false
     cluster_id: LOGIQ
     awsServiceEndpoint: "https://<bucket-namespace>.compat.objectstorage.<region>.oraclecloud.com"
+    external_cert_crt: ""
+    external_cert_key: ""
   persistence:
     storageClass: oci-bv
   chart:
