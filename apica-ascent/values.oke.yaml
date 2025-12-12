@@ -227,12 +227,12 @@ gateway:
 # Envoy Gateway Configuration for Oracle Cloud (OKE)
 envoyGateway:
   enabled: true
-  
+
   # GatewayClass configuration
   gatewayClass:
     controllerName: gateway.envoyproxy.io/gatewayclass-controller
     description: "Envoy Gateway for Apica Ascent"
-  
+
   # EnvoyProxy configuration
   envoyProxy:
     provider:
@@ -246,7 +246,7 @@ envoyGateway:
           service.beta.kubernetes.io/oci-load-balancer-shape-flex-max: "30"
           service.beta.kubernetes.io/oci-load-balancer-shape-flex-min: "10"
         externalTrafficPolicy: Cluster
-  
+
   # Gateway listeners configuration
   listeners:
     http:
@@ -305,16 +305,16 @@ logiqctl:
 global:
   domain: null
   kubeDistributor:
-         enabled: false
+    enabled: false
   cloudProvider: aws
   # NodePort Configuration
   nodePort:
-    enabled: true  # Set to true to enable NodePort services
+    enabled: true # Set to true to enable NodePort services
     ports:
-      flash: null              # null = Kubernetes auto-assigns (recommended for multi-tenancy)
-      flashMl: null            # or set to specific port for manual assignment
-      thanosReceiveHttp: null  # Thanos Receive HTTP port (default: auto-assign)
-      thanosReceiveGrpc: null  # Thanos Receive gRPC port (default: auto-assign)
+      flash: null # null = Kubernetes auto-assigns (recommended for multi-tenancy)
+      flashMl: null # or set to specific port for manual assignment
+      thanosReceiveHttp: null # Thanos Receive HTTP port (default: auto-assign)
+      thanosReceiveGrpc: null # Thanos Receive gRPC port (default: auto-assign)
       thanosReceiveRemote: null # Thanos Receive remote write port (default: auto-assign)
   createStorageClass: false
   enableMetricsServer: false
@@ -377,3 +377,9 @@ global:
     redis: true
     s3gateway: false
     grafana: false
+vault:
+  enabled: false
+  serverCaCertificateB64: ""
+  serverAddress: https://vault.example.com
+  authMount: "k8s-clustername"
+  kafkaClientCertDomain: example.com
