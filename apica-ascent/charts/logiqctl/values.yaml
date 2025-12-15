@@ -3,7 +3,7 @@
 # Declare variables to be passed into your templates.
 
 image:
-  repository: logiqai/logiqctl
+  repository: docker.io/logiqai/logiqctl
   tag: latest
   pullPolicy: Always
 
@@ -42,3 +42,17 @@ nodeSelector: {}
 tolerations: []
 
 affinity: {}
+
+global:
+  environment:
+    upload_dashboard: false
+    cluster_id: demo
+  job:
+    ttlSecondsAfterFinished: 100
+  chart:
+    prometheus: true
+    postgres: true
+    redis: true
+    s3gateway: false
+    grafana: false
+    thanos: false

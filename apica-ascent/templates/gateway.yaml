@@ -36,11 +36,15 @@ spec:
     tls:
       mode: Terminate
       certificateRefs:
+      - group: ""
       {{- if .Values.gateway.tls.secretName }}
-      - name: {{ .Values.gateway.tls.secretName }}
+        name: {{ .Values.gateway.tls.secretName }}
         kind: Secret
       {{- end }}
     allowedRoutes:
+      kinds:
+      - group: gateway.networking.k8s.io
+        kind: TCPRoute
       namespaces:
         from: Same
   {{- end }}
@@ -55,7 +59,8 @@ spec:
     port: {{ .port }}
     allowedRoutes:
       kinds:
-      - kind: TCPRoute
+      - group: gateway.networking.k8s.io
+        kind: TCPRoute
       namespaces:
         from: Same
   {{- end }}

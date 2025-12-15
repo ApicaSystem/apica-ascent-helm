@@ -6,17 +6,17 @@ replicaCount: 3
 replicaCountMl: 1
 
 image:
-  repository: logiqai/flash
+  repository: docker.io/logiqai/flash
   tag: 1.2.0
   pullPolicy: IfNotPresent
 
 sidecarTracing:
-       image: logiqai/tracing
+       image: docker.io/logiqai/tracing
        tag: v1.35.2-lq1-c
        imagePullPolicy: Always
 
 sidecarTracingMl:
-       image: logiqai/tracing
+       image: docker.io/logiqai/tracing
        tag: v1.35.2-lq1-q
        imagePullPolicy: Always
         

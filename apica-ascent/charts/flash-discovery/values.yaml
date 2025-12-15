@@ -68,6 +68,27 @@ affinity: {}
 
 global:
   sharedSecretName: logiq-shared-secret
+  nodeSelectors:
+    enabled: false
+    label: apica-node-pool
+    ingest: ingest
+    infra: base
+    other: base
+    db: common
+    cache: common
+    ingest_sync: sync
+  taints:
+    enabled: false
+    ingest: flash
+    infra: infra
+    other: coffee
+    db: db
+    cache: cache
+    ingest_sync: sync
+  toolbox:
+    image:
+      repository: docker.io/logiqai/toolbox
+      tag: 2.0.1
   environment:
     postgres_host: "postgres"
     postgres_port: "5432"
