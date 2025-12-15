@@ -25,6 +25,11 @@ spec:
     protocol: {{ .Values.envoyGateway.listeners.http.protocol | default "HTTP" }}
     port: {{ .Values.envoyGateway.listeners.http.port | default 80 }}
     allowedRoutes:
+      kinds:
+      - group: gateway.networking.k8s.io
+        kind: HTTPRoute
+      - group: gateway.networking.k8s.io
+        kind: GRPCRoute
       namespaces:
         from: Same
   
@@ -44,7 +49,9 @@ spec:
     allowedRoutes:
       kinds:
       - group: gateway.networking.k8s.io
-        kind: TCPRoute
+        kind: HTTPRoute
+      - group: gateway.networking.k8s.io
+        kind: GRPCRoute
       namespaces:
         from: Same
   {{- end }}
