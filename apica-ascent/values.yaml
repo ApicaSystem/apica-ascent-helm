@@ -194,34 +194,27 @@ s3gateway:
   serviceAccount:
     create: true
     name: s3-gateway
-# thanos:
-#   receive:
-#     logLevel: debug
-#     service:
-#       ## @param receive.service.type Kubernetes service type
-#       ##
-#       type: ClusterIP
-#     enabled: true
-#   query:
-#     enabled: true
-#     dnsDiscovery:
-#       enabled: true
-#   bucketweb:
-#     enabled: true
-#   compactor:
-#     enabled: true
-#   storegateway:
-#     enabled: true
-#   ruler:
-#     enabled: true
-#     alertmanagers:
-#       - prometheus-alertmanager
-#     config: |-
-#       groups:
-#         - name: "metamonitoring"
-#           rules:
-#             - alert: "PrometheusDown"
-#               expr: absent(up{prometheus="bitnami-test/bitnami-test-prometheus-prometheus"})
+thanos:
+  receive:
+    logLevel: info
+    service:
+      type: ClusterIP
+    enabled: true
+  query:
+    enabled: true
+    dnsDiscovery:
+      enabled: true
+  bucketweb:
+    enabled: true
+  compactor:
+    enabled: true
+  storegateway:
+    enabled: true
+  ruler:
+    enabled: true
+    alertmanagers:
+      - prometheus-alertmanager
+    existingConfigmap: thanos-ruler-configmap
 # Gateway API configuration
 gateway:
   tls:
