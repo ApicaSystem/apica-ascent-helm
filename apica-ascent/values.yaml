@@ -320,14 +320,14 @@ global:
   enableMetricsServer: false
   sharedSecretName: logiq-shared-secret
   nodeSelectors:
-    enabled: false
+    enabled: true
     label: apica-node-pool
     ingest: ingest
     infra: base
     other: base
     db: common
     cache: common
-    ingest_sync: sync
+    ingest_sync: base
   taints:
     enabled: false
     ingest: flash
