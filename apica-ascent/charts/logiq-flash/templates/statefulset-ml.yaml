@@ -16,7 +16,7 @@ spec:
       app: {{ template "logiq-flash.name" . }}-ml
       release: {{ .Release.Name }}
   volumeClaimTemplates:
-  - apiversion: v1
+  - apiVersion: v1
     kind: PersistentVolumeClaim
     metadata:
       name: data
@@ -282,7 +282,7 @@ spec:
       affinity:
 {{ toYaml . | indent 8 }}
     {{ end }}
-{{ if .Values.global.nodeSelectors.enabled }}
+      {{- if .Values.global.nodeSelectors.enabled }}
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
@@ -292,11 +292,11 @@ spec:
                   operator: In
                   values:
                     - {{ .Values.global.nodeSelectors.other }}
-{{ end }}
-{{ if .Values.global.taints.enabled}}
+      {{- end }}
+      {{- if .Values.global.taints.enabled }}
       tolerations:
       - key: dedicated
         operator: Equal
         value: {{ .Values.global.taints.other }}
         effect: NoSchedule
-{{ end }}
+      {{- end }}

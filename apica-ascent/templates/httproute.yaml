@@ -27,6 +27,7 @@ spec:
         kind: Service
         name: logiq-flash
         port: 9999
+        weight: 1
   - matches:
     - path:
         type: PathPrefix
@@ -36,6 +37,7 @@ spec:
         kind: Service
         name: logiq-flash
         port: 9999
+        weight: 1
   # OTLP endpoints
   - matches:
     - path:
@@ -46,6 +48,7 @@ spec:
         kind: Service
         name: logiq-flash
         port: 9999
+        weight: 1
   - matches:
     - path:
         type: PathPrefix
@@ -55,6 +58,7 @@ spec:
         kind: Service
         name: logiq-flash
         port: 9999
+        weight: 1
   - matches:
     - path:
         type: PathPrefix
@@ -64,6 +68,7 @@ spec:
         kind: Service
         name: logiq-flash
         port: 9999
+        weight: 1
   # Distributed tracing UI
   - matches:
     - path:
@@ -75,11 +80,13 @@ spec:
         kind: Service
         name: logiq-flash-ml-np
         port: 16686
+        weight: 1
     {{- else }}
       - group: ''	
         kind: Service
         name: logiq-flash-ml
         port: 16686
+        weight: 1
     {{- end }}
   # Thanos receive endpoint
   {{- if .Values.global.chart.thanos }}
@@ -92,6 +99,7 @@ spec:
         kind: Service
         name: {{ .Release.Namespace }}-thanos-receive
         port: 19291
+        weight: 1
     {{- end }}
   # API v2 endpoints
   - matches:
@@ -123,11 +131,13 @@ spec:
         kind: Service
         name: logiq-flash-ml-np
         port: 9999
+        weight: 1
     {{- else }}
       - group: ''
         kind: Service
         name: logiq-flash-ml
         port: 9999
+        weight: 1
     {{- end }}
   # JSON batch ingestion
   - matches:
@@ -139,6 +149,7 @@ spec:
         kind: Service
         name: logiq-flash
         port: 9999
+        weight: 1
   # JSON ingestion
   - matches:
     - path:
@@ -149,6 +160,7 @@ spec:
         kind: Service
         name: logiq-flash
         port: 9999
+        weight: 1
   # Tenant API
   - matches:
     - path:
@@ -159,6 +171,7 @@ spec:
         kind: Service
         name: logiq-flash
         port: 9999
+        weight: 1
   # Jaeger traces API
   - matches:
     - path:
@@ -169,6 +182,7 @@ spec:
         kind: Service
         name: logiq-flash
         port: 14268
+        weight: 1
     {{- if .Values.gateway.extraRoutes }}
     # Extra routes from values (e.g., OKE specific routes)
     {{- range .Values.gateway.extraRoutes }}

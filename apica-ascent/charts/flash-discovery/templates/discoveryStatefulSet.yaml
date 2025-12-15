@@ -15,8 +15,8 @@ spec:
     matchLabels:
       app: {{ template "flash-discovery.name" . }}
       release: {{ .Release.Name }}
-  volumeClaimTemplates:   
-  - apiversion: v1
+  volumeClaimTemplates:
+  - apiVersion: v1
     kind: PersistentVolumeClaim
     metadata:
       name: data
