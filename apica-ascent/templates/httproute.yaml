@@ -99,7 +99,7 @@ spec:
         type: PathPrefix
         value: /v2
     backendRefs:
-  {{- if .Values.global.nodePort.enabled }}
+    {{- if .Values.global.nodePort.enabled }}
       - group: ''	
         kind: Service
         name: logiq-flash-ml-np
@@ -119,23 +119,23 @@ spec:
         value: /v1
     backendRefs:
     {{- if .Values.global.nodePort.enabled }}
-      - group: ''	
+      - group: ''
         kind: Service
         name: logiq-flash-ml-np
         port: 9999
-      {{- else }}
-      - group: ''	
+    {{- else }}
+      - group: ''
         kind: Service
         name: logiq-flash-ml
         port: 9999
-      {{- end }}
-    # JSON batch ingestion
-    - matches:
-      - path:
-          type: PathPrefix
-          value: /v1/json_batch
+    {{- end }}
+  # JSON batch ingestion
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /v1/json_batch
     backendRefs:
-      - group: ''	
+      - group: ''
         kind: Service
         name: logiq-flash
         port: 9999
