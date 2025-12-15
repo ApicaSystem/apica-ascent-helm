@@ -16,7 +16,9 @@ spec:
       app: {{ template "flash-discovery.name" . }}
       release: {{ .Release.Name }}
   volumeClaimTemplates:
-  - metadata:
+  - apiVersion: v1
+    kind: PersistentVolumeClaim
+    metadata:
       name: data
     spec:
       accessModes:
@@ -32,7 +34,7 @@ spec:
         release: {{ .Release.Name }}
     spec:
       serviceAccountName: flash-discovery
-{{ if .Values.global.nodeSelectors.enabled }}
+      {{- if .Values.global.nodeSelectors.enabled }}
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
@@ -42,14 +44,14 @@ spec:
                 operator: In
                 values:
                 - {{ .Values.global.nodeSelectors.infra }}
-{{ end }}
-{{ if .Values.global.taints.enabled}}
+      {{- end }}
+      {{- if .Values.global.taints.enabled }}
       tolerations:
       - key: dedicated
         operator: Equal
         value: {{ .Values.global.taints.infra }}
         effect: NoSchedule
-{{ end }}
+      {{- end }}
       securityContext:
         fsGroup: 1000
         runAsUser: 1000

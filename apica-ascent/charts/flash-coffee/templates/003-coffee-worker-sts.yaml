@@ -17,7 +17,7 @@ spec:
         app: coffee-worker
     spec:
       serviceAccountName: flash-coffee
-{{ if .Values.global.nodeSelectors.enabled }}
+      {{- if .Values.global.nodeSelectors.enabled }}
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
@@ -27,14 +27,14 @@ spec:
                   operator: In
                   values:
                     - {{ .Values.global.nodeSelectors.other }}
-{{ end }}
-{{ if .Values.global.taints.enabled}}
+      {{- end }}
+      {{- if .Values.global.taints.enabled }}
       tolerations:
       - key: dedicated
         operator: Equal
         value: {{ .Values.global.taints.other }}
         effect: NoSchedule
-{{ end }}   
+      {{- end }}
       securityContext:
         fsGroup: 1000
         runAsUser: 1000
