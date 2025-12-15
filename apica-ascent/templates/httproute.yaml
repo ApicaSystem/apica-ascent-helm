@@ -8,7 +8,9 @@ metadata:
     {{- include "logiq.labels" . | nindent 4 }}
 spec:
   parentRefs:
-  - name: {{ .Release.Name }}-gateway
+  - group: gateway.networking.k8s.io	
+    kind: Gateway
+    name: {{ .Release.Name }}-gateway
     sectionName: {{ if .Values.gateway.tls.enabled }}https{{ else }}http{{ end }}
   {{- if .Values.global.domain }}
   hostnames:
@@ -21,37 +23,47 @@ spec:
         type: PathPrefix
         value: /live
     backendRefs:
-    - name: logiq-flash
-      port: 9999
+      - group: ''	
+        kind: Service
+        name: logiq-flash
+        port: 9999
   - matches:
     - path:
         type: PathPrefix
         value: /ready
     backendRefs:
-    - name: logiq-flash
-      port: 9999
+      - group: ''	
+        kind: Service
+        name: logiq-flash
+        port: 9999
   # OTLP endpoints
   - matches:
     - path:
         type: PathPrefix
         value: /v1/logs
     backendRefs:
-    - name: logiq-flash
-      port: 9999
+      - group: ''	
+        kind: Service
+        name: logiq-flash
+        port: 9999
   - matches:
     - path:
         type: PathPrefix
         value: /v1/traces
     backendRefs:
-    - name: logiq-flash
-      port: 9999
+      - group: ''	
+        kind: Service
+        name: logiq-flash
+        port: 9999
   - matches:
     - path:
         type: PathPrefix
         value: /v1/metrics
     backendRefs:
-    - name: logiq-flash
-      port: 9999
+      - group: ''	
+        kind: Service
+        name: logiq-flash
+        port: 9999
   # Distributed tracing UI
   - matches:
     - path:
@@ -59,11 +71,15 @@ spec:
         value: /dtracing
     backendRefs:
     {{- if .Values.global.nodePort.enabled }}
-    - name: logiq-flash-ml-np
-      port: 16686
+      - group: ''	
+        kind: Service
+        name: logiq-flash-ml-np
+        port: 16686
     {{- else }}
-    - name: logiq-flash-ml
-      port: 16686
+      - group: ''	
+        kind: Service
+        name: logiq-flash-ml
+        port: 16686
     {{- end }}
   # Thanos receive endpoint
   {{- if .Values.global.chart.thanos }}
@@ -72,22 +88,30 @@ spec:
         type: PathPrefix
         value: /api/v1/receive
     backendRefs:
-    - name: {{ .Release.Namespace }}-thanos-receive
-      port: 19291
-  {{- end }}
+      - group: ''	
+        kind: Service
+        name: {{ .Release.Namespace }}-thanos-receive
+        port: 19291
+    {{- end }}
   # API v2 endpoints
   - matches:
     - path:
         type: PathPrefix
         value: /v2
     backendRefs:
-    {{- if .Values.global.nodePort.enabled }}
-    - name: logiq-flash-ml-np
-      port: 9999
-    {{- else }}
-    - name: logiq-flash-ml
-      port: 9999
-    {{- end }}
+  {{- if .Values.global.nodePort.enabled }}
+      - group: ''	
+        kind: Service
+        name: logiq-flash-ml-np
+        port: 9999
+        weight: 1
+  {{- else }}
+      - group: ''	
+        kind: Service
+        name: logiq-flash-ml
+        port: 9999
+        weight: 1
+  {{- end }}
   # API v1 endpoints (general)
   - matches:
     - path:
@@ -95,54 +119,68 @@ spec:
         value: /v1
     backendRefs:
     {{- if .Values.global.nodePort.enabled }}
-    - name: logiq-flash-ml-np
-      port: 9999
-    {{- else }}
-    - name: logiq-flash-ml
-      port: 9999
-    {{- end }}
-  # JSON batch ingestion
-  - matches:
-    - path:
-        type: PathPrefix
-        value: /v1/json_batch
+      - group: ''	
+        kind: Service
+        name: logiq-flash-ml-np
+        port: 9999
+      {{- else }}
+      - group: ''	
+        kind: Service
+        name: logiq-flash-ml
+        port: 9999
+      {{- end }}
+    # JSON batch ingestion
+    - matches:
+      - path:
+          type: PathPrefix
+          value: /v1/json_batch
     backendRefs:
-    - name: logiq-flash
-      port: 9999
+      - group: ''	
+        kind: Service
+        name: logiq-flash
+        port: 9999
   # JSON ingestion
   - matches:
     - path:
         type: PathPrefix
         value: /v1/json
     backendRefs:
-    - name: logiq-flash
-      port: 9999
+      - group: ''	
+        kind: Service
+        name: logiq-flash
+        port: 9999
   # Tenant API
   - matches:
     - path:
         type: PathPrefix
         value: /v1/tenant
     backendRefs:
-    - name: logiq-flash
-      port: 9999
+      - group: ''	
+        kind: Service
+        name: logiq-flash
+        port: 9999
   # Jaeger traces API
   - matches:
     - path:
         type: PathPrefix
         value: /api/traces
     backendRefs:
-    - name: logiq-flash
-      port: 14268
-  {{- if .Values.gateway.extraRoutes }}
-  # Extra routes from values (e.g., OKE specific routes)
-  {{- range .Values.gateway.extraRoutes }}
+      - group: ''	
+        kind: Service
+        name: logiq-flash
+        port: 14268
+    {{- if .Values.gateway.extraRoutes }}
+    # Extra routes from values (e.g., OKE specific routes)
+    {{- range .Values.gateway.extraRoutes }}
   - matches:
     - path:
         type: {{ .pathType | default "PathPrefix" }}
         value: {{ .path }}
     backendRefs:
-    - name: {{ .backend.service.name }}
-      port: {{ .backend.service.port.number }}
+      - group: ''	
+        kind: Service
+        name: {{ .backend.service.name }}
+        port: {{ .backend.service.port.number }}
   {{- end }}
   {{- end }}
   # Default route - Coffee UI (must be last)
@@ -158,6 +196,8 @@ spec:
         - name: Cache-Control
           value: "public, max-age=2592000"  # 30 days for static assets
     backendRefs:
-    - name: coffee
-      port: 80
+      - group: ''	
+        kind: Service
+        name: coffee
+        port: 80
 {{- end }}

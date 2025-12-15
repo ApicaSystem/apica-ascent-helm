@@ -16,7 +16,9 @@ spec:
       app: {{ template "logiq-flash.name" . }}-ml
       release: {{ .Release.Name }}
   volumeClaimTemplates:
-  - metadata:
+  - apiversion: v1
+    kind: PersistentVolumeClaim
+    metadata:
       name: data
     spec:
       accessModes:
