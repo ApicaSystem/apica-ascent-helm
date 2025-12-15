@@ -276,6 +276,11 @@ prometheus:
     persistence:
       enabled: true
       size: 20Gi
+    thanos:
+      create: true
+      objectStorageConfig:
+        secretName: thanos-objectstorage-config
+        secretKey: thanos.yaml
   operator:
     replicaCount: 1
   kube-state-metrics:
