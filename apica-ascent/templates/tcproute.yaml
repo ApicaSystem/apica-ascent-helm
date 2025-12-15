@@ -20,6 +20,7 @@ spec:
           kind: Service  
           name: logiq-flash
           port: 9999
+          weight: 1
 ---
 # TCPRoute for port 8081 - logiq-flash-ml (ML/Analytics)
 apiVersion: gateway.networking.k8s.io/v1alpha2
@@ -41,4 +42,5 @@ spec:
           kind: Service
           name: logiq-flash-ml
           port: 8081
+          weight: 1
 {{- end }}

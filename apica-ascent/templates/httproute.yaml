@@ -214,4 +214,5 @@ spec:
         kind: Service
         name: coffee
         port: 80
+        weight: 1
 {{- end }}
