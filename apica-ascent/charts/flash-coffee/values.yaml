@@ -11,7 +11,7 @@ coffee:
   replicaCount: 2
   web_workers: 4
   image: 
-    repository: docker.io/logiqai/flash-brew-coffee
+    repository: logiqai/flash-brew-coffee
     tag: brew.1.2.0
     pullPolicy: IfNotPresent
   resources: {}
@@ -19,7 +19,7 @@ coffee:
 
 coffee_worker:
   image:
-    repository: docker.io/logiqai/flash-brew-coffee
+    repository: logiqai/flash-brew-coffee
     tag: brew.1.2.0
     pullPolicy: IfNotPresent
   replicaCount: 3
@@ -82,7 +82,7 @@ global:
     ingest_sync: sync
   toolbox:
     image:
-      repository: docker.io/logiqai/toolbox
+      repository: logiqai/toolbox
       tag: 2.0.1
   chart:
     prometheus: true

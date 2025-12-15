@@ -383,6 +383,8 @@ logiqctl:
     pullPolicy: IfNotPresent
 global:
   domain: null
+  # Set this to the hostname of a private registry for air-gapped environments
+  imageRegistry: "docker.io"
   kubeDistributor:
     enabled: false
   cloudProvider: aws
