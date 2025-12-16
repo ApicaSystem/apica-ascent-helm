@@ -271,11 +271,19 @@ prometheus:
     persistence:
       enabled: true
       size: 20Gi
+    # ArgoCD health check annotation - fixes "Progressing" status issue
+    podMetadata:
+      annotations:
+        argocd.argoproj.io/compare-options: IgnoreExtraneous
   prometheus:
     replicaCount: 1
     persistence:
       enabled: true
       size: 20Gi
+    # ArgoCD health check annotation - fixes "Progressing" status issue
+    podMetadata:
+      annotations:
+        argocd.argoproj.io/compare-options: IgnoreExtraneous
   operator:
     replicaCount: 1
   kube-state-metrics:
