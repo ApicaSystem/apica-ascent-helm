@@ -281,7 +281,7 @@ prometheus:
       create: true
       objectStorageConfig:
         secretName: thanos-objstore-secret
-        secretKey: thanos.yaml
+        secretKey: objstore.yml
   operator:
     replicaCount: 1
   kube-state-metrics:
