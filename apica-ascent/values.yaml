@@ -195,6 +195,7 @@ s3gateway:
     create: true
     name: s3-gateway
 thanos:
+  createObjstoreSecret: true
   receive:
     logLevel: info
     service:
@@ -276,6 +277,11 @@ prometheus:
     persistence:
       enabled: true
       size: 20Gi
+    thanos:
+      create: true
+      objectStorageConfig:
+        secretName: thanos-objstore-secret
+        secretKey: objstore.yml
   operator:
     replicaCount: 1
   kube-state-metrics:
