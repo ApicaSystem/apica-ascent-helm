@@ -368,6 +368,8 @@ global:
     awsServiceEndpoint: "https://<bucket-namespace>.compat.objectstorage.<region>.oraclecloud.com"
     external_cert_crt: ""
     external_cert_key: ""
+    internal_cert_crt: ""
+    internal_cert_key: ""
   persistence:
     storageClass: oci-bv
   chart:
