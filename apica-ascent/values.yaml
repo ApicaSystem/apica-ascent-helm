@@ -5,7 +5,7 @@ logiq-flash:
   service:
     type: NodePort
   image:
-    repository: docker.io/logiqai/flash
+    repository: logiqai/flash
     tag: v3.19.5
     pullPolicy: IfNotPresent
   persistence:
@@ -54,7 +54,7 @@ logiq-flash:
 flash-discovery:
   fullnameOverride: flash-discovery
   image:
-    repository: docker.io/logiqai/flash-discovery
+    repository: logiqai/flash-discovery
     tag: 2.0.3
     pullPolicy: IfNotPresent
   replicaCountDiscovery: 2
@@ -137,7 +137,7 @@ redis:
     name: redis
 
 postgres:
-  enabled: false
+  enabled: true
   fullnameOverride: postgres
   postgresqlPostgresPassword: postgres
   postgresqlUsername: postgres
@@ -174,7 +174,7 @@ flash-coffee:
   coffee:
     replicaCount: 2
     image:
-      repository: docker.io/logiqai/flash-brew-coffee
+      repository: logiqai/flash-brew-coffee
       tag: brew.v3.20.3
       pullPolicy: IfNotPresent
     resources:
@@ -186,7 +186,7 @@ flash-coffee:
   coffee_worker:
     replicaCount: 2
     image:
-      repository: docker.io/logiqai/flash-brew-coffee
+      repository: logiqai/flash-brew-coffee
       tag: brew.v3.20.3
       pullPolicy: IfNotPresent
     resources:
@@ -226,6 +226,7 @@ s3gateway:
   serviceAccount:
     create: true
     name: s3-gateway
+
 thanos:
   createObjstoreSecret: true
   receive:
@@ -278,6 +279,7 @@ thanos:
       cpu: 50m
     limits:
       memory: 200Mi
+
 # Gateway API configuration
 gateway:
   tls:
@@ -378,7 +380,7 @@ grafana:
 
 logiqctl:
   image:
-    repository: docker.io/logiqai/logiqctl
+    repository: logiqai/logiqctl
     tag: 2.0.4
     pullPolicy: IfNotPresent
 global:
@@ -392,10 +394,10 @@ global:
   nodePort:
     enabled: true # Set to true to enable NodePort services
     ports:
-      flash: null # null = Kubernetes auto-assigns (recommended for multi-tenancy)
-      flashMl: null # or set to specific port for manual assignment
-      thanosReceiveHttp: null # Thanos Receive HTTP port (default: auto-assign)
-      thanosReceiveGrpc: null # Thanos Receive gRPC port (default: auto-assign)
+      flash: null               # null = Kubernetes auto-assigns (recommended for multi-tenancy)
+      flashMl: null             # or set to specific port for manual assignment
+      thanosReceiveHttp: null   # Thanos Receive HTTP port (default: auto-assign)
+      thanosReceiveGrpc: null   # Thanos Receive gRPC port (default: auto-assign)
       thanosReceiveRemote: null # Thanos Receive remote write port (default: auto-assign)
   createStorageClass: false
   enableMetricsServer: false
@@ -421,7 +423,7 @@ global:
     ttlSecondsAfterFinished: 100
   toolbox:
     image:
-      repository: docker.io/logiqai/toolbox
+      repository: logiqai/toolbox
       tag: 2.0.1
   environment:
     logiq_flash_host: logiq-flash
