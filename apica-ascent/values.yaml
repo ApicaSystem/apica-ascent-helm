@@ -6,7 +6,7 @@ logiq-flash:
     type: NodePort
   image:
     repository: docker.io/logiqai/flash
-    tag: v3.19.2
+    tag: v3.19.5
     pullPolicy: IfNotPresent
   persistence:
     enabled: true
@@ -23,7 +23,7 @@ logiq-flash:
         cpu: "1250m"
       requests:
         cpu: "1250m"
-        memory: "2750Mi"
+        memory: "3500Mi"
     ml:
       limits:
         cpu: "1000m"
@@ -143,7 +143,7 @@ flash-coffee:
     replicaCount: 2
     image:
       repository: docker.io/logiqai/flash-brew-coffee
-      tag: brew.v3.20.1
+      tag: brew.v3.20.3
       pullPolicy: IfNotPresent
     resources:
       requests:
@@ -155,11 +155,11 @@ flash-coffee:
     replicaCount: 2
     image:
       repository: docker.io/logiqai/flash-brew-coffee
-      tag: brew.v3.20.1
+      tag: brew.v3.20.3
       pullPolicy: IfNotPresent
     resources:
       requests:
-        memory: "1Gi"
+        memory: "2Gi"
         cpu: "1000m"
       limits:
         cpu: "1000m"
