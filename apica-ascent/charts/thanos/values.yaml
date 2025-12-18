@@ -71,7 +71,6 @@ image:
 ##
 objstoreConfig: |-
   type: s3
-  prefix: logiq-instastore-metrics
   config:
   {{ if .Values.global.environment.AWS_ACCESS_KEY_ID }}
     access_key: {{ if .Values.global.environment.AWS_ACCESS_KEY_ID }}{{ .Values.global.environment.AWS_ACCESS_KEY_ID }}{{ end }}
