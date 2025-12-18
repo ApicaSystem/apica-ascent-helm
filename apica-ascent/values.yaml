@@ -304,13 +304,14 @@ logiqctl:
     repository: docker.io/logiqai/logiqctl
     tag: 2.0.4
     pullPolicy: IfNotPresent
-
+kafkaSecrets:
+  enabled: true
 global:
   domain: null
   kubeDistributor:
     enabled: false
   cloudProvider: aws
-  # NodePort Configuration
+  # NodePort Configurationl
   nodePort:
     enabled: true # Set to true to enable NodePort services
     ports:
@@ -376,6 +377,14 @@ global:
     external_cert_key: ""
     internal_cert_crt: ""
     internal_cert_key: ""
+    certificate: ""
+    private_key: ""
+    ca_chain: ""
+    issuing_ca: ""
+    serial_number: ""
+    private_key_type: ""
+    expiration: ""
+    extraflag: "-hauler-node-affinity=false --tail_longpoll=true -kafka_ca_cert_path=/flash/kafka/ca.crt -kafka_client_key_path=/flash/kafka/tls.key -kafka_client_cert_path=/flash/kafka/tls.crt -persist=true"
   persistence:
     storageClass: oci-bv
   chart:

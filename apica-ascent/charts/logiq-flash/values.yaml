@@ -204,3 +204,5 @@ global:
     createStorageClass:
        enabled: false
     storageClass: oci-bv
+kafkaSecrets:
+  enabled: false

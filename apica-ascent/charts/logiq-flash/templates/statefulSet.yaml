@@ -105,6 +105,19 @@ spec:
           secret:
             secretName: {{ .Values.global.sharedSecretName }}
         {{ end }}
+        {{ if (.Values.kafkaSecrets.enabled | default false) }}
+        - name: apica-kafka-secret
+          secret:
+            secretName: {{ . | default (printf "%s-ascent-kafka-cert" .Release.Namespace) }}
+            defaultMode: 420
+            items:
+              - key: certificate
+                path: tls.crt
+              - key: private_key
+                path: tls.key
+              - key: ca_chain
+                path: ca.crt
+        {{- end }}
       {{ if .Values.podPerNode }}
       affinity:
         podAntiAffinity:
@@ -233,6 +246,10 @@ spec:
           volumeMounts:
           - mountPath: /flash/config
             name: config
+          {{ if .Values.kafkaSecrets.enabled }}
+          - mountPath: /flash/kafka
+              name: apica-kafka-secret
+          {{- end }}
           - mountPath: /flash/db
             name: data
           {{ if .Values.secrets_name }}
