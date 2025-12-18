@@ -304,8 +304,6 @@ logiqctl:
     repository: docker.io/logiqai/logiqctl
     tag: 2.0.4
     pullPolicy: IfNotPresent
-kafkaSecrets:
-  enabled: true
 global:
   domain: null
   kubeDistributor:
