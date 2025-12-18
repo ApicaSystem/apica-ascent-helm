@@ -375,13 +375,6 @@ global:
     external_cert_key: ""
     internal_cert_crt: ""
     internal_cert_key: ""
-    certificate: ""
-    private_key: ""
-    ca_chain: ""
-    issuing_ca: ""
-    serial_number: ""
-    private_key_type: ""
-    expiration: ""
     extraflag: "-hauler-node-affinity=false --tail_longpoll=true -kafka_ca_cert_path=/flash/kafka/ca.crt -kafka_client_key_path=/flash/kafka/tls.key -kafka_client_cert_path=/flash/kafka/tls.crt -persist=true"
   persistence:
     storageClass: oci-bv
