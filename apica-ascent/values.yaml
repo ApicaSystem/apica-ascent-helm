@@ -391,3 +391,6 @@ vault:
   serverAddress: https://vault.example.com
   authMount: "k8s-clustername"
   kafkaClientCertDomain: example.com
+kafka_client:
+  enabled: true
+  kafka_args: "-kafka_ca_cert_path=/flash/kafka/ca.crt -kafka_client_key_path=/flash/kafka/tls.key -kafka_client_cert_path=/flash/kafka/tls.crt"
