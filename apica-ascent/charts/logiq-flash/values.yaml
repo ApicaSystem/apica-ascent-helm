@@ -200,18 +200,10 @@ global:
     AWS_ACCESS_KEY_ID: "AWS_ACCESS" 
     AWS_SECRET_ACCESS_KEY: "AWS_SECRET"
     extraflag: ""
-    kafka_args: ""
   persistence:
     createStorageClass:
        enabled: false
     storageClass: oci-bv
-vault:
-  enabled: false
-  serverCaCertificateB64: ""
-  serverAddress: https://vault.example.com
-  authMount: "k8s-clustername"
-  kafkaClientCertDomain: example.com
-
 kafka_client:
   enabled: false
   kafka_args: ""
