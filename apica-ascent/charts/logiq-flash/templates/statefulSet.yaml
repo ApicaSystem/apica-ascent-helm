@@ -108,7 +108,7 @@ spec:
         {{- if .Values.kafka_client.enabled }}
         - name: apica-kafka-secret
           secret:
-            secretName: {{ . | default ("ascent-kafka-cert") }}
+            secretName: {{ .Values.kafka_client.secretName | default "ascent-kafka-cert" }}
             defaultMode: 420
             items:
               - key: certificate
@@ -248,7 +248,7 @@ spec:
             name: config
           {{- if .Values.kafka_client.enabled }}
           - mountPath: /flash/kafka
-              name: apica-kafka-secret
+            name: apica-kafka-secret
           {{- end }}
           - mountPath: /flash/db
             name: data
