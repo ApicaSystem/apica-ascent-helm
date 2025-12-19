@@ -32,7 +32,9 @@ logiq-flash:
     sync:
       requests:
         cpu: "100m"
-
+  kafka_client:
+    enabled: true
+    kafka_args: "-kafka_ca_cert_path=/flash/kafka/ca.crt -kafka_client_key_path=/flash/kafka/tls.key -kafka_client_cert_path=/flash/kafka/tls.crt"
 flash-discovery:
   fullnameOverride: flash-discovery
   image:
@@ -304,7 +306,6 @@ logiqctl:
     repository: docker.io/logiqai/logiqctl
     tag: 2.0.4
     pullPolicy: IfNotPresent
-
 global:
   domain: null
   kubeDistributor:
@@ -376,6 +377,7 @@ global:
     external_cert_key: ""
     internal_cert_crt: ""
     internal_cert_key: ""
+    extraflag: "-hauler-node-affinity=false --tail_longpoll=true -persist=true"
   persistence:
     storageClass: oci-bv
   chart:

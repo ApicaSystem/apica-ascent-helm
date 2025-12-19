@@ -204,3 +204,6 @@ global:
     createStorageClass:
        enabled: false
     storageClass: oci-bv
+kafka_client:
+  enabled: false
+  kafka_args: ""

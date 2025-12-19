@@ -105,6 +105,19 @@ spec:
           secret:
             secretName: {{ .Values.global.sharedSecretName }}
         {{ end }}
+        {{- if .Values.kafka_client.enabled }}
+        - name: apica-kafka-secret
+          secret:
+            secretName: {{ . | default ("ascent-kafka-cert") }}
+            defaultMode: 420
+            items:
+              - key: certificate
+                path: tls.crt
+              - key: private_key
+                path: tls.key
+              - key: ca_chain
+                path: ca.crt
+        {{- end }}
       {{ if .Values.podPerNode }}
       affinity:
         podAntiAffinity:
@@ -124,7 +137,7 @@ spec:
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           args:
           - -c
-          - /flash/bin/flash -config /flash/config/config.yaml -install_root /flash -runtime_folder /flash/db -discovery_domain $(DISCOVERY_DOMAIN) -discovery_url $(DISCOVERY_URL) -discovery_id flash1 -pg_max_idle_conns 190 -pg_max_open_Conns 195 -postgres_timeout 20s -workers 150 -connection_channel_size 10 --pg_conn_max_lifetime 5m {{ .Values.global.environment.extraflag }}
+          - /flash/bin/flash -config /flash/config/config.yaml -install_root /flash -runtime_folder /flash/db -discovery_domain $(DISCOVERY_DOMAIN) -discovery_url $(DISCOVERY_URL) -discovery_id flash1 -pg_max_idle_conns 190 -pg_max_open_Conns 195 -postgres_timeout 20s -workers 150 -connection_channel_size 10 --pg_conn_max_lifetime 5m {{ .Values.global.environment.extraflag }} {{- if .Values.kafka_client.enabled }} {{ .Values.kafka_client.kafka_args }} {{- end }}
           command:
           - /bin/bash
           env:
@@ -233,6 +246,10 @@ spec:
           volumeMounts:
           - mountPath: /flash/config
             name: config
+          {{- if .Values.kafka_client.enabled }}
+          - mountPath: /flash/kafka
+              name: apica-kafka-secret
+          {{- end }}
           - mountPath: /flash/db
             name: data
           {{ if .Values.secrets_name }}
