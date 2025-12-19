@@ -205,3 +205,9 @@ global:
     createStorageClass:
        enabled: false
     storageClass: oci-bv
+vault:
+  enabled: false
+  serverCaCertificateB64: ""
+  serverAddress: https://vault.example.com
+  authMount: "k8s-clustername"
+  kafkaClientCertDomain: example.com
