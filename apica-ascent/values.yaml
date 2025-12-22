@@ -122,7 +122,7 @@ redis:
       memory: 4500Mi
     requests:
       memory: 2000Mi
-      cpu: "500m"
+      cpu: 500m
 
 postgres:
   enabled: false
