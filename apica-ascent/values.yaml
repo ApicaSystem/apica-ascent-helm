@@ -143,13 +143,6 @@ postgres:
     sharedBuffers: "1024MB"
   metrics:
     enabled: true
-    resources: 
-      limits:
-        cpu: 50Mi
-        memory: 100Mi
-      requests:
-        memory: 10Mi
-        cpu: 10m
     serviceMonitor:
       enabled: true
     additionalLabels:
