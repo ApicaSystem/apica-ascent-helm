@@ -17,25 +17,32 @@ logiq-flash:
       enabled: true
     selector:
       release: prometheus
-  resources:
-    ingest:
-      limits:
-        memory: 4000Mi
-      requests:
-        cpu: 1250m
-        memory: 3500Mi
-    ml:
-      limits:
-        memory: 1500Mi
-      requests:
-        cpu: 100m
-        memory: 900Mi
-    sync:
-      limits:
-        memory: 750Mi
-      requests:
-        cpu: 100m
-        memory: 300Mi
+    resources:
+      ingest:
+        requests:
+          memory: 3500Mi
+        limits:
+          memory: 4000Mi
+      sidecar:
+        requests:
+          memory: 900Mi
+        limits:
+          memory: 1500Mi
+      sidecarTracing:
+        requests:
+          memory: 30Mi
+        limits:
+          memory: 500Mi
+      sidecarTracingMl:
+        requests:
+          memory: 30Mi
+        limits:
+          memory: 500Mi
+      sync:
+        requests:
+          memory: 300Mi
+        limits:
+          memory: 750Mi
   kafka_client:
     enabled: true
     kafka_args: "-kafka_ca_cert_path=/flash/kafka/ca.crt -kafka_client_key_path=/flash/kafka/tls.key -kafka_client_cert_path=/flash/kafka/tls.crt"
@@ -136,6 +143,13 @@ postgres:
     sharedBuffers: "1024MB"
   metrics:
     enabled: true
+    resources: 
+      limits:
+        cpu: 50Mi
+        memory: 100Mi
+      requests:
+        memory: 10Mi
+        cpu: 10m
     serviceMonitor:
       enabled: true
     additionalLabels:
@@ -144,7 +158,7 @@ postgres:
     size: 20Gi
   resources:
     limits:
-      memory: 4500Mi
+      memory: 20000Mi
     requests:
       memory: 4000Mi
       cpu: 1000m
