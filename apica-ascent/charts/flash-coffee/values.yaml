@@ -24,12 +24,6 @@ coffee_worker:
     pullPolicy: IfNotPresent
   replicaCount: 3
   resources: {}
-ssrReportGen:
-  resources:
-    limits:
-      memory: 300Mi
-    requests:
-      memory: 20Mi
 service:
   type: ClusterIP
   port: 80
