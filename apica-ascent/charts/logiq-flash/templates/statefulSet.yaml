@@ -464,7 +464,7 @@ spec:
             name: sharedcert
           {{ end }}
           resources:
-{{ toYaml .Values.resources.sidecar | indent 12 }}
+{{ toYaml .Values.resources.sidecarQuery | indent 12 }}
         - name: {{ .Chart.Name }}-tracing
           image: "{{ .Values.sidecarTracing.image }}:{{ .Values.sidecarTracing.tag }}"
           imagePullPolicy: {{ .Values.sidecarTracing.pullPolicy }}

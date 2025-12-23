@@ -243,7 +243,7 @@ spec:
             failureThreshold: 3
             timeoutSeconds: 125
           resources:
-{{ toYaml .Values.resources.sidecar | indent 12 }}
+{{ toYaml .Values.resources.ml | indent 12 }}
         - name: {{ .Chart.Name }}-tracing
           image: "{{ .Values.sidecarTracingMl.image }}:{{ .Values.sidecarTracingMl.tag }}"
           imagePullPolicy: {{ .Values.sidecarTracingMl.pullPolicy }}
@@ -273,7 +273,7 @@ spec:
             failureThreshold: 3
             timeoutSeconds: 125
           resources:
-{{ toYaml .Values.resources.sidecarTracingMl | indent 12 }}
+{{ toYaml .Values.resources.sidecarMlTracing | indent 12 }}
     {{ with .Values.nodeSelector }}
       nodeSelector:
 {{ toYaml . | indent 8 }}
