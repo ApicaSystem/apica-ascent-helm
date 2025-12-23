@@ -40,15 +40,11 @@ logiq-flash:
         limits:
           cpu: 100m
           memory: 500Mi
-
-      ml:
+      sidecarTracingMl:
         requests:
-          cpu: 100m
-          memory: 900Mi
+          memory: 30Mi
         limits:
-          cpu: 500m
-          memory: 1500Mi
-
+          memory: 500Mi
       sync:
         requests:
           cpu: 100m
@@ -56,10 +52,6 @@ logiq-flash:
         limits:
           cpu: 300m
           memory: 750Mi
-
-    sidecarTracingMl:
-      limits:
-        memory: 50Mi
   kafka_client:
     enabled: true
     kafka_args: "-kafka_ca_cert_path=/flash/kafka/ca.crt -kafka_client_key_path=/flash/kafka/tls.key -kafka_client_cert_path=/flash/kafka/tls.crt"
