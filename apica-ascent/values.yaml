@@ -330,15 +330,17 @@ prometheus:
     enabled: true
     size: 20Gi
   alertmanager:
+    enabled: true
     replicaCount: 1
     persistence:
       enabled: true
       size: 20Gi
   prometheus:
+    enabled: true
     resources:
       requests:
         memory: 500Mi
-        cpu: 300M
+        cpu: 300m
       limits:
         memory: 3000Mi
     replicaCount: 2
@@ -351,6 +353,7 @@ prometheus:
         secretName: thanos-objstore-secret
         secretKey: objstore.yml
   operator:
+    enabled: true
     replicaCount: 1
   kube-state-metrics:
     replicaCount: 1
