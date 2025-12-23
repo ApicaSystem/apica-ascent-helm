@@ -17,31 +17,47 @@ logiq-flash:
       enabled: true
     selector:
       release: prometheus
-  resources:
-    ingest:
-      limits:
-        memory: 4000Mi
-      requests:
-        cpu: 1250m
-        memory: 3500Mi
-    sidecar:
-      limits:
-        memory: 50Mi
-    sidecarTracing:
-      limits:
-        memory: 50Mi
-    ml:
-      limits:
-        memory: 1500Mi
-      requests:
-        cpu: 100m
-        memory: 900Mi
-    sync:
-      limits:
-        memory: 750Mi
-      requests:
-        cpu: 100m
-        memory: 300Mi
+    resources:
+      ingest:
+        requests:
+          cpu: 1250m
+          memory: 3500Mi
+        limits:
+          cpu: "2"
+          memory: 4000Mi
+
+      sidecar:
+        requests:
+          cpu: 50m
+          memory: 30Mi
+        limits:
+          cpu: 100m
+          memory: 50Mi
+
+      sidecarTracing:
+        requests:
+          cpu: 50m
+          memory: 30Mi
+        limits:
+          cpu: 100m
+          memory: 50Mi
+
+      ml:
+        requests:
+          cpu: 100m
+          memory: 900Mi
+        limits:
+          cpu: 500m
+          memory: 1500Mi
+
+      sync:
+        requests:
+          cpu: 100m
+          memory: 300Mi
+        limits:
+          cpu: 300m
+          memory: 750Mi
+
     sidecarTracingMl:
       limits:
         memory: 50Mi
