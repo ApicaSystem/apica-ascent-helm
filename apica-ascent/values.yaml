@@ -24,23 +24,24 @@ logiq-flash:
           memory: 3500Mi
         limits:
           memory: 4000Mi
-      sidecar:
+      sidecarQuery:
+        limits:
+          memory: 4000Mi
+      sidecarTracing:
+        limits:
+          memory: 4000Mi
+
+      ml:
         requests:
+          cpu: 100m
           memory: 900Mi
         limits:
+          memory: 1500Mi  
+
+      sidecarMlTracing:
+        limits:
           memory: 1500Mi
-      sidecarTracing:
-        requests:
-          cpu: 100m
-          memory: 30Mi
-        limits:
-          memory: 500Mi
-      sidecarTracingMl:
-        requests:
-          cpu: 100m
-          memory: 30Mi
-        limits:
-          memory: 500Mi
+
       sync:
         requests:
           cpu: 100m
@@ -74,6 +75,12 @@ redis:
   cluster:
     slaveCount: 0
   master:
+    resources:
+      limits:
+        memory: 6000Mi
+      requests:
+        memory: 500Mi
+        cpu: 100m
     disableCommands: []
     affinity:
       podAntiAffinity:
@@ -128,12 +135,6 @@ redis:
   serviceAccount:
     create: true
     name: redis
-  resources:
-    limits:
-      memory: 4500Mi
-    requests:
-      memory: 2000Mi
-      cpu: 500m
 
 postgres:
   enabled: false
