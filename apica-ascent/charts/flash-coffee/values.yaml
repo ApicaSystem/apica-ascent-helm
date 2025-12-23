@@ -27,7 +27,7 @@ coffee_worker:
 ssrReportGen:
   resources:
     limits:
-      memory: 100Mi
+      memory: 300Mi
     requests:
       memory: 20Mi
 service:
