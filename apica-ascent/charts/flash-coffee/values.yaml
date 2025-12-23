@@ -19,11 +19,9 @@ coffee:
 ssrReportGen:
   resources:
     requests:
-      cpu: 50m
-      memory: 64Mi
+      memory: 50Mi
     limits:
-      cpu: 100m
-      memory: 128Mi
+      memory: 300Mi
 
 coffee_worker:
   image:
