@@ -576,13 +576,7 @@ prometheus:
   ## @param prometheus.resources CPU/Memory resource requests/limits for node
   ## ref: https://kubernetes.io/docs/user-guide/compute-resources/
   ##
-  resources:
-    limits:
-      cpu: 1500m
-      memory: 10Gi
-    requests:
-      cpu: 100m
-      memory: 50Mi
+  resources: {}
   ## @param prometheus.podAffinityPreset Prometheus Pod affinity preset. Ignored if `affinity` is set. Allowed values: `soft` or `hard`
   ## ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#inter-pod-affinity-and-anti-affinity
   ##
@@ -988,13 +982,7 @@ prometheus:
     ## @param prometheus.thanos.resources.limits The resources limits for the Thanos sidecar container
     ## @param prometheus.thanos.resources.requests The resources requests for the Thanos sidecar container
     ##
-    resources:
-      limits:
-        cpu: 1500m
-        memory: 10Gi
-      requests:
-        cpu: 100m
-        memory: 50Mi
+    resources: {}
       ## Example:
       ## limits:
       ##    cpu: 100m

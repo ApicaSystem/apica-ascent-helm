@@ -352,6 +352,12 @@ prometheus:
       objectStorageConfig:
         secretName: thanos-objstore-secret
         secretKey: objstore.yml
+      resources:
+        requests:
+          cpu: 50m
+          memory: 100Mi
+        limits:
+          memory: 200Mi
   operator:
     enabled: true
     replicaCount: 1
