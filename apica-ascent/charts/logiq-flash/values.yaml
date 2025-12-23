@@ -151,7 +151,8 @@ resources:
    sidecarTracingMl: {}   
 
    sidecar: {}
-
+   
+   sync: {}
 
 
   # requests:

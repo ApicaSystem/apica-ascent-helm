@@ -28,11 +28,10 @@ logiq-flash:
 
       sidecar:
         requests:
-          cpu: 50m
-          memory: 30Mi
-        limits:
           cpu: 100m
-          memory: 500Mi
+          memory: 900Mi
+        limits:
+          memory: 1500Mi
 
       sidecarTracing:
         requests:
@@ -202,14 +201,7 @@ flash-coffee:
         memory: 300Mi
         cpu: 100m
       limits:
-        cpu: 200m
         memory: 1000Mi
-    ssrgen:
-      resources:
-        requests:
-          memory: 50Mi
-        limits:
-          memory: 400Mi
   coffee_worker:
     replicaCount: 2
     image:
