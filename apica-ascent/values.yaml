@@ -32,7 +32,7 @@ logiq-flash:
           memory: 30Mi
         limits:
           cpu: 100m
-          memory: 50Mi
+          memory: 500Mi
 
       sidecarTracing:
         requests:
@@ -40,7 +40,7 @@ logiq-flash:
           memory: 30Mi
         limits:
           cpu: 100m
-          memory: 50Mi
+          memory: 500Mi
 
       ml:
         requests:
