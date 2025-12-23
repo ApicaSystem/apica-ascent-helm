@@ -20,6 +20,7 @@ logiq-flash:
     resources:
       ingest:
         requests:
+          cpu: 1250m
           memory: 3500Mi
         limits:
           memory: 4000Mi
@@ -30,16 +31,19 @@ logiq-flash:
           memory: 1500Mi
       sidecarTracing:
         requests:
+          cpu: 100m
           memory: 30Mi
         limits:
           memory: 500Mi
       sidecarTracingMl:
         requests:
+          cpu: 100m
           memory: 30Mi
         limits:
           memory: 500Mi
       sync:
         requests:
+          cpu: 100m
           memory: 300Mi
         limits:
           memory: 750Mi
@@ -154,7 +158,7 @@ postgres:
       memory: 20000Mi
     requests:
       memory: 4000Mi
-      cpu: 1000m
+      cpu: 500m
   securityContext:
     enabled: true
     fsGroup: 1001
