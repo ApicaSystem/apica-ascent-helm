@@ -195,6 +195,7 @@ flash-coffee:
         memory: 300Mi
         cpu: 100m
       limits:
+        cpu: 200m
         memory: 1000Mi
   coffee_worker:
     replicaCount: 2

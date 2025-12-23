@@ -363,6 +363,7 @@ spec:
             - containerPort: 5173
               name: ssr
               protocol: TCP
-          resources: {}
+          resources: 
+            {{- toYaml .Values.coffee.ssrReportGen.resources | nindent 12 }}
 
       restartPolicy: Always
