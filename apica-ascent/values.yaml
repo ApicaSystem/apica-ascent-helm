@@ -342,7 +342,7 @@ prometheus:
         memory: 500Mi
         cpu: 300m
       limits:
-        memory: 3000Mi
+        memory: 6000Mi
     replicaCount: 2
     persistence:
       enabled: true
