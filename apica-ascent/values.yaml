@@ -324,8 +324,10 @@ envoyGateway:
       - name: tcp-8081
         port: 8081
         protocol: TCP
+
 apicaTLSSecret:
   enabled: true
+
 prometheus:
   fullnameOverride: prometheus
   persistence:
@@ -383,6 +385,7 @@ logiqctl:
     repository: logiqai/logiqctl
     tag: 2.0.4
     pullPolicy: IfNotPresent
+
 global:
   domain: null
   # Set this to the hostname of a private registry for air-gapped environments
@@ -465,6 +468,7 @@ global:
     redis: true
     s3gateway: false
     grafana: false
+
 vault:
   enabled: false
   serverCaCertificateB64: ""
