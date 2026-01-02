@@ -206,8 +206,8 @@ s3gateway:
   defaultBucket:
     enabled: true
   fullnameOverride: s3-gateway
-  accessKey: logiq_access
-  secretKey: logiq_secret
+  accessKey: not-needed
+  secretKey: not-needed
   metrics:
     serviceMonitor:
       enabled: false
