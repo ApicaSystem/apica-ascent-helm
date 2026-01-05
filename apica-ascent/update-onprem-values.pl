@@ -56,6 +56,8 @@ foreach my $size (@tshirts) {
     $clone->{global}{environment}{admin_password}        = '##ADMIN_ACCOUNT_PASSWORD##';
     $clone->{global}{environment}{admin_org}             = '##ADMIN_ORGANIZATION##';
     $clone->{global}{environment}{admin_email}           = '##ADMIN_EMAIL##';
+    $clone->{postgres}{postgresqlPostgresPassword}       = '##YOUR_POSTGRES_ROOT_PASSWORD##';
+    $clone->{postgres}{postgresqlPassword}               = '##YOUR_POSTGRES_PASSWORD##';
 
     # Kafka client always disabled
     $clone->{'logiq-flash'}{kafka_client}{enabled} = $JSON::PP::false;

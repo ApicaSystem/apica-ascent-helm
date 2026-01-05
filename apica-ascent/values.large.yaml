@@ -135,10 +135,10 @@ redis:
 postgres:
   enabled: true
   fullnameOverride: postgres
-  postgresqlPostgresPassword: postgres
+  postgresqlPostgresPassword: '##YOUR_POSTGRES_ROOT_PASSWORD##'
   postgresqlUsername: postgres
   postgresqlDatabase: postgres
-  postgresqlPassword: postgres
+  postgresqlPassword: '##YOUR_POSTGRES_PASSWORD##'
   postgresqlExtendedConf:
     maxConnections: '400'
     sharedBuffers: 1024MB
