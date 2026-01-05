@@ -6,7 +6,7 @@ logiq-flash:
     type: NodePort
   image:
     repository: logiqai/flash
-    tag: v3.19.2
+    tag: v3.19.5
     pullPolicy: IfNotPresent
   persistence:
     enabled: true
@@ -19,21 +19,36 @@ logiq-flash:
       release: prometheus
   resources:
     ingest:
-      limits:
-        cpu: "1250m"
       requests:
-        cpu: "1250m"
-        memory: "2750Mi"
+        cpu: 1250m
+        memory: 3500Mi
+      limits:
+        memory: 4000Mi
+    sidecarQuery:
+      limits:
+        memory: 4000Mi
+    sidecarTracing:
+      limits:
+        memory: 4000Mi
     ml:
-      limits:
-        cpu: "1000m"
       requests:
-        cpu: "500m"
+        cpu: 100m
+        memory: 900Mi
+      limits:
+        memory: 1500Mi
+    sidecarMlTracing:
+      limits:
+        memory: 1500Mi
     sync:
       requests:
-        cpu: "100m"
-  secrets_name: "my-ascent-ingest"
-
+        cpu: 100m
+        memory: 300Mi
+      limits:
+        memory: 750Mi
+  kafka_client:
+    enabled: false
+    kafka_args: -kafka_ca_cert_path=/flash/kafka/ca.crt -kafka_client_key_path=/flash/kafka/tls.key -kafka_client_cert_path=/flash/kafka/tls.crt
+  secrets_name: my-ascent-ingest
 flash-discovery:
   fullnameOverride: flash-discovery
   image:
@@ -44,7 +59,12 @@ flash-discovery:
   persistence:
     enabled: true
     size: 2Gi
-
+  resources:
+    limits:
+      memory: 100Mi
+    requests:
+      cpu: 10m
+      memory: 16Mi
 redis:
   enabled: true
   fullnameOverride: redis
@@ -52,17 +72,23 @@ redis:
   cluster:
     slaveCount: 0
   master:
+    resources:
+      limits:
+        memory: 2000Mi
+      requests:
+        memory: 500Mi
+        cpu: 100m
     disableCommands: []
     affinity:
       podAntiAffinity:
         requiredDuringSchedulingIgnoredDuringExecution:
-          - labelSelector:
-              matchExpressions:
-                - key: app
-                  operator: In
-                  values:
-                    - redis
-            topologyKey: "kubernetes.io/hostname"
+        - labelSelector:
+            matchExpressions:
+            - key: app
+              operator: In
+              values:
+              - redis
+          topologyKey: kubernetes.io/hostname
     persistence:
       enabled: false
   slave:
@@ -70,13 +96,13 @@ redis:
     affinity:
       podAntiAffinity:
         requiredDuringSchedulingIgnoredDuringExecution:
-          - labelSelector:
-              matchExpressions:
-                - key: app
-                  operator: In
-                  values:
-                    - redis
-            topologyKey: "kubernetes.io/hostname"
+        - labelSelector:
+            matchExpressions:
+            - key: app
+              operator: In
+              values:
+              - redis
+          topologyKey: kubernetes.io/hostname
     persistence:
       enabled: false
   metrics:
@@ -91,14 +117,14 @@ redis:
       create: true
       role:
         rules:
-          - apiGroups:
-              - policy
-            resources:
-              - podsecuritypolicies
-            verbs:
-              - use
-            resourceNames:
-              - redis
+        - apiGroups:
+          - policy
+          resources:
+          - podsecuritypolicies
+          verbs:
+          - use
+          resourceNames:
+          - redis
   securityContext:
     enable: true
     fsGroup: 1001
@@ -106,17 +132,16 @@ redis:
   serviceAccount:
     create: true
     name: redis
-
 postgres:
   enabled: true
   fullnameOverride: postgres
-  postgresqlPostgresPassword: "##YOUR_POSTGRES_PASSWORD##"
+  postgresqlPostgresPassword: postgres
   postgresqlUsername: postgres
   postgresqlDatabase: postgres
-  postgresqlPassword: "##YOUR_POSTGRES_PASSWORD##"
+  postgresqlPassword: postgres
   postgresqlExtendedConf:
-    maxConnections: "400"
-    sharedBuffers: "1024MB"
+    maxConnections: '400'
+    sharedBuffers: 1024MB
   metrics:
     enabled: true
     serviceMonitor:
@@ -126,9 +151,11 @@ postgres:
   persistence:
     size: 20Gi
   resources:
+    limits:
+      memory: 8000Mi
     requests:
-      memory: "4Gi"
-      cpu: "1000m"
+      memory: 4000Mi
+      cpu: 500m
   securityContext:
     enabled: true
     fsGroup: 1001
@@ -136,7 +163,6 @@ postgres:
   serviceAccount:
     enabled: true
     name: postgres
-
 flash-coffee:
   service:
     type: ClusterIP
@@ -144,27 +170,26 @@ flash-coffee:
     replicaCount: 1
     image:
       repository: logiqai/flash-brew-coffee
-      tag: brew.v3.20.1
+      tag: brew.v3.20.3
       pullPolicy: IfNotPresent
     resources:
       requests:
-        memory: "4Gi"
-        cpu: "1000m"
+        memory: 300Mi
+        cpu: 100m
       limits:
-        cpu: "1000m"
+        memory: 1000Mi
   coffee_worker:
     replicaCount: 1
     image:
       repository: logiqai/flash-brew-coffee
-      tag: brew.v3.20.1
+      tag: brew.v3.20.3
       pullPolicy: IfNotPresent
     resources:
       requests:
-        memory: "1Gi"
-        cpu: "1000m"
+        memory: 600Mi
+        cpu: 100m
       limits:
-        cpu: "1000m"
-
+        memory: 2000Mi
 s3gateway:
   s3gateway:
     enabled: false
@@ -181,9 +206,9 @@ s3gateway:
     serviceMonitor:
       enabled: false
   buckets:
-    - name: devops-test
-      policy: none
-      purge: false
+  - name: devops-test
+    policy: none
+    purge: false
   persistence:
     enabled: true
     size: 25Gi
@@ -195,75 +220,128 @@ s3gateway:
   serviceAccount:
     create: true
     name: s3-gateway
-
 thanos:
+  createObjstoreSecret: true
   receive:
     logLevel: info
     service:
       type: ClusterIP
     enabled: true
+    requests:
+      memory: 100Mi
+      cpu: 50m
+    limits:
+      memory: 200Mi
   query:
     enabled: true
     dnsDiscovery:
       enabled: true
+    requests:
+      memory: 100Mi
+      cpu: 50m
+    limits:
+      memory: 200Mi
   bucketweb:
     enabled: true
+    requests:
+      memory: 100Mi
+      cpu: 50m
+    limits:
+      memory: 200Mi
   compactor:
     enabled: true
+    requests:
+      memory: 100Mi
+      cpu: 50m
+    limits:
+      memory: 200Mi
   storegateway:
     enabled: true
+    requests:
+      memory: 100Mi
+      cpu: 50m
+    limits:
+      memory: 200Mi
   ruler:
     enabled: true
     alertmanagers:
-      - prometheus-alertmanager
+    - prometheus-alertmanager
     existingConfigmap: thanos-ruler-configmap
-
-# Gateway API configuration
+    requests:
+      memory: 100Mi
+      cpu: 50m
+    limits:
+      memory: 200Mi
 gateway:
   tls:
     enabled: true
-    secretName: "my-ascent-ingress"
-
-# Envoy Gateway Configuration
+    secretName: my-ascent-ingress
 envoyGateway:
   enabled: true
-  createGatewayClass: true
-  gatewayClassName: envoy
-  controllerName: gateway.envoyproxy.io/gatewayclass-controller
-  gatewayClassDescription: "Envoy Gateway for Apica Ascent"
-  gateway:
-    name: apica-gateway
-    replicas: 1
-    service:
-      type: LoadBalancer
-    listeners:
-      https:
-        port: 443
-        protocol: HTTPS
-
+  gatewayClass:
+    controllerName: gateway.envoyproxy.io/gatewayclass-controller
+    description: Envoy Gateway for Apica Ascent
+  envoyProxy:
+    provider:
+      type: Kubernetes
+      service:
+        type: LoadBalancer
+        externalTrafficPolicy: Cluster
+  listeners:
+    http:
+      port: 80
+      protocol: HTTP
+    https:
+      port: 443
+      protocol: HTTPS
+    tcp:
+    - name: tcp-9999
+      port: 9999
+      protocol: TCP
+    - name: tcp-8081
+      port: 8081
+      protocol: TCP
 apicaTLSSecret:
   enabled: true
-
 prometheus:
   fullnameOverride: prometheus
   persistence:
     enabled: true
     size: 20Gi
   alertmanager:
+    enabled: true
     replicaCount: 1
     persistence:
       enabled: true
       size: 20Gi
   prometheus:
+    enabled: true
+    resources:
+      requests:
+        memory: 500Mi
+        cpu: 300m
+      limits:
+        memory: 2000Mi
     replicaCount: 1
     persistence:
       enabled: true
       size: 20Gi
+    thanos:
+      create: true
+      objectStorageConfig:
+        secretName: thanos-objstore-secret
+        secretKey: objstore.yml
+      resources:
+        requests:
+          cpu: 50m
+          memory: 100Mi
+        limits:
+          memory: 200Mi
   operator:
+    enabled: true
     replicaCount: 1
   kube-state-metrics:
     replicaCount: 1
-  # Disable node-exporter via exporters section
   exporters:
     node-exporter:
       enabled: false
@@ -272,23 +350,27 @@ prometheus:
   node-exporter:
     enabled: false
     replicaCount: 0
-
 grafana:
   fullnameOverride: grafana
-
 logiqctl:
   image:
     repository: logiqai/logiqctl
     tag: 2.0.4
     pullPolicy: IfNotPresent
-
 global:
-  domain: "##YOUR_DOMAIN##"
-  # Set this to the hostname of a private registry for air-gapped environments
-  imageRegistry: "docker.io"
+  domain: '##YOUR_DOMAIN##'
+  imageRegistry: docker.io
   kubeDistributor:
     enabled: false
   cloudProvider: aws
+  nodePort:
+    enabled: false
+    ports:
+      flash: null
+      flashMl: null
+      thanosReceiveHttp: null
+      thanosReceiveGrpc: null
+      thanosReceiveRemote: null
   createStorageClass: false
   enableMetricsServer: false
   sharedSecretName: logiq-shared-secret
@@ -319,31 +401,34 @@ global:
     logiq_flash_host: logiq-flash
     logiq_flash_port: 9999
     redis_opts: true
-    redis_host: "redis-master"
-    redis_port: "6379"
-    postgres_host: "postgres"
-    postgres_port: "5432"
-    postgres_user: "postgres"
-    postgres_password: "##YOUR_POSTGRES_PASSWORD##"
-    postgres_db: "postgres"
-    postgres_coffee_db: "coffee"
-    s3_url: "##YOUR_S3_URL##"
-    s3_access: "##YOUR_S3_ACCESS_KEY##"
-    s3_secret: "##YOUR_S3_ACCESS_SECRET##"
-    AWS_ACCESS_KEY_ID: "YOUR_S3_ACCESS_KEY##"
-    AWS_SECRET_ACCESS_KEY: "YOUR_S3_ACCESS_SECRET##"
-    s3_bucket: "##YOUR_S3_BUCKET##"
-    s3_region: "##YOUR_S3_REGION##"
-    admin_name: "##ADMIN_ACCOUNT_NAME##"
-    admin_password: "##ADMIN_PASSWORD##"
-    admin_org: "##ADMIN_ORGANIZATION##"
-    admin_email: "##ADMIN_EMAIL##"
-    license: "license/license.jws"
+    redis_host: redis-master
+    redis_port: '6379'
+    postgres_host: postgres
+    postgres_port: '5432'
+    postgres_user: postgres
+    postgres_password: '##YOUR_POSTGRES_PASSWORD##'
+    postgres_db: postgres
+    postgres_coffee_db: coffee
+    s3_url: '##YOUR_S3_URL##'
+    s3_access: '##YOUR_S3_ACCESS_KEY##'
+    s3_secret: '##YOUR_S3_ACCESS_SECRET##'
+    AWS_ACCESS_KEY_ID: '##YOUR_S3_ACCESS_KEY##'
+    AWS_SECRET_ACCESS_KEY: '##YOUR_S3_ACCESS_KEY##'
+    s3_bucket: '##YOUR_S3_BUCKET##'
+    s3_region: '##YOUR_S3_REGION##'
+    admin_name: '##ADMIN_ACCOUNT_NAME##'
+    admin_password: '##ADMIN_ACCOUNT_PASSWORD##'
+    admin_org: '##ADMIN_ORGANIZATION##'
+    admin_email: '##ADMIN_EMAIL##'
+    license: license/license.jws
     upload_dashboard: false
     cluster_id: LOGIQ
-    awsServiceEndpoint: "##YOUR_S3_URL##"
-    external_cert_crt: ""
-    external_cert_key: ""
+    awsServiceEndpoint: '##YOUR_S3_URL##'
+    external_cert_crt: ''
+    external_cert_key: ''
+    internal_cert_crt: ''
+    internal_cert_key: ''
+    extraflag: -hauler-node-affinity=false --tail_longpoll=true -persist=true
   persistence:
     storageClass: openebs-hostpath
   chart:
@@ -354,7 +439,7 @@ global:
     grafana: false
 vault:
   enabled: false
-  serverCaCertificateB64: ""
+  serverCaCertificateB64: ''
   serverAddress: https://vault.example.com
-  authMount: "k8s-clustername"
+  authMount: k8s-clustername
   kafkaClientCertDomain: example.com
