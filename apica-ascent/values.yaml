@@ -25,9 +25,11 @@ logiq-flash:
       limits:
         memory: 4000Mi
     sidecarQuery:
+      requests: {}
       limits:
         memory: 4000Mi
     sidecarTracing:
+      requests: {}
       limits:
         memory: 4000Mi
 
@@ -39,6 +41,7 @@ logiq-flash:
         memory: 1500Mi  
 
     sidecarMlTracing:
+      requests: {}
       limits:
         memory: 1500Mi
 
