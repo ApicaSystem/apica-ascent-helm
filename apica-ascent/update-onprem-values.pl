@@ -1,4 +1,8 @@
 #!/usr/bin/env perl
+#
+# Consumes the default values.yaml and produces example values files
+# for on-premises deployments of various sizes. These example files
+# are linked from documentation.
 
 use strict;
 use warnings;
