@@ -45,7 +45,7 @@ spec:
       {{ end }}
       initContainers:
       - name: check-redis
-        image: {{ .Values.global.toolbox.image.repository }}:{{ .Values.global.toolbox.image.tag }}
+        image: {{ .Values.global.imageRegistry }}/{{ .Values.global.toolbox.image.repository }}:{{ .Values.global.toolbox.image.tag }}
         imagePullPolicy: IfNotPresent
         command:
         - sh
@@ -53,7 +53,7 @@ spec:
         - until redis-cli -h {{ .Values.global.environment.redis_host }} ping; do echo "waiting for {{ .Values.global.environment.redis_host }}"; sleep 1;
           done;
       - name: check-postgres
-        image: {{ .Values.global.toolbox.image.repository }}:{{ .Values.global.toolbox.image.tag }}
+        image: {{ .Values.global.imageRegistry }}/{{ .Values.global.toolbox.image.repository }}:{{ .Values.global.toolbox.image.tag }}
         imagePullPolicy: IfNotPresent
         env:
           - name: POSTGRES_PASSWORD
@@ -274,7 +274,7 @@ spec:
           - mountPath: /app/sharedcerts
             name: sharedcert
           {{ end }}
-          image: "{{ .Values.coffee_worker.image.repository }}:{{ .Values.coffee_worker.image.tag }}"
+          image: "{{ .Values.global.imageRegistry }}/{{ .Values.coffee_worker.image.repository }}:{{ .Values.coffee_worker.image.tag }}"
           imagePullPolicy: {{ .Values.coffee_worker.image.pullPolicy}}
           name: coffee-worker
           {{- if .Values.coffee_worker.resources }}
