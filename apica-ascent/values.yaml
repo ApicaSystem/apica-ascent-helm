@@ -5,7 +5,7 @@ logiq-flash:
   service:
     type: NodePort
   image:
-    repository: logiqai/flash
+    repository: docker.io/logiqai/flash
     tag: v3.19.5
     pullPolicy: IfNotPresent
   persistence:
@@ -54,7 +54,7 @@ logiq-flash:
 flash-discovery:
   fullnameOverride: flash-discovery
   image:
-    repository: logiqai/flash-discovery
+    repository: docker.io/logiqai/flash-discovery
     tag: 2.0.3
     pullPolicy: IfNotPresent
   replicaCountDiscovery: 2
@@ -174,7 +174,7 @@ flash-coffee:
   coffee:
     replicaCount: 2
     image:
-      repository: logiqai/flash-brew-coffee
+      repository: docker.io/logiqai/flash-brew-coffee
       tag: brew.v3.20.3
       pullPolicy: IfNotPresent
     resources:
@@ -186,7 +186,7 @@ flash-coffee:
   coffee_worker:
     replicaCount: 2
     image:
-      repository: logiqai/flash-brew-coffee
+      repository: docker.io/logiqai/flash-brew-coffee
       tag: brew.v3.20.3
       pullPolicy: IfNotPresent
     resources:
@@ -382,7 +382,7 @@ grafana:
 
 logiqctl:
   image:
-    repository: logiqai/logiqctl
+    repository: docker.io/logiqai/logiqctl
     tag: 2.0.4
     pullPolicy: IfNotPresent
 
