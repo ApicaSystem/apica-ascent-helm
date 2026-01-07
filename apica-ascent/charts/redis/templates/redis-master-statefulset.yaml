@@ -303,7 +303,7 @@ spec:
       {{- end }}
 {{- if .Values.metrics.enabled }}
       - name: metrics
-        image: {{ .Values.global.imageRegistry }}/{{ template "redis.metrics.image" . }}
+        image: {{ template "redis.metrics.image" . }}
         imagePullPolicy: {{ .Values.metrics.image.pullPolicy | quote }}
         command:
         - /bin/bash
