@@ -274,7 +274,7 @@ spec:
           - mountPath: /app/sharedcerts
             name: sharedcert
           {{ end }}
-          image: "{{ .Values.global.imageRegistry }}{{ .Values.coffee_worker.image.repository }}:{{ .Values.coffee_worker.image.tag }}"
+          image: "{{ .Values.global.imageRegistry }}/{{ .Values.coffee_worker.image.repository }}:{{ .Values.coffee_worker.image.tag }}"
           imagePullPolicy: {{ .Values.coffee_worker.image.pullPolicy}}
           name: coffee-worker
           {{- if .Values.coffee_worker.resources }}
