@@ -466,7 +466,7 @@ spec:
           resources:
 {{ toYaml .Values.resources.sidecarQuery | indent 12 }}
         - name: {{ .Chart.Name }}-tracing
-          image: "{{ .Values.sidecarTracing.image }}:{{ .Values.sidecarTracing.tag }}"
+          image: "{{ .Values.global.imageRegistry }}/{{ .Values.sidecarTracing.image }}:{{ .Values.sidecarTracing.tag }}"
           imagePullPolicy: {{ .Values.sidecarTracing.pullPolicy }}
           command:
           - /bin/sh
