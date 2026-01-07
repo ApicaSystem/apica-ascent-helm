@@ -84,7 +84,7 @@ spec:
       initContainers:
         {{- if and .Values.volumePermissions.enabled .Values.compactor.persistence.enabled }}
         - name: init-chmod-data
-          image: {{ include "thanos.volumePermissions.image" . }}
+          image: {{ .Values.global.imageRegistry }}/{{ include "thanos.volumePermissions.image" . }}
           imagePullPolicy: {{ .Values.volumePermissions.image.pullPolicy | quote }}
           command:
             - sh
@@ -107,7 +107,7 @@ spec:
         {{- include "common.tplvalues.render" (dict "value" .Values.compactor.sidecars "context" $) | nindent 8 }}
         {{- end }}
         - name: compactor
-          image: {{ include "thanos.image" . }}
+          image: {{ .Values.global.imageRegistry }}/{{ include "thanos.image" . }}
           imagePullPolicy: {{ .Values.image.pullPolicy | quote }}
           {{- if .Values.compactor.containerSecurityContext.enabled }}
           securityContext: {{- omit .Values.compactor.containerSecurityContext "enabled" | toYaml | nindent 12 }}

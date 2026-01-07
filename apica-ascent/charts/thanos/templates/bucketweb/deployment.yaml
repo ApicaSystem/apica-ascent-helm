@@ -88,7 +88,7 @@ spec:
         {{- include "common.tplvalues.render" (dict "value" .Values.bucketweb.sidecars "context" $) | nindent 8 }}
         {{- end }}
         - name: bucketweb
-          image: {{ include "thanos.image" . }}
+          image: {{ .Values.global.imageRegistry }}/{{ include "thanos.image" . }}
           imagePullPolicy: {{ .Values.image.pullPolicy | quote }}
           {{- if .Values.bucketweb.containerSecurityContext.enabled }}
           securityContext: {{- omit .Values.bucketweb.containerSecurityContext "enabled" | toYaml | nindent 12 }}
