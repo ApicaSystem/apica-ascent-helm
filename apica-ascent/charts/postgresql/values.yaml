@@ -25,6 +25,7 @@ global:
 ## ref: https://hub.docker.com/r/bitnami/postgresql/tags/
 ##
 image:
+  registry: docker.io
   repository: bitnamilegacy/postgresql
   tag: 12.3.0
   ## Specify a imagePullPolicy
@@ -59,6 +60,7 @@ fullnameOverride: postgres
 volumePermissions:
   enabled: false
   image:
+    registry: docker.io
     repository: bitnami/minideb
     tag: buster
     ## Specify a imagePullPolicy
@@ -508,6 +510,7 @@ metrics:
     rules: []
 
   image:
+    registry: docker.io
     repository: bitnamilegacy/postgres-exporter
     tag: 0.8.0-r9
     pullPolicy: IfNotPresent
