@@ -510,7 +510,6 @@ metrics:
     rules: []
 
   image:
-    registry: docker.io
     repository: bitnamilegacy/postgres-exporter
     tag: 0.8.0-r9
     pullPolicy: IfNotPresent

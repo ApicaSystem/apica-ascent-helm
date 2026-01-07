@@ -64,11 +64,11 @@ spec:
         - -c
         - until $(curl --output /dev/null --silent --fail http://flash-discovery:8081/ready); do echo "waiting for discovery"; sleep 1;
           done;
-        image: {{ .Values.global.toolbox.image.repository }}:{{ .Values.global.toolbox.image.tag }}
+        image: {{ .Values.global.imageRegistry }}/{{ .Values.global.toolbox.image.repository }}:{{ .Values.global.toolbox.image.tag }}
         imagePullPolicy: IfNotPresent
         name: check-discovery
       - name: check-redis
-        image: {{ .Values.global.toolbox.image.repository }}:{{ .Values.global.toolbox.image.tag }}
+        image: {{ .Values.global.imageRegistry }}/{{ .Values.global.toolbox.image.repository }}:{{ .Values.global.toolbox.image.tag }}
         imagePullPolicy: IfNotPresent
         command:
         - sh
@@ -81,7 +81,7 @@ spec:
           - -c
           - until $(curl --output /dev/null --silent --fail http://s3-gateway:9000/minio/health/ready); do echo "waiting for s3-gateway"; sleep 1;
             done;
-        image: {{ .Values.global.toolbox.image.repository }}:{{ .Values.global.toolbox.image.tag }}
+        image: {{ .Values.global.imageRegistry }}/{{ .Values.global.toolbox.image.repository }}:{{ .Values.global.toolbox.image.tag }}
         imagePullPolicy: IfNotPresent
         name: check-s3-gateway
 {{ end }}            
@@ -133,7 +133,7 @@ spec:
       terminationGracePeriodSeconds: 120
       containers:
         - name: {{ .Chart.Name }}
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          image: "{{ .Values.global.imageRegistry }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           args:
           - -c
@@ -321,7 +321,7 @@ spec:
           resources:
 {{ toYaml .Values.resources.ingest | indent 12 }}
         - name: logiq-flash-query
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          image: "{{ .Values.global.imageRegistry }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           args:
           - -c
@@ -466,7 +466,7 @@ spec:
           resources:
 {{ toYaml .Values.resources.sidecarQuery | indent 12 }}
         - name: {{ .Chart.Name }}-tracing
-          image: "{{ .Values.sidecarTracing.image }}:{{ .Values.sidecarTracing.tag }}"
+          image: "{{ .Values.global.imageRegistry }}/{{ .Values.sidecarTracing.image }}:{{ .Values.sidecarTracing.tag }}"
           imagePullPolicy: {{ .Values.sidecarTracing.pullPolicy }}
           command:
           - /bin/sh
