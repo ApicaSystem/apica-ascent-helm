@@ -352,7 +352,7 @@ spec:
             {{- toYaml .Values.coffee.resources | nindent 12 }}
           {{- end }}
         - name: ssr-report-gen
-          image: docker.io/logiqai/ssr-server:v12
+          image: logiqai/ssr-server:v12
           imagePullPolicy: IfNotPresent
           env:
             - name: SSR_HOST

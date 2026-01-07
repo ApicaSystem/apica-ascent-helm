@@ -1,7 +1,7 @@
 logiq-flash:
-  replicaCount: 2
-  replicaCountMl: 2
-  replicaCountSync: 2
+  replicaCount: 1
+  replicaCountMl: 1
+  replicaCountSync: 1
   service:
     type: NodePort
   image:
@@ -55,7 +55,7 @@ flash-discovery:
     repository: logiqai/flash-discovery
     tag: 2.0.3
     pullPolicy: IfNotPresent
-  replicaCountDiscovery: 2
+  replicaCountDiscovery: 1
   persistence:
     enabled: true
     size: 2Gi
@@ -74,7 +74,7 @@ redis:
   master:
     resources:
       limits:
-        memory: 6000Mi
+        memory: 2000Mi
       requests:
         memory: 500Mi
         cpu: 100m
@@ -152,7 +152,7 @@ postgres:
     size: 20Gi
   resources:
     limits:
-      memory: 20000Mi
+      memory: 8000Mi
     requests:
       memory: 4000Mi
       cpu: 500m
@@ -167,7 +167,7 @@ flash-coffee:
   service:
     type: ClusterIP
   coffee:
-    replicaCount: 2
+    replicaCount: 1
     image:
       repository: logiqai/flash-brew-coffee
       tag: brew.v3.20.3
@@ -179,7 +179,7 @@ flash-coffee:
       limits:
         memory: 1000Mi
   coffee_worker:
-    replicaCount: 2
+    replicaCount: 1
     image:
       repository: logiqai/flash-brew-coffee
       tag: brew.v3.20.3
@@ -321,8 +321,8 @@ prometheus:
         memory: 500Mi
         cpu: 300m
       limits:
-        memory: 6000Mi
-    replicaCount: 2
+        memory: 2000Mi
+    replicaCount: 1
     persistence:
       enabled: true
       size: 20Gi
