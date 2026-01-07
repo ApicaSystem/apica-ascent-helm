@@ -133,7 +133,7 @@ spec:
       {{- end }}
       containers:
         - name: {{ template "postgresql.fullname" . }}
-          image: {{ .Values.global.imageRegistry }}/{{ template "postgresql.image" . }}
+          image: {{ template "postgresql.image" . }}
           imagePullPolicy: "{{ .Values.image.pullPolicy }}"
           {{- if .Values.resources }}
           resources: {{- toYaml .Values.resources | nindent 12 }}
@@ -336,7 +336,7 @@ spec:
 {{- end }}
 {{- if .Values.metrics.enabled }}
         - name: metrics
-          image: {{ .Values.global.imageRegistry }}/{{ template "postgresql.metrics.image" . }}
+          image: {{ template "postgresql.metrics.image" . }}
           imagePullPolicy: {{ .Values.metrics.image.pullPolicy | quote }}
          {{- if .Values.metrics.securityContext.enabled }}
           securityContext:
