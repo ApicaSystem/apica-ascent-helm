@@ -42,7 +42,7 @@ spec:
         runAsGroup: 1000
       initContainers:
       - name: check-redis
-        image: {{ .Values.global.toolbox.image.repository }}:{{ .Values.global.toolbox.image.tag }}
+        image: {{ .Values.global.imageRegistry }}/{{ .Values.global.toolbox.image.repository }}:{{ .Values.global.toolbox.image.tag }}
         imagePullPolicy: IfNotPresent
         command:
         - sh
@@ -55,7 +55,7 @@ spec:
           - -c
           - until $(curl --output /dev/null --silent --fail http://s3-gateway:9000/minio/health/ready); do echo "waiting for s3-gateway"; sleep 1;
             done;
-        image: {{ .Values.global.toolbox.image.repository }}:{{ .Values.global.toolbox.image.tag }}
+        image: {{ .Values.global.imageRegistry }}/{{ .Values.global.toolbox.image.repository }}:{{ .Values.global.toolbox.image.tag }}
         imagePullPolicy: IfNotPresent
         name: check-s3-gateway
 {{ end }}        
@@ -64,7 +64,7 @@ spec:
         - -c
         - until $(curl --output /dev/null --silent --fail http://logiq-flash:8080/ready); do echo "waiting for flash"; sleep 1;
           done;
-        image: {{ .Values.global.toolbox.image.repository }}:{{ .Values.global.toolbox.image.tag }}
+        image: {{ .Values.global.imageRegistry }}/{{ .Values.global.toolbox.image.repository }}:{{ .Values.global.toolbox.image.tag }}
         imagePullPolicy: IfNotPresent
         name: check-flash
       volumes:
@@ -101,7 +101,7 @@ spec:
       {{ end }}
       containers:
         - name: {{ .Chart.Name }}-ml
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          image: "{{ .Values.global.imageRegistry }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           args:
           - -c
@@ -245,7 +245,7 @@ spec:
           resources:
 {{ toYaml .Values.resources.ml | indent 12 }}
         - name: {{ .Chart.Name }}-tracing
-          image: "{{ .Values.sidecarTracingMl.image }}:{{ .Values.sidecarTracingMl.tag }}"
+          image: "{{ .Values.global.imageRegistry }}/{{ .Values.sidecarTracingMl.image }}:{{ .Values.sidecarTracingMl.tag }}"
           imagePullPolicy: {{ .Values.sidecarTracingMl.pullPolicy }}
           command:
           - /bin/sh

@@ -93,7 +93,7 @@ spec:
         {{- include "common.tplvalues.render" (dict "value" .Values.queryFrontend.sidecars "context" $) | nindent 8 }}
         {{- end }}
         - name: query-frontend
-          image: {{ include "thanos.image" . }}
+          image: {{ .Values.global.imageRegistry }}/{{ include "thanos.image" . }}
           imagePullPolicy: {{ .Values.image.pullPolicy | quote }}
           {{- if .Values.queryFrontend.containerSecurityContext.enabled }}
           securityContext: {{- omit .Values.queryFrontend.containerSecurityContext "enabled" | toYaml | nindent 12 }}

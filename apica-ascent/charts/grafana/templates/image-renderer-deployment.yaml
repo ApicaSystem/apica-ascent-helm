@@ -41,7 +41,7 @@ spec:
       {{- end }}
       containers:
         - name: grafana-image-renderer
-          image: {{ template "grafana.imageRenderer.image" . }}
+          image: {{ .Values.global.imageRegistry }}/{{ template "grafana.imageRenderer.image" . }}
           imagePullPolicy: {{ .Values.imageRenderer.image.pullPolicy }}
           env:
             - name: HTTP_PORT

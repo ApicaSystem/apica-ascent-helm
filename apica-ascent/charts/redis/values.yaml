@@ -17,7 +17,6 @@ global:
 ## ref: https://hub.docker.com/r/bitnami/redis/tags/
 ##
 image:
-  registry: docker.io
   repository: bitnamilegacy/redis
   ## Bitnami Redis image tag
   ## ref: https://github.com/bitnami/bitnami-docker-redis#supported-tags-and-respective-dockerfile-links

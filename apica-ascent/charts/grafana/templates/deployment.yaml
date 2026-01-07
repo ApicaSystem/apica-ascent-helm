@@ -75,7 +75,7 @@ spec:
       {{- end }}
       containers:
         - name: grafana
-          image: {{ template "grafana.image" . }}
+          image: {{ .Values.global.imageRegistry }}/{{ template "grafana.image" . }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           envFrom:
             - configMapRef:
