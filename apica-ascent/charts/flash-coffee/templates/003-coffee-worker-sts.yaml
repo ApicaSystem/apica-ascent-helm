@@ -45,7 +45,7 @@ spec:
       {{ end }}
       initContainers:
       - name: check-redis
-        image: {{ .Values.global.toolbox.image.repository }}:{{ .Values.global.toolbox.image.tag }}
+        image: {{ .Values.global.imageRegistry }}/{{ .Values.global.toolbox.image.repository }}:{{ .Values.global.toolbox.image.tag }}
         imagePullPolicy: IfNotPresent
         command:
         - sh
