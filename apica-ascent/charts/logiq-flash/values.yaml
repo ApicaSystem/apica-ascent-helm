@@ -16,7 +16,7 @@ sidecarTracing:
        imagePullPolicy: Always
 
 sidecarTracingMl:
-       image: docker.io/logiqai/tracing
+       image: logiqai/tracing
        tag: v1.35.2-lq1-q
        imagePullPolicy: Always
         
