@@ -8,119 +8,129 @@ metadata:
     {{- include "logiq.labels" . | nindent 4 }}
 spec:
   parentRefs:
-  - group: gateway.networking.k8s.io	
+  - group: gateway.networking.k8s.io
     kind: Gateway
     name: {{ .Release.Name }}-gateway
     sectionName: {{ if .Values.gateway.tls.enabled }}https{{ else }}http{{ end }}
+
   {{- if .Values.global.domain }}
   hostnames:
   - {{ .Values.global.domain | quote }}
   {{- end }}
+
   rules:
-  # Health check endpoints
+  # Health and readiness probes used by Kubernetes and load balancers.
   - matches:
     - path:
         type: PathPrefix
         value: /live
     backendRefs:
-      - group: ''	
+      - group: ''
         kind: Service
         name: logiq-flash
         port: 9999
         weight: 1
+
   - matches:
     - path:
         type: PathPrefix
         value: /ready
     backendRefs:
-      - group: ''	
+      - group: ''
         kind: Service
         name: logiq-flash
         port: 9999
         weight: 1
-  # OTLP endpoints
+
+  # OpenTelemetry ingestion endpoints.
   - matches:
     - path:
         type: PathPrefix
         value: /v1/logs
     backendRefs:
-      - group: ''	
+      - group: ''
         kind: Service
         name: logiq-flash
         port: 9999
         weight: 1
+
   - matches:
     - path:
         type: PathPrefix
         value: /v1/traces
     backendRefs:
-      - group: ''	
+      - group: ''
         kind: Service
         name: logiq-flash
         port: 9999
         weight: 1
+
   - matches:
     - path:
         type: PathPrefix
         value: /v1/metrics
     backendRefs:
-      - group: ''	
+      - group: ''
         kind: Service
         name: logiq-flash
         port: 9999
         weight: 1
-  # Distributed tracing UI
+
+  # Distributed tracing UI (Jaeger-style UI exposed by ML service).
   - matches:
     - path:
         type: PathPrefix
         value: /dtracing
     backendRefs:
     {{- if .Values.global.nodePort.enabled }}
-      - group: ''	
+      - group: ''
         kind: Service
         name: logiq-flash-ml-np
         port: 16686
         weight: 1
     {{- else }}
-      - group: ''	
+      - group: ''
         kind: Service
         name: logiq-flash-ml
         port: 16686
         weight: 1
     {{- end }}
-  # Thanos receive endpoint
+
+  # Thanos remote-write receive endpoint (optional, enabled per deployment).
   {{- if .Values.global.chart.thanos }}
   - matches:
     - path:
         type: PathPrefix
         value: /api/v1/receive
     backendRefs:
-      - group: ''	
+      - group: ''
         kind: Service
         name: {{ .Release.Namespace }}-thanos-receive
         port: 19291
         weight: 1
-    {{- end }}
-  # API v2 endpoints
+  {{- end }}
+
+  # API v2 endpoints.
   - matches:
     - path:
         type: PathPrefix
         value: /v2
     backendRefs:
     {{- if .Values.global.nodePort.enabled }}
-      - group: ''	
+      - group: ''
         kind: Service
         name: logiq-flash-ml-np
         port: 9999
         weight: 1
-  {{- else }}
-      - group: ''	
+    {{- else }}
+      - group: ''
         kind: Service
         name: logiq-flash-ml
         port: 9999
         weight: 1
-  {{- end }}
-  # API v1 endpoints (general)
+    {{- end }}
+
+  # API v1 endpoints (general routing).
   - matches:
     - path:
         type: PathPrefix
@@ -139,7 +149,8 @@ spec:
         port: 9999
         weight: 1
     {{- end }}
-  # JSON batch ingestion
+
+  # JSON ingestion endpoints.
   - matches:
     - path:
         type: PathPrefix
@@ -150,55 +161,76 @@ spec:
         name: logiq-flash
         port: 9999
         weight: 1
-  # JSON ingestion
+
   - matches:
     - path:
         type: PathPrefix
         value: /v1/json
     backendRefs:
-      - group: ''	
+      - group: ''
         kind: Service
         name: logiq-flash
         port: 9999
         weight: 1
-  # Tenant API
+
+  # Tenant management APIs.
   - matches:
     - path:
         type: PathPrefix
         value: /v1/tenant
     backendRefs:
-      - group: ''	
+      - group: ''
         kind: Service
         name: logiq-flash
         port: 9999
         weight: 1
-  # Jaeger traces API
+
+  # Jaeger-compatible trace ingestion.
   - matches:
     - path:
         type: PathPrefix
         value: /api/traces
     backendRefs:
-      - group: ''	
+      - group: ''
         kind: Service
         name: logiq-flash
         port: 14268
         weight: 1
-    {{- if .Values.gateway.extraRoutes }}
-    # Extra routes from values (e.g., OKE specific routes)
-    {{- range .Values.gateway.extraRoutes }}
+
+  # Additional routes injected via values.yaml (cloud or environment specific).
+  {{- if .Values.gateway.extraRoutes }}
+  {{- range .Values.gateway.extraRoutes }}
   - matches:
     - path:
         type: {{ .pathType | default "PathPrefix" }}
         value: {{ .path }}
     backendRefs:
-      - group: ''	
+      - group: ''
         kind: Service
         name: {{ .backend.service.name }}
         port: {{ .backend.service.port.number }}
   {{- end }}
   {{- end }}
-  # Default route - Coffee UI (must be last)
-  # Includes static asset caching for js, css, images
+
+  # Static assets are cacheable and immutable; must be evaluated before "/" route.
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /assets/
+    filters:
+    - type: ResponseHeaderModifier
+      responseHeaderModifier:
+        set:
+        - name: Cache-Control
+          value: "public, max-age=31536000, immutable"
+    backendRefs:
+      - group: ''
+        kind: Service
+        name: coffee
+        port: 80
+        weight: 1
+
+  # IMPORTANT: This rule must always be last.
   - matches:
     - path:
         type: PathPrefix
@@ -208,11 +240,12 @@ spec:
       responseHeaderModifier:
         set:
         - name: Cache-Control
-          value: "public, max-age=2592000"  # 30 days for static assets
+          value: "no-store"
     backendRefs:
-      - group: ''	
+      - group: ''
         kind: Service
         name: coffee
         port: 80
         weight: 1
 {{- end }}
+
