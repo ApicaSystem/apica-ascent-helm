@@ -324,7 +324,7 @@ prometheus:
     enabled: true
     resources:
       requests:
-        memory: 15Gi
+        memory: 500Mi
         cpu: 300m
       limits:
         memory: 2000Mi
