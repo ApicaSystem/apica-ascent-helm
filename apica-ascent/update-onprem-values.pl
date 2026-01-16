@@ -3,6 +3,8 @@
 # Consumes the default values.yaml and produces example values files
 # for on-premises deployments of various sizes. These example files
 # are linked from documentation.
+#
+# Ubuntu users need the libyaml-pp-perl package to run this script.
 
 use strict;
 use warnings;
