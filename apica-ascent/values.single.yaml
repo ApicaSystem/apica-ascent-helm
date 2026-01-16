@@ -6,7 +6,7 @@ logiq-flash:
     type: NodePort
   image:
     repository: logiqai/flash
-    tag: v3.19.5
+    tag: v3.20.0
     pullPolicy: IfNotPresent
   persistence:
     enabled: true
@@ -176,7 +176,7 @@ flash-coffee:
     replicaCount: 1
     image:
       repository: logiqai/flash-brew-coffee
-      tag: brew.v3.20.3
+      tag: brew.v3.21.0
       pullPolicy: IfNotPresent
     resources:
       requests:
@@ -188,7 +188,7 @@ flash-coffee:
     replicaCount: 1
     image:
       repository: logiqai/flash-brew-coffee
-      tag: brew.v3.20.3
+      tag: brew.v3.21.0
       pullPolicy: IfNotPresent
     resources:
       requests:
@@ -324,7 +324,7 @@ prometheus:
     enabled: true
     resources:
       requests:
-        memory: 500Mi
+        memory: 15Gi
         cpu: 300m
       limits:
         memory: 2000Mi
