@@ -349,10 +349,10 @@ prometheus:
     enabled: true
     resources:
       requests:
-        memory: 500Mi
+        memory: 15Gi
         cpu: 300m
       limits:
-        memory: 6000Mi
+        memory: 15Gi
     replicaCount: 2
     persistence:
       enabled: true
