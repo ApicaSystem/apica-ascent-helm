@@ -1,6 +1,6 @@
 apiVersion: v2
 appVersion: v3.10.2
-version: 3.0.0
+version: 3.0.1
 description: Apica Ascent Data Fabric - Cloud-native observability platform with Envoy Gateway
 keywords:
   - apica
