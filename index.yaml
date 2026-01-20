@@ -59,7 +59,7 @@ entries:
       name: thanos
       repository: https://charts.bitnami.com/bitnami
       version: 8.2.5
-    description: Apica Ascent Data Fabric - Cloud-native observability platform with
+    description: Apica Ascent - Cloud-native observability platform with
       Envoy Gateway
     digest: ac15c8a882916c3909f051d0859f5d1feca2acc4067506f8f27ad5e06b34df61
     home: https://apica.io

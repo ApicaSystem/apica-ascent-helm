@@ -137,7 +137,7 @@ You can now run `helm search repo apica-repo` to see the available helm charts
 ```bash
 $ helm search repo apica-repo
 NAME                CHART VERSION        APP VERSION                     DESCRIPTION
-apica-repo/apica    apica-ascent-3.0.0    v3.10.2      Ascent Observability Data Fabric for Kubernetes
+apica-repo/apica    apica-ascent-3.0.0    v3.10.2      Ascent Observability for Kubernetes
 ```
 
 ### 1.2 Create namespace where Ascent will be deployed
