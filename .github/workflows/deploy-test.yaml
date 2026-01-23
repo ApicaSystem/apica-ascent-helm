@@ -11,10 +11,10 @@ on:
 jobs:
   trigger-ci:
     runs-on: ubuntu-latest
-      steps:
-      - name: Trigger Helm deploy test
-        run: |
-          curl -X POST \
-            -H "Content-Type: application/json" \
-            -d '{ "ref": "${{ github.ref }}", "commit": "${{ github.sha }}", "pusher": "${{ github.actor }}" }' \
-            "${{ secrets.JENKINS_URL }}/generic-webhook-trigger/invoke?token=${{ secrets.CI_WEBHOOK_TOKEN }}"
+    steps:
+    - name: Trigger Helm deploy test
+      run: |
+        curl -X POST \
+          -H "Content-Type: application/json" \
+          -d '{ "ref": "${{ github.ref }}", "commit": "${{ github.sha }}", "pusher": "${{ github.actor }}" }' \
+          "${{ secrets.JENKINS_URL }}/generic-webhook-trigger/invoke?token=${{ secrets.CI_WEBHOOK_TOKEN }}"
