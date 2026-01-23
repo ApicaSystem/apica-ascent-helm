@@ -8,6 +8,7 @@ on:
     - 'github-markdown.css'
     - 'index.*'
     - 'README.md'
+  workflow_dispatch:
 
 jobs:
   trigger-ci:
