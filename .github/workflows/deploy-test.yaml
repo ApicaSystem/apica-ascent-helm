@@ -1,3 +1,4 @@
+name: 'Perform A Test Deploy'
 on:
   push:
     branches:
