@@ -9,6 +9,11 @@ on:
     - 'index.*'
     - 'README.md'
   workflow_dispatch:
+    inputs:
+      branch:
+        description: The branch to use for the deploy test
+        required: true
+        default: 'master'
 
 jobs:
   trigger-ci:
