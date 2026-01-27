@@ -1,0 +1,27 @@
+name: 'Perform A Test Deploy'
+on:
+  push:
+    branches:
+    - 'master'
+    paths-ignore:
+    - '*.tgz'
+    - 'github-markdown.css'
+    - 'index.*'
+    - 'README.md'
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: The branch to use for the deploy test
+        required: true
+        default: 'master'
+
+jobs:
+  trigger-ci:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Trigger Helm deploy test
+      run: |
+        curl -X POST \
+          -H "Content-Type: application/json" \
+          -d '{ "branch": "'"${GITHUB_REF##*/}"'", "commit": "'"${GITHUB_SHA}"'", "pusher": "'"${GITHUB_TRIGGERING_ACTOR}"'" }' \
+          "${{ secrets.JENKINS_URL }}/generic-webhook-trigger/invoke?token=${{ secrets.CI_WEBHOOK_TOKEN }}"
