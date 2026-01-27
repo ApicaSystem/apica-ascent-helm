@@ -166,18 +166,6 @@ spec:
         port: 9999
         weight: 1
 
-  # Tenant management APIs (must come before general /v1 route).
-  - matches:
-    - path:
-        type: PathPrefix
-        value: /v1/tenant
-    backendRefs:
-      - group: ''
-        kind: Service
-        name: logiq-flash
-        port: 9999
-        weight: 1
-
   # API v1 endpoints (general routing - must come AFTER all specific /v1/* routes).
   - matches:
     - path:
@@ -218,19 +206,11 @@ spec:
         type: PathPrefix
         value: /api
     backendRefs:
-    {{- if .Values.global.nodePort.enabled }}
       - group: ''
         kind: Service
-        name: logiq-flash-ml-np
-        port: 9999
+        name: coffee
+        port: 80
         weight: 1
-    {{- else }}
-      - group: ''
-        kind: Service
-        name: logiq-flash-ml
-        port: 9999
-        weight: 1
-    {{- end }}
 
   # Additional routes injected via values.yaml (cloud or environment specific).
   {{- if .Values.gateway.extraRoutes }}
