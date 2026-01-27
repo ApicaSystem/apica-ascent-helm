@@ -20,6 +20,7 @@ spec:
 
   rules:
   # Health and readiness probes used by Kubernetes and load balancers.
+  # Port 8080 is the liveness-port exposed by logiq-flash service
   - matches:
     - path:
         type: PathPrefix
@@ -28,7 +29,7 @@ spec:
       - group: ''
         kind: Service
         name: logiq-flash
-        port: 9999
+        port: 8080
         weight: 1
 
   - matches:
@@ -39,7 +40,7 @@ spec:
       - group: ''
         kind: Service
         name: logiq-flash
-        port: 9999
+        port: 8080
         weight: 1
 
   # OpenTelemetry ingestion endpoints.
@@ -96,6 +97,18 @@ spec:
         weight: 1
     {{- end }}
 
+  # Prometheus remote-write receive endpoint (must come before /v1 route)
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /v1/receive/prometheus
+    backendRefs:
+      - group: ''
+        kind: Service
+        name: logiq-flash
+        port: 9999
+        weight: 1
+
   # Thanos remote-write receive endpoint (optional, enabled per deployment).
   {{- if .Values.global.chart.thanos }}
   - matches:
@@ -130,27 +143,7 @@ spec:
         weight: 1
     {{- end }}
 
-  # API v1 endpoints (general routing).
-  - matches:
-    - path:
-        type: PathPrefix
-        value: /v1
-    backendRefs:
-    {{- if .Values.global.nodePort.enabled }}
-      - group: ''
-        kind: Service
-        name: logiq-flash-ml-np
-        port: 9999
-        weight: 1
-    {{- else }}
-      - group: ''
-        kind: Service
-        name: logiq-flash-ml
-        port: 9999
-        weight: 1
-    {{- end }}
-
-  # JSON ingestion endpoints.
+  # JSON ingestion endpoints (must come before general /v1 route).
   - matches:
     - path:
         type: PathPrefix
@@ -173,17 +166,25 @@ spec:
         port: 9999
         weight: 1
 
-  # Tenant management APIs.
+  # API v1 endpoints (general routing - must come AFTER all specific /v1/* routes).
   - matches:
     - path:
         type: PathPrefix
-        value: /v1/tenant
+        value: /v1
     backendRefs:
+    {{- if .Values.global.nodePort.enabled }}
       - group: ''
         kind: Service
-        name: logiq-flash
+        name: logiq-flash-ml-np
         port: 9999
         weight: 1
+    {{- else }}
+      - group: ''
+        kind: Service
+        name: logiq-flash-ml
+        port: 9999
+        weight: 1
+    {{- end }}
 
   # Jaeger-compatible trace ingestion.
   - matches:
@@ -195,6 +196,20 @@ spec:
         kind: Service
         name: logiq-flash
         port: 14268
+        weight: 1
+
+  # General API endpoints (organization, etc.)
+  # This must come after specific /api routes (/api/v1/receive, /api/traces)
+  # but before the catch-all / route
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /api
+    backendRefs:
+      - group: ''
+        kind: Service
+        name: coffee
+        port: 80
         weight: 1
 
   # Additional routes injected via values.yaml (cloud or environment specific).
