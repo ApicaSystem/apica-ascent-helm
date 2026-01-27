@@ -268,6 +268,10 @@ thanos:
       cpu: 50m
     limits:
       memory: 200Mi
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
   storegateway:
     enabled: true
     requests:
