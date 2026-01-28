@@ -6,7 +6,7 @@ entries:
       licenses: Apache-2.0
     apiVersion: v2
     appVersion: v3.10.2
-    created: "2026-01-27T12:38:25.295941-05:00"
+    created: "2026-01-28T07:41:56.201421-05:00"
     dependencies:
     - condition: global.chart.flash-coffee
       name: flash-coffee
@@ -60,7 +60,7 @@ entries:
       repository: https://charts.bitnami.com/bitnami
       version: 8.2.5
     description: Apica Ascent - Cloud-native observability platform with Envoy Gateway
-    digest: 0c422bb1e37eda07f43dc88a9aee7973682f93aa603a9a23351fd77ac7937b8b
+    digest: 3c0c28b1c86ef8fff34629cd84cd94417fa652e66982b0832b0417f797083320
     home: https://apica.io
     icon: https://www.apica.io/wp-content/uploads/2023/01/apica-logo-white-2022.png
     keywords:
@@ -97,7 +97,7 @@ entries:
       licenses: Apache-2.0
     apiVersion: v2
     appVersion: v3.10.2
-    created: "2026-01-27T12:38:25.276472-05:00"
+    created: "2026-01-28T07:41:56.181973-05:00"
     dependencies:
     - condition: global.chart.flash-coffee
       name: flash-coffee
@@ -184,4 +184,4 @@ entries:
     urls:
     - apica-ascent-3.0.1.tgz
     version: 3.0.1
-generated: "2026-01-27T12:38:25.251983-05:00"
+generated: "2026-01-28T07:41:56.158564-05:00"
