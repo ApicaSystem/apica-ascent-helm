@@ -1577,7 +1577,7 @@ kube-state-metrics:
 kubelet:
   ## @param kubelet.enabled Create a ServiceMonitor to scrape kubelet service
   ##
-  enabled: true
+  enabled: false
   ## @param kubelet.namespace Namespace where kubelet service is deployed. Related configuration `operator.kubeletService.namespace`
   ##
   namespace: kube-system
