@@ -1,8 +1,6 @@
 name: 'Perform A Test Deploy'
 on:
-  push:
-    branches:
-    - 'master'
+  pull_request:
     paths-ignore:
     - '*.tgz'
     - 'github-markdown.css'
@@ -23,5 +21,5 @@ jobs:
       run: |
         curl -X POST \
           -H "Content-Type: application/json" \
-          -d '{ "branch": "'"${GITHUB_REF##*/}"'", "commit": "'"${GITHUB_SHA}"'", "pusher": "'"${GITHUB_TRIGGERING_ACTOR}"'" }' \
+          -d '{ "branch": "'"${GITHUB_HEAD_REF##*/}"'", "commit": "'"${GITHUB_SHA}"'", "pusher": "'"${GITHUB_TRIGGERING_ACTOR}"'" }' \
           "${{ secrets.JENKINS_URL }}/generic-webhook-trigger/invoke?token=${{ secrets.CI_WEBHOOK_TOKEN }}"
