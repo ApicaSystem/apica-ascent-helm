@@ -15,4 +15,5 @@ generate a new tarball.
 and push it.
    ```
    git tag -a <semver> <commit-hash> -m "Release <semver>"
+   git push origin <semver>
    ```
