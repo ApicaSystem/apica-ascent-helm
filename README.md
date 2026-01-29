@@ -11,3 +11,8 @@ generate a new tarball.
 1. Run `helm repo index .` from the top-level directory. This will update
 `index.yaml` so clients see the new version.
 1. Open a pull request to get the changes merged.
+1. Once the PR is merged, create an annotated tag matching the release version
+and push it.
+   ```
+   git tag -a <semver> <commit-hash> -m "Release <semver>"
+   ```
