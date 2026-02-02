@@ -340,7 +340,7 @@ apicaTLSSecret:
 
 prometheus:
   fullnameOverride: prometheus
-  retention: 4d
+  retention: 7d
   persistence:
     enabled: true
     size: 20Gi
@@ -352,6 +352,7 @@ prometheus:
       size: 20Gi
   prometheus:
     enabled: true
+    retention: 7d
     resources:
       requests:
         memory: 15Gi
