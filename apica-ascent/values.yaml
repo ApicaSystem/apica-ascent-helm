@@ -351,6 +351,7 @@ prometheus:
       size: 20Gi
   prometheus:
     enabled: true
+    retention: 4d
     resources:
       requests:
         memory: 15Gi
