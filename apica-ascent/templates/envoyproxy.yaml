@@ -33,4 +33,5 @@ spec:
           value:
             spec:
               externalTrafficPolicy: {{ .Values.envoyGateway.envoyProxy.provider.service.externalTrafficPolicy | default "Cluster" }}
+  
 {{- end }}
