@@ -335,10 +335,11 @@ envoyGateway:
         port: 8081
         protocol: TCP
 
-  # Compression configuration using BackendTrafficPolicy
-  compression:
+  # Compression configuration using BackendTrafficPolicy compressor field
+  compressor:
     enabled: true
     # Compression quality (1-9, where 6 is default, 9 is best compression)
+    quality: 6
 apicaTLSSecret:
   enabled: true
 
