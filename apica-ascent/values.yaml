@@ -339,7 +339,6 @@ envoyGateway:
   compressor:
     enabled: true
     # Compression quality (1-9, where 6 is default, 9 is best compression)
-    quality: 6
 apicaTLSSecret:
   enabled: true
 

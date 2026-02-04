@@ -36,6 +36,6 @@ spec:
   compressor:
     - type: Gzip
       gzip:
-        quality: {{ .Values.envoyGateway.compressor.quality | default 6 }}
+        #quality: {{ .Values.envoyGateway.compressor.quality | default 6 }}
   {{- end }}
 {{- end }}
