@@ -249,8 +249,10 @@ spec:
       kind: PersistentVolumeClaim
       metadata:
         name: data
+        annotations:
+          argocd.argoproj.io/sync-options: Delete=false
         {{- if .Values.storegateway.persistence.annotations }}
-        annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.storegateway.persistence.annotations "context" $) | nindent 10 }}
+        {{- include "common.tplvalues.render" ( dict "value" .Values.storegateway.persistence.annotations "context" $) | nindent 10 }}
         {{- end }}
       spec:
         accessModes:
