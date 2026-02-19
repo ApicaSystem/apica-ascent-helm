@@ -431,8 +431,6 @@ spec:
           release: {{ .Release.Name }}
           heritage: {{ .Release.Service }}
           component: slave
-        annotations:
-          argocd.argoproj.io/sync-options: Delete=false
       spec:
         accessModes:
         {{- range .Values.slave.persistence.accessModes }}

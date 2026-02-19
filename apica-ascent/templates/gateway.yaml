@@ -10,8 +10,6 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "logiq.labels" . | nindent 4 }}
-  annotations:
-    argocd.argoproj.io/sync-options: Delete=false
 spec:
   # Reference to per-namespace GatewayClass
   # The GatewayClass has parametersRef pointing to EnvoyProxy config
