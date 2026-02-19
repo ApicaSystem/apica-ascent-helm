@@ -10,8 +10,6 @@ metadata:
     chart: {{ template "minio.chart" . }}
     release: {{ .Release.Name }}
     heritage: {{ .Release.Service }}
-  annotations:
-    argocd.argoproj.io/sync-options: Delete=false
 spec:
 {{- if and .Values.nasgateway.enabled .Values.nasgateway.pv }}
   selector:

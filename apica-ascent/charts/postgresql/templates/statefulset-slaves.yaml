@@ -295,13 +295,12 @@ spec:
   volumeClaimTemplates:
     - metadata:
         name: data
+      {{- with .Values.persistence.annotations }}
         annotations:
-          argocd.argoproj.io/sync-options: Delete=false
-        {{- with .Values.persistence.annotations }}
         {{- range $key, $value := . }}
           {{ $key }}: {{ $value }}
         {{- end }}
-        {{- end }}
+      {{- end }}
       spec:
         accessModes:
         {{- range .Values.persistence.accessModes }}

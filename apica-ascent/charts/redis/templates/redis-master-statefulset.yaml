@@ -415,8 +415,6 @@ spec:
           release: {{ .Release.Name }}
           heritage: {{ .Release.Service }}
           component: master
-        annotations:
-          argocd.argoproj.io/sync-options: Delete=false
       spec:
         accessModes:
         {{- range .Values.master.persistence.accessModes }}
