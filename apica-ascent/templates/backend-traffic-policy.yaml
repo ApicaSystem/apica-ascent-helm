@@ -30,4 +30,12 @@ spec:
   loadBalancer:
     # nginx.ingress.kubernetes.io/load-balance: round_robin
     type: RoundRobin
+  
+  {{- if .Values.envoyGateway.compressor.enabled }}
+  # Compression configuration using compressor field (new API)
+  compressor:
+    - type: Gzip
+      gzip:
+        quality: {{ .Values.envoyGateway.compressor.quality | default 6 }}
+  {{- end }}
 {{- end }}
