@@ -236,12 +236,14 @@ spec:
           emptyDir: {}
   {{- else if and .Values.receive.persistence.enabled (not .Values.receive.persistence.existingClaim) }}
   volumeClaimTemplates:
-    - apiVersion: v1 
+    - apiVersion: v1
       kind: PersistentVolumeClaim
       metadata:
         name: data
+        annotations:
+          argocd.argoproj.io/sync-options: Delete=false
         {{- if .Values.receive.persistence.annotations }}
-        annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.receive.persistence.annotations "context" $) | nindent 10 }}
+        {{- include "common.tplvalues.render" ( dict "value" .Values.receive.persistence.annotations "context" $) | nindent 10 }}
         {{- end }}
       spec:
         accessModes:

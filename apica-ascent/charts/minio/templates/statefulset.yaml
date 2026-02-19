@@ -300,6 +300,8 @@ spec:
     {{- range $diskId := until $drivesPerNode}}
     - metadata:
         name: export-{{ $diskId }}
+        annotations:
+          argocd.argoproj.io/sync-options: Delete=false
       spec:
         accessModes: [ {{ $accessMode | quote }} ]
         {{- if $storageClass }}
@@ -312,6 +314,8 @@ spec:
   {{- else }}
     - metadata:
         name: export
+        annotations:
+          argocd.argoproj.io/sync-options: Delete=false
       spec:
         accessModes: [ {{ $accessMode | quote }} ]
         {{- if $storageClass }}

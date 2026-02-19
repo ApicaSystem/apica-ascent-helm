@@ -6,6 +6,8 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels: {{- include "grafana.labels" . | nindent 4 }}
     app.kubernetes.io/component: grafana
+  annotations:
+    argocd.argoproj.io/sync-options: Delete=false
 spec:
   accessModes:
     - {{ .Values.persistence.accessMode | quote }}
