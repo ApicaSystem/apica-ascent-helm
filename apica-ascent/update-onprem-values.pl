@@ -75,6 +75,10 @@ foreach my $size (@tshirts) {
     # Envoy proxy annotations not needed
     delete $clone->{envoyGateway}{envoyProxy}{provider}{service}{annotations};
 
+    # Restore original prometheus resources
+    $clone->{prometheus}{prometheus}{resources}{requests}{memory} = '500Mi';
+    $clone->{prometheus}{prometheus}{resources}{limits}{memory}   = '6000Mi';
+
     # Reduce memory limits for single-node
     if ($size eq 'single') {
         $clone->{postgres}{resources}{limits}{memory}               = '8000Mi';
