@@ -325,7 +325,7 @@ spec:
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           args:
           - -c
-          - /flash/bin/flash -config /flash/config/config.yaml -install_root /flash -runtime_folder /flash/db -discovery_domain $(DISCOVERY_DOMAIN) -discovery_url $(DISCOVERY_URL) -discovery_id $(DISCOVERY_ID) -pg_max_open_conns 10 -pg_max_open_Conns 10 -postgres_timeout 20s --pg_conn_max_lifetime 5m -grpc_port 51054 -health_check_port 18080 --sidecar-node -api_port 19999 {{ .Values.global.environment.extraflag }}
+          - /flash/bin/flash -config /flash/config/config.yaml -install_root /flash -runtime_folder /flash/db -discovery_domain $(DISCOVERY_DOMAIN) -discovery_url $(DISCOVERY_URL) -discovery_id $(DISCOVERY_ID) -pg_max_open_Conns 10 -postgres_timeout 20s --pg_conn_max_lifetime 5m -grpc_port 51054 -health_check_port 18080 --sidecar-node -api_port 19999 {{ .Values.global.environment.extraflag }}
           command:
           - /bin/bash
           env:
