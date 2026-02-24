@@ -227,6 +227,23 @@ spec:
   {{- end }}
   {{- end }}
 
+  # ============================================================================
+  # Customer-defined Custom HTTP Routes
+  # ============================================================================
+  
+  {{- range .Values.envoyGateway.customHttpRoutes }}
+  - matches:
+    - path:
+        type: {{ .pathType | default "PathPrefix" }}
+        value: {{ .path }}
+    backendRefs:
+      - group: ''
+        kind: Service
+        name: {{ .backend.service.name }}
+        port: {{ .backend.service.port }}
+        weight: {{ .backend.service.weight | default 1 }}
+  {{- end }}
+
   # Static assets are cacheable and immutable; must be evaluated before "/" route.
   - matches:
     - path:

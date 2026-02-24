@@ -343,6 +343,61 @@ envoyGateway:
     enabled: true
     # Compression quality (1-9, where 6 is default, 9 is best compression)
     quality: 6
+
+  # Custom listeners
+  # Example structure:
+  # customListeners:
+  #   - name: "grpc-listener"
+  #     port: 9090
+  #     protocol: "GRPC"
+  #     allowedRoutes:
+  #       - kind: "GRPCRoute"
+  #         group: "gateway.networking.k8s.io"
+  customListeners: []
+
+  # HTTP Routes
+  # Example structure:
+  # customHttpRoutes:
+  #   - name: "my-http-route"
+  #     hostnames: ["customer.apica.io"]
+  #     rules:
+  #       - matches:
+  #           - path:
+  #               type: "PathPrefix"
+  #               value: "/custom-route"
+  #         backendRefs:
+  #           - name: "service-name"
+  #             port: 8080
+  #             weight: 1
+  customHttpRoutes: []
+
+  # TCP Routes
+  # Example structure:
+  # customTcpRoutes:
+  #   - name: "tcp-route"
+  #     parentRef: "grpc-listener"
+  #     backendRefs:
+  #       - name: "tcp-service"
+  #         port: 50051
+  #         weight: 1
+  customTcpRoutes: []
+
+  # gRPC Routes
+  # Example structure:
+  # customGrpcRoutes:
+  #   - name: "grpc-route"
+  #     parentRef: "grpc-listener"
+  #     rules:
+  #       - matches:
+  #           - method:
+  #               type: "Exact"
+  #               service: "service.Service"
+  #               method: "Method"
+  #         backendRefs:
+  #           - name: "grpc-service"
+  #             port: 50051
+  #             weight: 1
+  customGrpcRoutes: []
 apicaTLSSecret:
   enabled: true
 

@@ -43,4 +43,32 @@ spec:
           name: logiq-flash-ml
           port: 8081
           weight: 1
+
+  # ============================================================================
+  # Customer-defined Custom TCP Routes
+  # ============================================================================
+  
+  {{- range .Values.envoyGateway.customTcpRoutes }}
+---
+apiVersion: gateway.networking.k8s.io/v1alpha2
+kind: TCPRoute
+metadata:
+  name: {{ .name }}
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    {{- include "logiq.labels" $ | nindent 4 }}
+spec:
+  parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: {{ $.Release.Name }}-gateway
+      sectionName: {{ .parentRef }}
+  rules:
+    - backendRefs:
+        - group: ''
+          kind: Service
+          name: {{ .backendRefs.name }}
+          port: {{ .backendRefs.port }}
+          weight: {{ .backendRefs.weight | default 1 }}
+  {{- end }}
 {{- end }}

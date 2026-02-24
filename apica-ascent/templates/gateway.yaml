@@ -71,4 +71,22 @@ spec:
       namespaces:
         from: Same
   {{- end }}
+
+  # ============================================================================
+  # Customer-defined Custom Listeners
+  # ============================================================================
+  
+  {{- range .Values.envoyGateway.customListeners }}
+  - name: {{ .name }}
+    protocol: {{ .protocol | default "TCP" }}
+    port: {{ .port }}
+    allowedRoutes:
+      kinds:
+      {{- range .allowedRoutes }}
+      - group: {{ .group | default "gateway.networking.k8s.io" }}
+        kind: {{ .kind }}
+      {{- end }}
+      namespaces:
+        from: Same
+  {{- end }}
 {{- end }}

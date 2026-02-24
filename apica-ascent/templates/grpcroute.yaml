@@ -1,0 +1,50 @@
+{{- if .Values.envoyGateway.enabled }}
+{{- range .Values.envoyGateway.customGrpcRoutes }}
+---
+apiVersion: gateway.networking.k8s.io/v1alpha2
+kind: GRPCRoute
+metadata:
+  name: {{ .name }}
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    {{- include "logiq.labels" $ | nindent 4 }}
+spec:
+  parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: {{ $.Release.Name }}-gateway
+      sectionName: {{ .parentRef }}
+  rules:
+    {{- range .rules }}
+    - matches:
+      {{- range .matches }}
+      {{- if .method }}
+      - method:
+          type: {{ .method.type | default "Exact" }}
+          {{- if .method.service }}
+          service: {{ .method.service }}
+          {{- end }}
+          {{- if .method.method }}
+          method: {{ .method.method }}
+          {{- end }}
+      {{- end }}
+      {{- if .headers }}
+      - headers:
+        {{- range .headers }}
+        - type: {{ .type | default "Exact" }}
+          name: {{ .name }}
+          value: {{ .value }}
+        {{- end }}
+      {{- end }}
+      {{- end }}
+      backendRefs:
+      {{- range .backendRefs }}
+        - group: ''
+          kind: Service
+          name: {{ .name }}
+          port: {{ .port }}
+          weight: {{ .weight | default 1 }}
+      {{- end }}
+    {{- end }}
+{{- end }}
+{{- end }}
