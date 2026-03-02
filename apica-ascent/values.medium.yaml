@@ -314,6 +314,15 @@ envoyGateway:
     - name: tcp-8081
       port: 8081
       protocol: TCP
+    - name: tcp-14250
+      port: 14250
+      protocol: TCP
+    - name: tcp-20514
+      port: 20514
+      protocol: TCP
+    - name: tcp-14268
+      port: 14268
+      protocol: TCP
   compressor:
     enabled: true
     quality: 6
