@@ -105,7 +105,7 @@ spec:
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           args:
           - -c
-          - /flash/bin/flash -config /flash/config/config.yaml -install_root /flash -runtime_folder /flash/db -is-kube=true -discovery_domain=$(DISCOVERY_DOMAIN) -metadata-db-ttl 11m -postgres_timeout 20s -api-node  -redis_max_connections 3000 --pg_conn_max_lifetime 5m -ml-use-sidecar {{ .Values.global.environment.extraflag }}
+          - /flash/bin/flash -config /flash/config/config.yaml -install_root /flash -runtime_folder /flash/db -is-kube=true -discovery_domain=$(DISCOVERY_DOMAIN) -pg_max_idle_conns 3 -pg_max_open_Conns 5 -metadata-db-ttl 11m -postgres_timeout 20s -api-node  -redis_max_connections 3000 --pg_conn_max_lifetime 5m -ml-use-sidecar {{ .Values.global.environment.extraflag }}
           command:
           - /bin/bash
           env:
