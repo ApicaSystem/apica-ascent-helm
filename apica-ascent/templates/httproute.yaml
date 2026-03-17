@@ -114,7 +114,7 @@ spec:
   - matches:
     - path:
         type: PathPrefix
-        value: /api/v1/receive
+        value: /v1/receive/prometheus
     backendRefs:
       - group: ''
         kind: Service
