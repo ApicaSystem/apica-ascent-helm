@@ -271,9 +271,6 @@ thanos:
       cpu: 50m
     limits:
       memory: 200Mi
-    persistence:
-      enabled: true
-      size: 75Gi
   metrics:
     enabled: true
     serviceMonitor:
