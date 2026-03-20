@@ -36,11 +36,8 @@ rules:
 - apiGroups:
   - gateway.networking.k8s.io
   resources:
-  - tcproutes
   - udproutes
   - httproutes
-  - grpcroutes
-  - tlsroutes
   verbs:
   - get
   - list
