@@ -1,0 +1,64 @@
+{{- if .Values.perfectscale.enabled }}
+---
+apiVersion: perfectscale.io/v1
+kind: WorkloadAutomationConfig
+metadata:
+  name: flash-ml-automation
+  namespace: {{ .Release.Namespace }}
+spec:
+  targetRef:
+    kind: StatefulSet
+    name: logiq-flash-ml
+  automation:
+    operational:
+      automationMode: "Enabled"
+    containers:
+      logiq-flash-ml:
+        operational:
+          restrictions:
+            cpuManagement:
+              request:
+                increaseEnabled: true
+                decreaseEnabled: true
+                minimumCores: -1
+                maximumCores: 2
+              limit:
+                keepLimit: false
+            memoryManagement:
+              request:
+                minimumGiB: -1
+                maximumGiB: 16
+              limit:
+                increaseEnabled: true
+                decreaseEnabled: true
+                minimumGiB: -1
+                maximumGiB: 16
+                memoryLeakDetection:
+                  maxMemoryIncreaseIterations:
+                    daily: 3
+                    weekly: 6
+      logiq-flash-tracing:
+        operational:
+          restrictions:
+            cpuManagement:
+              request:
+                increaseEnabled: true
+                decreaseEnabled: true
+                minimumCores: -1
+                maximumCores: 1
+              limit:
+                keepLimit: false
+            memoryManagement:
+              request:
+                minimumGiB: -1
+                maximumGiB: 1
+              limit:
+                increaseEnabled: true
+                decreaseEnabled: true
+                minimumGiB: -1
+                maximumGiB: 1
+                memoryLeakDetection:
+                  maxMemoryIncreaseIterations:
+                    daily: 3
+                    weekly: 6
+{{- end }}
