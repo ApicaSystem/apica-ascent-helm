@@ -281,16 +281,16 @@ spec:
           resources: {{- toYaml .Values.coffee_worker.resources | nindent 12 }}
           {{- end }}
         - name: ssr-report-gen
-+          image: {{ .Values.global.imageRegistry}}/logiqai/ssr-server:ssr-v16.0.1-fc1
-+          imagePullPolicy: IfNotPresent
-+          env:
-+            - name: SSR_HOST
-+              value: 0.0.0.0
-+            - name: __VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS
-+              value: coffee
-+          ports:
-+            - containerPort: 5173
-+              name: ssr
-+              protocol: TCP
-+          resources: {}
+          image: {{ .Values.global.imageRegistry}}/logiqai/ssr-server:ssr-v16.0.1-fc1
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: SSR_HOST
+              value: 0.0.0.0
+            - name: __VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS
+              value: coffee
+          ports:
+            - containerPort: 5173
+              name: ssr
+              protocol: TCP
+          resources: {}
       restartPolicy: Always
