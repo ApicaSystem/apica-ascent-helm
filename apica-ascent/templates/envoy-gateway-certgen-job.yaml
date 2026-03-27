@@ -1,0 +1,60 @@
+{{- if .Values.envoyGateway.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: envoy-gateway-certgen
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: gateway-helm
+    app.kubernetes.io/version: v1.6.0
+    helm.sh/chart: apica-ascent-{{ .Chart.Version }}
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 1
+  completions: 1
+  parallelism: 1
+  template:
+    metadata:
+      labels:
+        app: certgen
+    spec:
+      restartPolicy: Never
+      serviceAccountName: envoy-gateway-certgen
+      imagePullSecrets:
+        - name: dockerhub-cred
+      containers:
+        - name: envoy-gateway-certgen
+          image: {{ .Values.envoyGateway.controller.image | default "docker.io/envoyproxy/gateway:v1.6.0" }}
+          imagePullPolicy: {{ .Values.envoyGateway.controller.imagePullPolicy | default "IfNotPresent" }}
+          command:
+            - envoy-gateway
+            - certgen
+          args:
+            - --disable-topology-injector
+          env:
+            - name: ENVOY_GATEWAY_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.namespace
+            - name: KUBERNETES_CLUSTER_DOMAIN
+              value: {{ .Values.envoyGateway.controller.clusterDomain | default "cluster.local" }}
+          resources:
+            {{- toYaml (.Values.envoyGateway.certgen.resources | default dict) | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            privileged: false
+            runAsGroup: 65532
+            runAsNonRoot: true
+            runAsUser: 65532
+            seccompProfile:
+              type: RuntimeDefault
+  ttlSecondsAfterFinished: 300
+{{- end }}

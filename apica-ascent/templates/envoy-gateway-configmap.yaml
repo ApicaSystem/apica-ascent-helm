@@ -1,0 +1,23 @@
+{{- if .Values.envoyGateway.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: envoy-gateway-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: gateway-helm
+    app.kubernetes.io/instance: {{ .Release.Name }}
+data:
+  envoy-gateway.yaml: |
+    apiVersion: gateway.envoyproxy.io/v1alpha1
+    kind: EnvoyGateway
+    gateway:
+      controllerName: {{ .Values.envoyGateway.gatewayClass.controllerName | default (printf "gateway.envoyproxy.io/%s-controller" .Release.Name) }}
+    provider:
+      type: Kubernetes
+      kubernetes:
+        watch:
+          type: Namespaces
+          namespaces:
+            - {{ .Release.Namespace }}
+{{- end }}

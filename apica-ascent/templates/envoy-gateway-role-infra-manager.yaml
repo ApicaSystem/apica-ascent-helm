@@ -1,0 +1,26 @@
+{{- if .Values.envoyGateway.enabled }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ printf "%s-gateway-helm-infra-manager" .Release.Name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: gateway-helm
+    app.kubernetes.io/version: v1.6.0
+    helm.sh/chart: apica-ascent-{{ .Chart.Version }}
+rules:
+  - apiGroups: [""]
+    resources: ["serviceaccounts", "services", "configmaps"]
+    verbs: ["create", "get", "list", "delete", "deletecollection", "patch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "daemonsets"]
+    verbs: ["create", "get", "delete", "deletecollection", "patch"]
+  - apiGroups: ["autoscaling", "policy"]
+    resources: ["horizontalpodautoscalers", "poddisruptionbudgets"]
+    verbs: ["create", "get", "list", "delete", "deletecollection", "patch"]
+  - apiGroups: ["certificates.k8s.io"]
+    resources: ["clustertrustbundles"]
+    verbs: ["list", "get", "watch"]
+{{- end }}

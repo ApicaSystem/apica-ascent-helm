@@ -306,9 +306,24 @@ gateway:
 envoyGateway:
   enabled: true
 
+  controller:
+    clusterRoleName: eg-gateway-helm-envoy-gateway-role
+    image: docker.io/envoyproxy/gateway:v1.6.0
+    imagePullPolicy: IfNotPresent
+    clusterDomain: cluster.local
+    resources:
+      limits:
+        memory: 1Gi
+      requests:
+        cpu: 100m
+        memory: 256Mi
+
+  certgen:
+    resources: {}
+
   # GatewayClass configuration
   gatewayClass:
-    controllerName: gateway.envoyproxy.io/gatewayclass-controller
+    controllerName: ""
     description: "Envoy Gateway for Apica Ascent"
 
   # EnvoyProxy configuration

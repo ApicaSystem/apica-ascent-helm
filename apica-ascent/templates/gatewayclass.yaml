@@ -11,7 +11,7 @@ metadata:
     {{- include "logiq.labels" . | nindent 4 }}
 spec:
   # Envoy Gateway controller name
-  controllerName: {{ .Values.envoyGateway.gatewayClass.controllerName | default "gateway.envoyproxy.io/gatewayclass-controller" }}
+  controllerName: {{ .Values.envoyGateway.gatewayClass.controllerName | default (printf "gateway.envoyproxy.io/%s-controller" .Release.Name) }}
   
   # Reference to namespace-scoped EnvoyProxy configuration
   # This is the KEY to making per-namespace LB annotations work
