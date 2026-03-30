@@ -3,12 +3,12 @@
 apiVersion: perfectscale.io/v1
 kind: WorkloadAutomationConfig
 metadata:
-  name: coffe-server-automation
+  name: coffee-server-automation
   namespace: {{ .Release.Namespace }}
 spec:
   targetRef:
     kind: StatefulSet
-    name: coffe-server
+    name: coffee-server
   automation:
     operational:
       automationMode: "Enabled"
