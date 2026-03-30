@@ -13,7 +13,7 @@ metadata:
 spec:
   # Reference to per-namespace GatewayClass
   # The GatewayClass has parametersRef pointing to EnvoyProxy config
-  gatewayClassName: {{ .Release.Name }}-gateway-class
+  gatewayClassName: {{ .Release.Name }}-gateway-class-local
   listeners:
   
   # ============================================================================
