@@ -1,0 +1,40 @@
+{{- if .Values.perfectscale.enabled }}
+---
+apiVersion: perfectscale.io/v1
+kind: WorkloadAutomationConfig
+metadata:
+  name: thanos-compactor-automation
+  namespace: {{ .Release.Namespace }}
+spec:
+  targetRef:
+    kind: Deployment
+    name: {{ .Release.Namespace }}-thanos-compactor
+  automation:
+    operational:
+      automationMode: "Enabled"
+    containers:
+      compactor:
+        operational:
+          restrictions:
+            cpuManagement:
+              request:
+                increaseEnabled: true
+                decreaseEnabled: true
+                minimumCores: -1
+                maximumCores: 2
+              limit:
+                keepLimit: false
+            memoryManagement:
+              request:
+                minimumGiB: -1
+                maximumGiB: 16
+              limit:
+                increaseEnabled: true
+                decreaseEnabled: true
+                minimumGiB: -1
+                maximumGiB: 16
+                memoryLeakDetection:
+                  maxMemoryIncreaseIterations:
+                    daily: 3
+                    weekly: 6
+{{- end }}

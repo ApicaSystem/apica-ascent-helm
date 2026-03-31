@@ -505,3 +505,6 @@ vault:
   serverAddress: https://vault.example.com
   authMount: "k8s-clustername"
   kafkaClientCertDomain: example.com
+
+perfectscale:
+  enabled: false
