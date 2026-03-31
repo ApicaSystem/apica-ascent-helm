@@ -118,10 +118,10 @@ spec:
               - key: ca_chain
                 path: ca.crt
         {{- end }}
-        {{- if .Values.global.environment.s3_custom_ca }}
+        {{- if .Values.global.environment.s3_custom_ca.enabled }}
         - name: s3-custom-ca
           configMap:
-            name: s3-custom-ca
+            name: {{ .Values.global.environment.s3_custom_ca.map_name }}
         {{- end }}
       {{ if .Values.podPerNode }}
       affinity:
@@ -265,7 +265,7 @@ spec:
           - mountPath: /flash/sharedcerts
             name: sharedcert
           {{ end }}
-          {{- if .Values.global.environment.s3_custom_ca }}
+          {{- if .Values.global.environment.s3_custom_ca.enabled }}
           - mountPath: /etc/ssl/certs/s3-custom-ca.crt
             name: s3-custom-ca
             subPath: s3-custom-ca.crt
@@ -473,7 +473,7 @@ spec:
           - mountPath: /flash/sharedcerts
             name: sharedcert
           {{ end }}
-          {{- if .Values.global.environment.s3_custom_ca }}
+          {{- if .Values.global.environment.s3_custom_ca.enabled }}
           - mountPath: /etc/ssl/certs/s3-custom-ca.crt
             name: s3-custom-ca
             subPath: s3-custom-ca.crt

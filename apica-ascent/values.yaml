@@ -457,10 +457,13 @@ global:
     s3_url: "https://<bucket-namespace>.compat.objectstorage.<region>.oraclecloud.com"
     s3_access: "s3_access"
     s3_secret: "s3_secret"
-    AWS_ACCESS_KEY_ID: "s3_access"
-    AWS_SECRET_ACCESS_KEY: "s3_secret"
     s3_bucket: "bucket-name"
     s3_region: "region"
+    s3_custom_ca:
+      enabled: false
+      map_name: "kube-root-ca.crt"
+    AWS_ACCESS_KEY_ID: "s3_access"
+    AWS_SECRET_ACCESS_KEY: "s3_secret"
     admin_name: "devops@apica.io"
     admin_password: "password"
     admin_org: "flash-org"
