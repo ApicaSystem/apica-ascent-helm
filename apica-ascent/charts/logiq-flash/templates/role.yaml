@@ -23,3 +23,26 @@ rules:
   - podsecuritypolicies
   verbs:
   - use
+- apiGroups:
+  - gateway.networking.k8s.io
+  resources:
+  - gateways
+  verbs:
+  - get
+  - list
+  - watch
+  - update
+  - patch
+- apiGroups:
+  - gateway.networking.k8s.io
+  resources:
+  - tcproutes
+  - udproutes
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
