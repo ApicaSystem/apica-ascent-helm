@@ -24,8 +24,6 @@ spec:
     spec:
       restartPolicy: Never
       serviceAccountName: envoy-gateway-certgen
-      imagePullSecrets:
-        - name: dockerhub-cred
       containers:
         - name: envoy-gateway-certgen
           image: {{ .Values.envoyGateway.controller.image | default "docker.io/envoyproxy/gateway:v1.6.0" }}

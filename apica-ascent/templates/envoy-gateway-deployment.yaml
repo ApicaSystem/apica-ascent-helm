@@ -35,8 +35,6 @@ spec:
         control-plane: envoy-gateway
     spec:
       serviceAccountName: envoy-gateway
-      imagePullSecrets:
-        - name: dockerhub-cred
       containers:
         - name: envoy-gateway
           image: {{ .Values.envoyGateway.controller.image | default "docker.io/envoyproxy/gateway:v1.6.0" }}
