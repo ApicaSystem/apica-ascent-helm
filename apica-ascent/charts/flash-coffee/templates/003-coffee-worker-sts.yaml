@@ -88,6 +88,8 @@ spec:
             value: {{ include "flash-coffee.confighash" . | quote }}
           - name: PYTHONUNBUFFERED
             value: "0"
+          - name: SSR_HOST
+            value: 0.0.0.0
           - name: COOKIE_SECRET
             value: d84c0edd-ab5e-4664-b0ee-2cd15a9ae5f0 
           - name: QUEUES
@@ -280,4 +282,17 @@ spec:
           {{- if .Values.coffee_worker.resources }}
           resources: {{- toYaml .Values.coffee_worker.resources | nindent 12 }}
           {{- end }}
+        - name: ssr-report-gen
+          image: {{ .Values.global.imageRegistry}}/logiqai/ssr-server:ssr-v16.0.1
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: SSR_HOST
+              value: 0.0.0.0
+            - name: __VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS
+              value: coffee
+          ports:
+            - containerPort: 5173
+              name: ssr
+              protocol: TCP
+          resources: {}
       restartPolicy: Always
