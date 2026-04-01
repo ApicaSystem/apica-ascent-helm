@@ -10,6 +10,11 @@ metadata:
     app.kubernetes.io/managed-by: {{ .Release.Service }}
     app.kubernetes.io/instance: {{ .Release.Name }}
     app.kubernetes.io/version: {{ .Chart.AppVersion }}
+  annotations:
+    "helm.sh/hook": "pre-install"
+    "helm.sh/hook-delete-policy": "before-hook-creation"
 data:
   tls.crt: {{ .Values.global.environment.external_cert_crt }}
   tls.key: {{ .Values.global.environment.external_cert_key }}
+
+
