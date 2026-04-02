@@ -330,6 +330,8 @@ envoyGateway:
   envoyProxy:
     provider:
       type: Kubernetes
+      deployment:
+        replicaCount: 4
       service:
         type: LoadBalancer
         # OCI Load Balancer annotations

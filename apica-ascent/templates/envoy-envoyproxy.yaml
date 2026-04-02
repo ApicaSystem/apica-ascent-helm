@@ -14,6 +14,8 @@ spec:
   provider:
     type: {{ .Values.envoyGateway.envoyProxy.provider.type | default "Kubernetes" }}
     kubernetes:
+      envoyDeployment:
+        replicas: {{ .Values.envoyGateway.envoyProxy.provider.deployment.replicaCount | default 2 }}
       envoyService:
         type: {{ .Values.envoyGateway.envoyProxy.provider.service.type | default "LoadBalancer" }}
         {{- if .Values.envoyGateway.envoyProxy.provider.service.annotations }}
