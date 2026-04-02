@@ -16,6 +16,33 @@ spec:
     kubernetes:
       envoyDeployment:
         replicas: {{ .Values.envoyGateway.envoyProxy.provider.deployment.replicaCount | default 2 }}
+        patch:
+          type: StrategicMerge
+          value:
+            spec:
+              template:
+                spec:
+                  topologySpreadConstraints:
+                    - maxSkew: 1
+                      topologyKey: kubernetes.io/hostname
+                      whenUnsatisfiable: ScheduleAnyway
+                      labelSelector:
+                        matchLabels:
+                          app.kubernetes.io/name: envoy
+                          app.kubernetes.io/component: proxy
+                          gateway.envoyproxy.io/owning-gateway-name: {{ .Release.Name }}-gateway
+                  affinity:
+                    podAntiAffinity:
+                      preferredDuringSchedulingIgnoredDuringExecution:
+                        - weight: 100
+                          podAffinityTerm:
+                            topologyKey: kubernetes.io/hostname
+                            labelSelector:
+                              matchLabels:
+                                app.kubernetes.io/name: envoy
+                                app.kubernetes.io/component: proxy
+                                gateway.envoyproxy.io/owning-gateway-name: {{ .Release.Name }}-gateway
+
       envoyService:
         type: {{ .Values.envoyGateway.envoyProxy.provider.service.type | default "LoadBalancer" }}
         {{- if .Values.envoyGateway.envoyProxy.provider.service.annotations }}
@@ -31,5 +58,4 @@ spec:
           value:
             spec:
               externalTrafficPolicy: {{ .Values.envoyGateway.envoyProxy.provider.service.externalTrafficPolicy | default "Cluster" }}
-  
 {{- end }}
