@@ -407,10 +407,13 @@ global:
     s3_url: '##YOUR_S3_URL##'
     s3_access: '##YOUR_S3_ACCESS_KEY##'
     s3_secret: '##YOUR_S3_ACCESS_SECRET##'
-    AWS_ACCESS_KEY_ID: '##YOUR_S3_ACCESS_KEY##'
-    AWS_SECRET_ACCESS_KEY: '##YOUR_S3_ACCESS_KEY##'
     s3_bucket: '##YOUR_S3_BUCKET##'
     s3_region: '##YOUR_S3_REGION##'
+    s3_custom_ca:
+      enabled: false
+      map_name: kube-root-ca.crt
+    AWS_ACCESS_KEY_ID: '##YOUR_S3_ACCESS_KEY##'
+    AWS_SECRET_ACCESS_KEY: '##YOUR_S3_ACCESS_KEY##'
     admin_name: '##ADMIN_ACCOUNT_NAME##'
     admin_password: '##ADMIN_ACCOUNT_PASSWORD##'
     admin_org: '##ADMIN_ORGANIZATION##'
