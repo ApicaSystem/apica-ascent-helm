@@ -22,15 +22,6 @@ spec:
             spec:
               template:
                 spec:
-                  topologySpreadConstraints:
-                    - maxSkew: 1
-                      topologyKey: kubernetes.io/hostname
-                      whenUnsatisfiable: ScheduleAnyway
-                      labelSelector:
-                        matchLabels:
-                          app.kubernetes.io/name: envoy
-                          app.kubernetes.io/component: proxy
-                          gateway.envoyproxy.io/owning-gateway-name: {{ .Release.Name }}-gateway
                   affinity:
                     podAntiAffinity:
                       preferredDuringSchedulingIgnoredDuringExecution:
