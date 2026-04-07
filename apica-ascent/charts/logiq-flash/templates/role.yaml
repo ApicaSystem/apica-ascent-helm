@@ -1,12 +1,84 @@
-# Cluster role which grants access to the default pod security policy
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: logiq-flash
+  name: {{ template "logiq-flash.fullname" . }}
   namespace: {{ .Release.Namespace }}
   labels:
     app: {{ template "logiq-flash.name" . }}
+    chart: {{ template "logiq-flash.chart" . }}
+    heritage: {{ .Release.Service }}
+  annotations:
+    rbac.authorization.kubernetes.io/autoupdate: "true"
 rules:
+# Monitoring resources (namespace-scoped)
+- apiGroups:
+  - monitoring.coreos.com
+  resources:
+  - alertmanagers
+  - alertmanagers/finalizers
+  - prometheuses
+  - prometheuses/finalizers
+  - thanosrulers
+  - thanosrulers/finalizers
+  - servicemonitors
+  - podmonitors
+  - prometheusrules
+  verbs:
+  - '*'
+
+# Core namespace-scoped resources
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  - pods/log
+  verbs:
+  - '*'
+
+- apiGroups:
+  - ""
+  resources:
+  - services
+  verbs:
+  - get
+  - watch
+  - create
+  - delete
+  - update
+  - patch
+  - list
+
+- apiGroups:
+  - ""
+  resources:
+  - persistentvolumeclaims
+  - configmaps
+  - secrets
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - delete
+  - patch
+  - update
+
+# Application workloads (namespace-scoped)
+- apiGroups:
+  - apps
+  resources:
+  - statefulsets
+  - deployments
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - patch
+  - delete
+  - update
+
+# Pod security policy permissions
 - apiGroups:
   - policy
   resourceNames:
@@ -23,6 +95,8 @@ rules:
   - podsecuritypolicies
   verbs:
   - use
+
+# Gateway API resources (namespace-scoped)
 - apiGroups:
   - gateway.networking.k8s.io
   resources:
