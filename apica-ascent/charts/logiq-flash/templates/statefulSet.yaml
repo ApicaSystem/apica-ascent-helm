@@ -474,9 +474,9 @@ spec:
             name: sharedcert
           {{ end }}
           {{- if .Values.global.environment.s3_custom_ca.enabled }}
-          - mountPath: /etc/ssl/certs/s3-custom-ca.crt
+          - mountPath: /etc/ssl/certs/ca.crt
             name: s3-custom-ca
-            subPath: s3-custom-ca.crt
+            subPath: ca.crt
           {{- end }}
           resources:
 {{ toYaml .Values.resources.sidecarQuery | indent 12 }}
