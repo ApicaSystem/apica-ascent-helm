@@ -309,6 +309,7 @@ envoyGateway:
           service.beta.kubernetes.io/oci-load-balancer-shape-flex-max: "30"
           service.beta.kubernetes.io/oci-load-balancer-shape-flex-min: "10"
           oci-load-balancer.oraclecloud.com/health-check: '{"protocol":"HTTP","port":19003,"urlPath":"/ready","returnCode":200,"retries":2,"timeoutInMillis":5000}'
+          service.beta.kubernetes.io/oci-load-balancer-security-list-management-mode: "None"
         externalTrafficPolicy: Cluster
         allocateLoadBalancerNodePorts: false
 
