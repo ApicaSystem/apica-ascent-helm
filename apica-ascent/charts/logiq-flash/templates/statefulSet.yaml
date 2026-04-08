@@ -118,6 +118,11 @@ spec:
               - key: ca_chain
                 path: ca.crt
         {{- end }}
+        {{- if .Values.global.environment.s3_custom_ca.enabled }}
+        - name: s3-custom-ca
+          configMap:
+            name: {{ .Values.global.environment.s3_custom_ca.map_name }}
+        {{- end }}
       {{ if .Values.podPerNode }}
       affinity:
         podAntiAffinity:
@@ -260,6 +265,11 @@ spec:
           - mountPath: /flash/sharedcerts
             name: sharedcert
           {{ end }}
+          {{- if .Values.global.environment.s3_custom_ca.enabled }}
+          - mountPath: /etc/ssl/certs/ca.crt
+            name: s3-custom-ca
+            subPath: ca.crt
+          {{- end }}
           ports:
             - name: grpc
               containerPort: 50054
@@ -463,6 +473,11 @@ spec:
           - mountPath: /flash/sharedcerts
             name: sharedcert
           {{ end }}
+          {{- if .Values.global.environment.s3_custom_ca.enabled }}
+          - mountPath: /etc/ssl/certs/ca.crt
+            name: s3-custom-ca
+            subPath: ca.crt
+          {{- end }}
           resources:
 {{ toYaml .Values.resources.sidecarQuery | indent 12 }}
         - name: {{ .Chart.Name }}-tracing
