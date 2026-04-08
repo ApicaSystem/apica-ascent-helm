@@ -305,11 +305,12 @@ envoyGateway:
         type: LoadBalancer
         # OCI Load Balancer annotations
         annotations:
-          service.beta.kubernetes.io/oci-load-balancer-health-check-port: "10256"
           service.beta.kubernetes.io/oci-load-balancer-shape: flexible
           service.beta.kubernetes.io/oci-load-balancer-shape-flex-max: "30"
           service.beta.kubernetes.io/oci-load-balancer-shape-flex-min: "10"
-        externalTrafficPolicy: Local
+          oci-load-balancer.oraclecloud.com/health-check: '{"protocol":"HTTP","port":19003,"urlPath":"/ready","returnCode":200,"retries":2,"timeoutInMillis":5000}'
+        externalTrafficPolicy: Cluster
+        allocateLoadBalancerNodePorts: false
 
   # Gateway listeners configuration
   listeners:
