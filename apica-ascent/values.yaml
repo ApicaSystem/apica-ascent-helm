@@ -309,7 +309,7 @@ envoyGateway:
           service.beta.kubernetes.io/oci-load-balancer-shape: flexible
           service.beta.kubernetes.io/oci-load-balancer-shape-flex-max: "30"
           service.beta.kubernetes.io/oci-load-balancer-shape-flex-min: "10"
-        externalTrafficPolicy: Cluster
+        externalTrafficPolicy: Local
 
   # Gateway listeners configuration
   listeners:
