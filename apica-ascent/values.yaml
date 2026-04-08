@@ -205,37 +205,6 @@ flash-coffee:
       limits:
         memory: 2000Mi
 
-s3gateway:
-  s3gateway:
-    enabled: false
-  mode: distributed
-  image:
-    repository: minio/minio
-    tag: RELEASE.2020-09-17T04-49-20Z
-  defaultBucket:
-    enabled: true
-  fullnameOverride: s3-gateway
-  accessKey: not-needed
-  secretKey: not-needed
-  metrics:
-    serviceMonitor:
-      enabled: false
-  buckets:
-    - name: devops-test
-      policy: none
-      purge: false
-  persistence:
-    enabled: true
-    size: 25Gi
-  securityContext:
-    enabled: true
-    runAsUser: 1000
-    runAsGroup: 1000
-    fsGroup: 1000
-  serviceAccount:
-    create: true
-    name: s3-gateway
-
 thanos:
   createObjstoreSecret: true
   receive:
@@ -330,6 +299,8 @@ envoyGateway:
   envoyProxy:
     provider:
       type: Kubernetes
+      deployment:
+        replicaCount: 4
       service:
         type: LoadBalancer
         # OCI Load Balancer annotations
@@ -488,10 +459,13 @@ global:
     s3_url: "https://<bucket-namespace>.compat.objectstorage.<region>.oraclecloud.com"
     s3_access: "s3_access"
     s3_secret: "s3_secret"
-    AWS_ACCESS_KEY_ID: "s3_access"
-    AWS_SECRET_ACCESS_KEY: "s3_secret"
     s3_bucket: "bucket-name"
     s3_region: "region"
+    s3_custom_ca:
+      enabled: false
+      map_name: "kube-root-ca.crt"
+    AWS_ACCESS_KEY_ID: "s3_access"
+    AWS_SECRET_ACCESS_KEY: "s3_secret"
     admin_name: "devops@apica.io"
     admin_password: "password"
     admin_org: "flash-org"
