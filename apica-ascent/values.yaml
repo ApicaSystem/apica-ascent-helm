@@ -412,17 +412,39 @@ prometheus:
   operator:
     enabled: true
     replicaCount: 1
+    kubeletService:
+      enabled: false
   kube-state-metrics:
-    replicaCount: 1
-  # Disable node-exporter via exporters section
+    serviceMonitor:
+      enabled: false
+  node-exporter:
+    serviceMonitor:
+      enabled: false
+  kubeApiServer:
+    enabled: false
+  kubeControllerManager:
+    enabled: false
+    service:
+      enabled: false
+  kubeScheduler:
+    enabled: false
+    service:
+      enabled: false
+  kubelet:
+    enabled: false
+  coreDns:
+    enabled: false
+    service:
+      enabled: false
+  kubeProxy:
+    enabled: false
+    service:
+      enabled: false
   exporters:
     node-exporter:
       enabled: false
     kube-state-metrics:
-      enabled: true
-  node-exporter:
-    enabled: false
-    replicaCount: 0
+      enabled: false
 
 grafana:
   fullnameOverride: grafana
