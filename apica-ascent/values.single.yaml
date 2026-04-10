@@ -6,7 +6,7 @@ logiq-flash:
     type: NodePort
   image:
     repository: logiqai/flash
-    tag: v3.20.3
+    tag: v3.21.0
     pullPolicy: IfNotPresent
   persistence:
     enabled: true
@@ -179,7 +179,7 @@ flash-coffee:
     replicaCount: 1
     image:
       repository: logiqai/flash-brew-coffee
-      tag: brew.v3.21.3
+      tag: brew.v3.22.0
       pullPolicy: IfNotPresent
     resources:
       requests:
@@ -191,7 +191,7 @@ flash-coffee:
     replicaCount: 1
     image:
       repository: logiqai/flash-brew-coffee
-      tag: brew.v3.21.3
+      tag: brew.v3.22.0
       pullPolicy: IfNotPresent
     resources:
       requests:
@@ -234,6 +234,9 @@ thanos:
       cpu: 50m
     limits:
       memory: 200Mi
+    persistence:
+      enabled: true
+      size: 75Gi
   metrics:
     enabled: true
     serviceMonitor:
@@ -261,12 +264,27 @@ gateway:
     secretName: my-ascent-ingress
 envoyGateway:
   enabled: true
+  controller:
+    clusterRoleName: eg-gateway-helm-envoy-gateway-role
+    image: docker.io/envoyproxy/gateway:v1.6.0
+    imagePullPolicy: IfNotPresent
+    clusterDomain: cluster.local
+    resources:
+      limits:
+        memory: 1Gi
+      requests:
+        cpu: 100m
+        memory: 256Mi
+  certgen:
+    resources: {}
   gatewayClass:
-    controllerName: gateway.envoyproxy.io/gatewayclass-controller
+    controllerName: ''
     description: Envoy Gateway for Apica Ascent
   envoyProxy:
     provider:
       type: Kubernetes
+      deployment:
+        replicaCount: 1
       service:
         type: LoadBalancer
         externalTrafficPolicy: Cluster
