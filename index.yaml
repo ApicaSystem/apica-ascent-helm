@@ -6,7 +6,7 @@ entries:
       licenses: Apache-2.0
     apiVersion: v2
     appVersion: v2.16.0
-    created: "2026-04-10T14:44:08.280715-04:00"
+    created: "2026-04-13T10:29:53.271178-04:00"
     dependencies:
     - condition: global.chart.flash-coffee
       name: flash-coffee
@@ -54,8 +54,8 @@ entries:
       name: thanos
       repository: https://charts.bitnami.com/bitnami
       version: 8.2.5
-    description: Apica Ascent - Cloud-native observability platform with Envoy Gateway
-    digest: fcb63e319b3323bc6cfb96ad8f0c8fa3322c548a178989986020fc548b6f3729
+    description: Apica Ascent - Cloud-native observability platform
+    digest: 6e1b51c6c41fee6b29bd308a5b715eaba7040ff26abca20e2a4c75fe6264bce9
     home: https://apica.io
     icon: https://www.apica.io/wp-content/uploads/2023/01/apica-logo-white-2022.png
     keywords:
@@ -90,7 +90,7 @@ entries:
       licenses: Apache-2.0
     apiVersion: v2
     appVersion: v3.10.2
-    created: "2026-04-10T14:44:08.261626-04:00"
+    created: "2026-04-13T10:29:53.252668-04:00"
     dependencies:
     - condition: global.chart.flash-coffee
       name: flash-coffee
@@ -176,4 +176,4 @@ entries:
     urls:
     - apica-ascent-3.0.2.tgz
     version: 3.0.2
-generated: "2026-04-10T14:44:08.236365-04:00"
+generated: "2026-04-13T10:29:53.229069-04:00"

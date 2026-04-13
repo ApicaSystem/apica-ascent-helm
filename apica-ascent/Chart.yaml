@@ -1,7 +1,7 @@
 apiVersion: v2
 version: 3.1.0
 appVersion: v2.16.0
-description: Apica Ascent - Cloud-native observability platform with Envoy Gateway
+description: Apica Ascent - Cloud-native observability platform
 keywords:
   - apica
   - ascent
