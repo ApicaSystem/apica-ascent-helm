@@ -24,6 +24,7 @@ my @tshirts = qw(single small medium large);
 
 foreach my $size (@tshirts) {
     # Defaults for small deployments
+    my $envoy_replicas = 2;
     my $flash_replicas = 2;
     my $flash_ml_replicas = 2;
     my $flash_sync_replicas = 2;
@@ -36,6 +37,7 @@ foreach my $size (@tshirts) {
         $flash_replicas = 4;
         $coffee_worker_replicas = 3;
     } elsif ($size eq 'large') {
+        $envoy_replicas = 4;
         $flash_replicas = 8;
         $coffee_worker_replicas = 4;
     }
@@ -93,6 +95,7 @@ foreach my $size (@tshirts) {
     $clone->{'flash-coffee'}{coffee}{replicaCount}        = ($size eq 'single') ? 1 : $coffee_server_replicas;
     $clone->{'flash-coffee'}{coffee_worker}{replicaCount} = ($size eq 'single') ? 1 : $coffee_worker_replicas;
     $clone->{prometheus}{prometheus}{replicaCount}        = ($size eq 'single') ? 1 : $prometheus_replicas;
+    $clone->{envoyGateway}{envoyProxy}{provider}{deployment}{replicaCount} = ($size eq 'single') ? 1 : $envoy_replicas;
 
     my $outfile = "values.$size.yaml";
     $ypp->dump_file($outfile, $clone);
