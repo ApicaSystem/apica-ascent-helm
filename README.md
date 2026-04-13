@@ -4,6 +4,9 @@ These charts are used to deploy Apica Ascent on Kubernetes.
 
 ## Creating Releases
 
+1. Ensure Flash and Coffee tags in `apica-ascent/values.yaml` match current
+production release. Update the on-prem example values files using the script in
+`apica-ascent/`.
 1. Change the `version` value in `apica-ascent/Chart.yaml`.
 1. Set `appVersion` to match the Ascent release indicated by the Flash and
 Coffee tags in `apica-ascent/values.yaml`.
