@@ -2,10 +2,11 @@
 
 These charts are used to deploy Apica Ascent on Kubernetes.
 
-## Updating Version
+## Creating Releases
 
-When updating the chart version:
 1. Change the `version` value in `apica-ascent/Chart.yaml`.
+1. Set `appVersion` to match the Ascent release indicated by the Flash and
+Coffee tags in `apica-ascent/values.yaml`.
 1. Run `helm package apica-ascent` from the top-level directory. This will
 generate a new tarball.
 1. Run `helm repo index .` from the top-level directory. This will update
@@ -17,3 +18,8 @@ and push it.
    git tag -a <semver> <commit-hash> -m "Release <semver>"
    git push origin <semver>
    ```
+1. Create a [Github
+Release](https://github.com/ApicaSystem/apica-ascent-helm/releases).
+  * Use the previous release tag to generate release notes. Edit release notes for clarity
+(e.g., remove Jira ticket references from descriptions). 
+  * Name it `apica-ascent v<semver>`
