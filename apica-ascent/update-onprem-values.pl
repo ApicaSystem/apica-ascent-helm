@@ -58,7 +58,7 @@ foreach my $size (@tshirts) {
     $clone->{global}{environment}{s3_bucket}             = '##YOUR_S3_BUCKET##';
     $clone->{global}{environment}{s3_region}             = '##YOUR_S3_REGION##';
     $clone->{global}{environment}{AWS_ACCESS_KEY_ID}     = '##YOUR_S3_ACCESS_KEY##';
-    $clone->{global}{environment}{AWS_SECRET_ACCESS_KEY} = '##YOUR_S3_ACCESS_KEY##';
+    $clone->{global}{environment}{AWS_SECRET_ACCESS_KEY} = '##YOUR_S3_ACCESS_SECRET##';
     $clone->{global}{environment}{awsServiceEndpoint}    = '##YOUR_S3_URL##';
     $clone->{global}{environment}{admin_name}            = '##ADMIN_ACCOUNT_NAME##';
     $clone->{global}{environment}{admin_password}        = '##ADMIN_ACCOUNT_PASSWORD##';

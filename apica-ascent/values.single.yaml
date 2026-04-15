@@ -353,16 +353,39 @@ prometheus:
   operator:
     enabled: true
     replicaCount: 1
+    kubeletService:
+      enabled: false
   kube-state-metrics:
-    replicaCount: 1
+    serviceMonitor:
+      enabled: false
+  node-exporter:
+    serviceMonitor:
+      enabled: false
+  kubeApiServer:
+    enabled: false
+  kubeControllerManager:
+    enabled: false
+    service:
+      enabled: false
+  kubeScheduler:
+    enabled: false
+    service:
+      enabled: false
+  kubelet:
+    enabled: false
+  coreDns:
+    enabled: false
+    service:
+      enabled: false
+  kubeProxy:
+    enabled: false
+    service:
+      enabled: false
   exporters:
     node-exporter:
       enabled: false
     kube-state-metrics:
-      enabled: true
-  node-exporter:
-    enabled: false
-    replicaCount: 0
+      enabled: false
 grafana:
   fullnameOverride: grafana
 logiqctl:
@@ -431,7 +454,7 @@ global:
       enabled: false
       map_name: kube-root-ca.crt
     AWS_ACCESS_KEY_ID: '##YOUR_S3_ACCESS_KEY##'
-    AWS_SECRET_ACCESS_KEY: '##YOUR_S3_ACCESS_KEY##'
+    AWS_SECRET_ACCESS_KEY: '##YOUR_S3_ACCESS_SECRET##'
     admin_name: '##ADMIN_ACCOUNT_NAME##'
     admin_password: '##ADMIN_ACCOUNT_PASSWORD##'
     admin_org: '##ADMIN_ORGANIZATION##'
