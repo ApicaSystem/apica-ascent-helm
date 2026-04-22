@@ -283,7 +283,7 @@ spec:
           resources: {{- toYaml .Values.coffee_worker.resources | nindent 12 }}
           {{- end }}
         - name: ssr-report-gen
-          image: {{ .Values.global.imageRegistry}}/logiqai/ssr-server:ssr-v16.0.3
+          image: {{ .Values.global.imageRegistry}}/logiqai/ssr-server:ssr-v16.0.1
           imagePullPolicy: IfNotPresent
           env:
             - name: SSR_HOST

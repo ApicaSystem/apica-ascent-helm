@@ -288,6 +288,7 @@ envoyGateway:
       service:
         type: LoadBalancer
         externalTrafficPolicy: Cluster
+        allocateLoadBalancerNodePorts: false
   listeners:
     http:
       port: 80
