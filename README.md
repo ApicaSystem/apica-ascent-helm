@@ -11,7 +11,8 @@ production release. Update the on-prem example values files using the script in
 1. Set `appVersion` to match the Ascent release indicated by the Flash and
 Coffee tags in `apica-ascent/values.yaml`.
 1. Run `helm package apica-ascent` from the top-level directory. This will
-generate a new tarball.
+generate a new tarball. If there are more than two tarballs, `git rm` the
+oldest one(s).
 1. Run `helm repo index .` from the top-level directory. This will update
 `index.yaml` so clients see the new version.
 1. Open a pull request to get the changes merged.
