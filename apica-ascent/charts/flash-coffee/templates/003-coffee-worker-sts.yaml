@@ -393,32 +393,29 @@ spec:
               mountPath: /app/sharedcerts
             {{- end }}
 
-          # ── Feature 4 (continued) ── Readiness probe gates rollout traffic.
-          # Workers are considered ready once they can accept tasks from the queue.
-          # During a rolling update the old worker keeps processing until the new
-          # one passes its readiness check.
+          # ── Feature 4 (continued) ── Readiness / liveness probes for the worker.
+          #
+          # The ssr-report-gen sidecar in this pod listens on TCP port 5173.
+          # A tcpSocket probe on that port is the cleanest signal: if the SSR
+          # server is accepting connections the pod is healthy and ready.
+          # This avoids any dependency on tools (redis-cli, curl) that may not
+          # be present in the coffee-worker image.
           readinessProbe:
-            exec:
-              command:
-                - sh
-                - -c
-                - "redis-cli -h {{ .Values.global.environment.redis_host }} ping | grep -q PONG"
+            tcpSocket:
+              port: 5173
             initialDelaySeconds: 15
             periodSeconds: 15
-            timeoutSeconds: 10
+            timeoutSeconds: 5
             successThreshold: 1
             failureThreshold: 3
 
-          # Liveness probe: restart the container if it becomes unresponsive.
+          # Liveness: restart the container if port 5173 stops accepting connections.
           livenessProbe:
-            exec:
-              command:
-                - sh
-                - -c
-                - "redis-cli -h {{ .Values.global.environment.redis_host }} ping | grep -q PONG"
+            tcpSocket:
+              port: 5173
             initialDelaySeconds: 30
             periodSeconds: 30
-            timeoutSeconds: 10
+            timeoutSeconds: 5
             successThreshold: 1
             failureThreshold: 3
 

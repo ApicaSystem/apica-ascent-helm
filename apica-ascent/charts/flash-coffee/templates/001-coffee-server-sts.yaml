@@ -417,11 +417,12 @@ spec:
             successThreshold: 1
             failureThreshold: 5
 
-          # Liveness probe: restart the container if it becomes unresponsive.
+          # Liveness probe: restart the container if port 5000 stops responding.
+          # GET / returns HTTP 200 (frontend HTML) — valid 2xx liveness signal.
           livenessProbe:
             httpGet:
               port: {{ .Values.coffee.targetPort }}
-              path: /static/js/jquery.min.js
+              path: /
             initialDelaySeconds: 30
             periodSeconds: 30
             timeoutSeconds: 10
