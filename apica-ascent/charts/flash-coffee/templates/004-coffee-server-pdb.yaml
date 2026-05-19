@@ -1,0 +1,32 @@
+# ── Feature 3 ── PodDisruptionBudget for coffee-server.
+#
+# minAvailable: N-1 guarantees at least N-1 pods remain Running during:
+#   • voluntary disruptions: node drain, cluster upgrades, rollout restarts
+#   • kubectl drain / cordon operations
+#
+# Without a PDB, a node drain can evict ALL pods simultaneously, causing
+# a complete outage. With minAvailable set to replicaCount-1, the cluster
+# will only evict one pod at a time, keeping the service available.
+#
+# Default values.yaml: replicaCount=2 → minAvailable=1
+# For production with replicaCount=3, set coffee.pdb.minAvailable=2
+{{- if .Values.coffee.pdb.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: coffee-server-pdb
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: coffee-server-deployment
+    app.kubernetes.io/name: coffee-server
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+spec:
+  # minAvailable keeps this many pods alive at all times during voluntary disruptions.
+  # Set to replicaCount - 1 so at least one pod always serves traffic.
+  minAvailable: {{ .Values.coffee.pdb.minAvailable }}
+  selector:
+    matchLabels:
+      app: coffee-server
+{{- end }}

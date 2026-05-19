@@ -1,0 +1,31 @@
+# ── Feature 3 ── PodDisruptionBudget for coffee-worker.
+#
+# minAvailable: N-1 guarantees at least N-1 workers remain Running during:
+#   • voluntary disruptions: node drain, cluster upgrades, rollout restarts
+#   • kubectl drain / cordon operations
+#
+# Without a PDB, a node drain can evict ALL workers simultaneously, causing
+# all queued jobs to stall. With minAvailable set to replicaCount-1, the
+# cluster will only evict one worker at a time, keeping job processing alive.
+#
+# Default values.yaml: replicaCount=3 → minAvailable=2
+{{- if .Values.coffee_worker.pdb.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: coffee-worker-pdb
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: coffee-worker-deployment
+    app.kubernetes.io/name: coffee-worker
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+spec:
+  # minAvailable keeps this many workers alive at all times during voluntary disruptions.
+  # Set to replicaCount - 1 so at least two workers always process tasks.
+  minAvailable: {{ .Values.coffee_worker.pdb.minAvailable }}
+  selector:
+    matchLabels:
+      app: coffee-worker
+{{- end }}

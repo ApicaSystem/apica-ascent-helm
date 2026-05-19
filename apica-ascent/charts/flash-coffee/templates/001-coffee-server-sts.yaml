@@ -4,12 +4,23 @@ metadata:
   labels:
     app: coffee-server-deployment
   name: coffee-server
+  namespace: {{ .Release.Namespace }}
 spec:
   replicas: {{ .Values.coffee.replicaCount }}
   serviceName: coffee
   selector:
     matchLabels:
       app: coffee-server
+
+  # ── Feature 4 ── Rolling update: only 1 pod unavailable at a time.
+  # StatefulSet updates proceed pod-by-pod (highest ordinal first).
+  # The readinessProbe below gates traffic so old pods keep serving
+  # until the new pod is fully ready.
+  updateStrategy:
+    type: {{ .Values.coffee.updateStrategy.type }}
+    rollingUpdate:
+      maxUnavailable: {{ .Values.coffee.updateStrategy.maxUnavailable }}
+
   template:
     metadata:
       labels:
@@ -17,8 +28,35 @@ spec:
     spec:
       serviceAccountName: flash-coffee
 
-      {{- if .Values.global.nodeSelectors.enabled }}
+      # ── Feature 5 ── Graceful shutdown budget.
+      # Kubernetes removes the pod from endpoints and sends SIGTERM simultaneously.
+      # The preStop sleep gives the load-balancer time to drain connections before
+      # the process receives SIGTERM. terminationGracePeriodSeconds is the hard
+      # ceiling for the entire shutdown sequence (preStop + SIGTERM handling).
+      terminationGracePeriodSeconds: {{ .Values.coffee.terminationGracePeriodSeconds }}
+
+      # ── Feature 1 ── Topology spread constraints (soft, ScheduleAnyway).
+      # Two constraints: spread across hostnames (nodes) AND across zones.
+      # ScheduleAnyway means a pod is never left Pending due to topology skew.
+      {{- if .Values.coffee.topologySpreadConstraints.enabled }}
+      topologySpreadConstraints:
+        - maxSkew: {{ .Values.coffee.topologySpreadConstraints.maxSkew }}
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: {{ .Values.coffee.topologySpreadConstraints.whenUnsatisfiable }}
+          labelSelector:
+            matchLabels:
+              app: coffee-server
+        - maxSkew: {{ .Values.coffee.topologySpreadConstraints.maxSkew }}
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: {{ .Values.coffee.topologySpreadConstraints.whenUnsatisfiable }}
+          labelSelector:
+            matchLabels:
+              app: coffee-server
+      {{- end }}
+
       affinity:
+        {{- if .Values.global.nodeSelectors.enabled }}
+        # Node affinity: hard requirement to land on the correct node pool.
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
@@ -27,7 +65,23 @@ spec:
                     operator: In
                     values:
                       - {{ .Values.global.nodeSelectors.other }}
-      {{- end }}
+        {{- end }}
+
+        # ── Feature 2 ── Preferred pod anti-affinity (weight 100).
+        # Adds strong scheduling pressure to avoid co-locating replicas on the
+        # same node WITHOUT ever blocking scheduling (preferred, not required).
+        # Never use requiredDuringScheduling here — it causes Pending pods when
+        # nodes < replicas.
+        {{- if .Values.coffee.podAntiAffinity.enabled }}
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: {{ .Values.coffee.podAntiAffinity.weight }}
+              podAffinityTerm:
+                topologyKey: kubernetes.io/hostname
+                labelSelector:
+                  matchLabels:
+                    app: coffee-server
+        {{- end }}
 
       {{- if .Values.global.taints.enabled }}
       tolerations:
@@ -96,6 +150,16 @@ spec:
           image: "{{ .Values.global.imageRegistry }}/{{ .Values.coffee.image.repository }}:{{ .Values.coffee.image.tag }}"
           imagePullPolicy: {{ .Values.coffee.image.pullPolicy }}
           command: ["/app/flash-brew/setup_coffee.sh"]
+
+          # ── Feature 5 (continued) ── preStop hook.
+          # Sleeps for preStopSleepSeconds before the container receives SIGTERM,
+          # giving the kube-proxy / cloud LB time to remove this pod from the
+          # active endpoint slice and stop routing new requests to it.
+          lifecycle:
+            preStop:
+              exec:
+                command: ["sh", "-c", "sleep {{ .Values.coffee.preStopSleepSeconds }}"]
+
           env:
             - name: LOGIQ_UI_GOOGLE_ANALYTICS_CODE
               value: {{ .Values.global.environment.gacode }}
@@ -336,7 +400,13 @@ spec:
 
           ports:
             - containerPort: {{ .Values.coffee.targetPort }}
+              name: http
+              protocol: TCP
 
+          # ── Feature 4 (continued) ── Readiness probe gates rollout traffic.
+          # A pod is only added to the endpoint slice (and receives requests)
+          # once this probe succeeds. During a rolling update the old pod keeps
+          # serving until the new pod passes its readiness check.
           readinessProbe:
             httpGet:
               port: {{ .Values.coffee.targetPort }}
@@ -347,8 +417,20 @@ spec:
             successThreshold: 1
             failureThreshold: 5
 
+          # Liveness probe: restart the container if it becomes unresponsive.
+          livenessProbe:
+            httpGet:
+              port: {{ .Values.coffee.targetPort }}
+              path: /static/js/jquery.min.js
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 10
+            successThreshold: 1
+            failureThreshold: 3
+
           {{- if .Values.coffee.resources }}
           resources:
             {{- toYaml .Values.coffee.resources | nindent 12 }}
           {{- end }}
+
       restartPolicy: Always
