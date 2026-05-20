@@ -1,0 +1,38 @@
+# ── Feature 3 ── PodDisruptionBudget for logiq-flash (primary ingest).
+#
+# minAvailable: N-1 guarantees at least N-1 flash pods remain Running during:
+#   • voluntary disruptions: node drain, cluster upgrades, rollout restarts
+#   • kubectl drain / cordon operations
+#
+# Each flash pod contains 3 containers (flash, logiq-flash-query, logiq-flash-tracing).
+# The PDB protects the pod as a whole — all 3 containers are kept alive together.
+#
+# Without a PDB, a node drain can evict ALL flash pods simultaneously, causing
+# a complete ingest and query outage. With minAvailable set to replicaCount-1,
+# the cluster will only evict one pod at a time, keeping ingest available.
+#
+# Root values.yaml sets replicaCount=2 → minAvailable=1 (N-1).
+{{- if .Values.flash.pdb.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ template "logiq-flash.name" . }}-pdb
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ template "logiq-flash.name" . }}
+    chart: {{ template "logiq-flash.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+    app.kubernetes.io/name: {{ template "logiq-flash.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    helm.sh/chart: {{ template "logiq-flash.chart" . }}
+spec:
+  # minAvailable keeps this many flash pods alive at all times during voluntary disruptions.
+  # Set to replicaCount - 1 so at least one pod always ingests and serves queries.
+  minAvailable: {{ .Values.flash.pdb.minAvailable }}
+  selector:
+    matchLabels:
+      app: {{ template "logiq-flash.name" . }}
+      release: {{ .Release.Name }}
+{{- end }}
