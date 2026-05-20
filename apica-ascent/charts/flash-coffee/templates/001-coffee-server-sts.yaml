@@ -11,33 +11,21 @@ spec:
   selector:
     matchLabels:
       app: coffee-server
-
-  # ── Feature 4 ── Rolling update: only 1 pod unavailable at a time.
-  # StatefulSet updates proceed pod-by-pod (highest ordinal first).
-  # The readinessProbe below gates traffic so old pods keep serving
-  # until the new pod is fully ready.
+  # Rolling update: 1 pod down at a time; readinessProbe gates traffic during rollout.
   updateStrategy:
     type: {{ .Values.coffee.updateStrategy.type }}
     rollingUpdate:
       maxUnavailable: {{ .Values.coffee.updateStrategy.maxUnavailable }}
-
   template:
     metadata:
       labels:
         app: coffee-server
     spec:
       serviceAccountName: flash-coffee
-
-      # ── Feature 5 ── Graceful shutdown budget.
-      # Kubernetes removes the pod from endpoints and sends SIGTERM simultaneously.
-      # The preStop sleep gives the load-balancer time to drain connections before
-      # the process receives SIGTERM. terminationGracePeriodSeconds is the hard
-      # ceiling for the entire shutdown sequence (preStop + SIGTERM handling).
+      # preStop(15s) fills the LB-drain gap before SIGTERM; 60s is the hard ceiling.
       terminationGracePeriodSeconds: {{ .Values.coffee.terminationGracePeriodSeconds }}
 
-      # ── Feature 1 ── Topology spread constraints (soft, ScheduleAnyway).
-      # Two constraints: spread across hostnames (nodes) AND across zones.
-      # ScheduleAnyway means a pod is never left Pending due to topology skew.
+      # Soft spread across nodes and zones — ScheduleAnyway never blocks scheduling.
       {{- if .Values.coffee.topologySpreadConstraints.enabled }}
       topologySpreadConstraints:
         - maxSkew: {{ .Values.coffee.topologySpreadConstraints.maxSkew }}
@@ -56,7 +44,6 @@ spec:
 
       affinity:
         {{- if .Values.global.nodeSelectors.enabled }}
-        # Node affinity: hard requirement to land on the correct node pool.
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
@@ -66,12 +53,7 @@ spec:
                     values:
                       - {{ .Values.global.nodeSelectors.other }}
         {{- end }}
-
-        # ── Feature 2 ── Preferred pod anti-affinity (weight 100).
-        # Adds strong scheduling pressure to avoid co-locating replicas on the
-        # same node WITHOUT ever blocking scheduling (preferred, not required).
-        # Never use requiredDuringScheduling here — it causes Pending pods when
-        # nodes < replicas.
+        # Preferred anti-affinity: adds scheduling pressure without ever blocking.
         {{- if .Values.coffee.podAntiAffinity.enabled }}
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
@@ -150,42 +132,30 @@ spec:
           image: "{{ .Values.global.imageRegistry }}/{{ .Values.coffee.image.repository }}:{{ .Values.coffee.image.tag }}"
           imagePullPolicy: {{ .Values.coffee.image.pullPolicy }}
           command: ["/app/flash-brew/setup_coffee.sh"]
-
-          # ── Feature 5 (continued) ── preStop hook.
-          # Sleeps for preStopSleepSeconds before the container receives SIGTERM,
-          # giving the kube-proxy / cloud LB time to remove this pod from the
-          # active endpoint slice and stop routing new requests to it.
+          # Sleep before SIGTERM so the LB stops routing before the process exits.
           lifecycle:
             preStop:
               exec:
                 command: ["sh", "-c", "sleep {{ .Values.coffee.preStopSleepSeconds }}"]
-
           env:
             - name: LOGIQ_UI_GOOGLE_ANALYTICS_CODE
               value: {{ .Values.global.environment.gacode }}
-
             - name: CONFIG_HASH
               value: {{ include "flash-coffee.confighash" . | quote }}
-
             - name: PYTHONUNBUFFERED
               value: "0"
-
             - name: COOKIE_SECRET
               value: d84c0edd-ab5e-4664-b0ee-2cd15a9ae5f0
-
             - name: LOG_LEVEL
               value: ERROR
-
             {{- if .Values.global.environment.parent_host }}
             - name: PARENT_HOST
               value: {{ .Values.global.environment.parent_host }}
             {{- end }}
-
             {{- if .Values.global.domain }}
             - name: HOST
               value: {{ .Values.global.domain }}
             {{- end }}
-
             - name: MY_APP_NAME
               value: coffee-server
             - name: MY_NODE_NAME
@@ -204,99 +174,82 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: status.podIP
-
             {{- if .Values.global.environment.cluster_id }}
             - name: MY_CLUSTER_ID
               value: {{ .Values.global.environment.cluster_id }}
             {{- end }}
-
             - name: LOGIQ_FLASH_HOST
               valueFrom:
                 secretKeyRef:
                   name: {{ template "flash-coffee.fullname" . }}
                   key: logiq_flash_host
-
             - name: LOGIQ_FLASH_PORT
               valueFrom:
                 secretKeyRef:
                   name: {{ template "flash-coffee.fullname" . }}
                   key: logiq_flash_port
-
             - name: REDIS_HOST
               valueFrom:
                 secretKeyRef:
                   name: {{ template "flash-coffee.fullname" . }}
                   key: redis_host
-
             - name: REDIS_URL
               value: redis://{{ .Values.global.environment.redis_host }}:{{ .Values.global.environment.redis_port }}/0
-
             - name: POSTGRES_USER
               valueFrom:
                 secretKeyRef:
                   name: {{ template "flash-coffee.fullname" . }}
                   key: postgres_user
-
             - name: POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: {{ template "flash-coffee.fullname" . }}
                   key: postgres_password
-
             - name: POSTGRES_HOST
               valueFrom:
                 secretKeyRef:
                   name: {{ template "flash-coffee.fullname" . }}
                   key: postgres_host
-
             - name: POSTGRES_PORT
               valueFrom:
                 secretKeyRef:
                   name: {{ template "flash-coffee.fullname" . }}
                   key: postgres_port
-
             - name: POSTGRES_DB
               valueFrom:
                 secretKeyRef:
                   name: {{ template "flash-coffee.fullname" . }}
                   key: postgres_db
-
             - name: POSTGRES_COFFEE_DB
               valueFrom:
                 secretKeyRef:
                   name: {{ template "flash-coffee.fullname" . }}
                   key: postgres_coffee_db
-
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
                   name: {{ template "flash-coffee.fullname" . }}
                   key: coffee_database_url
-
             - name: S3_URL
               valueFrom:
                 secretKeyRef:
                   name: {{ template "flash-coffee.fullname" . }}
                   key: s3_url
-
             - name: S3_ACCESS
               valueFrom:
                 secretKeyRef:
                   name: {{ .Values.global.sharedSecretName }}
                   key: s3_access
-
             - name: S3_SECRET
               valueFrom:
                 secretKeyRef:
                   name: {{ .Values.global.sharedSecretName }}
                   key: s3_secret
-
             - name: S3_BUCKET
               valueFrom:
                 secretKeyRef:
                   name: {{ .Values.global.sharedSecretName }}
                   key: s3_bucket
-
             {{- if .Values.global.environment.admin_name }}
             - name: ADMIN_NAME
               valueFrom:
@@ -304,7 +257,6 @@ spec:
                   name: {{ template "flash-coffee.fullname" . }}
                   key: admin_name
             {{- end }}
-
             {{- if .Values.global.environment.admin_password }}
             - name: ADMIN_PASSWORD
               valueFrom:
@@ -312,7 +264,6 @@ spec:
                   name: {{ template "flash-coffee.fullname" . }}
                   key: admin_password
             {{- end }}
-
             {{- if .Values.global.environment.admin_org }}
             - name: ADMIN_ORG
               valueFrom:
@@ -320,7 +271,6 @@ spec:
                   name: {{ template "flash-coffee.fullname" . }}
                   key: admin_org
             {{- end }}
-
             {{- if .Values.global.environment.admin_email }}
             - name: ADMIN_EMAIL
               valueFrom:
@@ -328,7 +278,6 @@ spec:
                   name: {{ template "flash-coffee.fullname" . }}
                   key: admin_email
             {{- end }}
-
             {{- if .Values.global.environment.mail_server }}
             - name: MAIL_SERVER
               valueFrom:
@@ -336,7 +285,6 @@ spec:
                   name: {{ template "flash-coffee.fullname" . }}
                   key: mail_server
             {{- end }}
-
             {{- if .Values.global.environment.mail_port }}
             - name: MAIL_PORT
               valueFrom:
@@ -344,7 +292,6 @@ spec:
                   name: {{ template "flash-coffee.fullname" . }}
                   key: mail_port
             {{- end }}
-
             {{- if .Values.global.environment.mail_username }}
             - name: MAIL_USERNAME
               valueFrom:
@@ -352,7 +299,6 @@ spec:
                   name: {{ template "flash-coffee.fullname" . }}
                   key: mail_username
             {{- end }}
-
             {{- if .Values.global.environment.mail_password }}
             - name: MAIL_PASSWORD
               valueFrom:
@@ -360,7 +306,6 @@ spec:
                   name: {{ template "flash-coffee.fullname" . }}
                   key: mail_password
             {{- end }}
-
             {{- if .Values.global.environment.mail_default_sender }}
             - name: MAIL_DEFAULT_SENDER
               valueFrom:
@@ -368,27 +313,20 @@ spec:
                   name: {{ template "flash-coffee.fullname" . }}
                   key: mail_default_sender
             {{- end }}
-
             - name: WEB_WORKERS
               value: "{{ .Values.coffee.web_workers }}"
-
             - name: CONFIGURE_LOGIQ_DS
               value: "true"
-
             - name: COFFEE_UI_SERVER_URL
               value: http://{{ .Values.coffee.name }}:{{ .Values.coffee.port }}
-
             - name: CONFIGURE_LOGIQEVENTS_DS
               value: "false"
-
             {{- if .Values.global.chart.prometheus }}
             - name: PROM_ALERT_MGR_URL
               value: {{ .Release.Name }}-prometheus-alertmanager:9093
             {{- end }}
-
             - name: EVENT_REPORTING_WEBHOOKS
               value: ""
-
             - name: LOGIQ_AUDIT_EVENT_GROUP
               value: logiq-audit
 
@@ -400,13 +338,8 @@ spec:
 
           ports:
             - containerPort: {{ .Values.coffee.targetPort }}
-              name: http
-              protocol: TCP
 
-          # ── Feature 4 (continued) ── Readiness probe gates rollout traffic.
-          # A pod is only added to the endpoint slice (and receives requests)
-          # once this probe succeeds. During a rolling update the old pod keeps
-          # serving until the new pod passes its readiness check.
+          # Readiness gates endpoint inclusion; old pod keeps serving during rollout.
           readinessProbe:
             httpGet:
               port: {{ .Values.coffee.targetPort }}
@@ -417,8 +350,7 @@ spec:
             successThreshold: 1
             failureThreshold: 5
 
-          # Liveness probe: restart the container if port 5000 stops responding.
-          # GET / returns HTTP 200 (frontend HTML) — valid 2xx liveness signal.
+          # Liveness uses GET / (returns 200); restarts if port 5000 stops responding.
           livenessProbe:
             httpGet:
               port: {{ .Values.coffee.targetPort }}

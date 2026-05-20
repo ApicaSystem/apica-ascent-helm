@@ -15,16 +15,11 @@ spec:
     matchLabels:
       app: {{ template "flash-discovery.name" . }}
       release: {{ .Release.Name }}
-
-  # ── Feature 4 ── Rolling update: only 1 pod unavailable at a time.
-  # StatefulSet updates proceed pod-by-pod (highest ordinal first).
-  # The readinessProbe on /ready gates traffic so old pods keep serving
-  # until the new pod is fully ready.
+  # Rolling update: 1 pod down at a time; readinessProbe gates traffic during rollout.
   updateStrategy:
     type: {{ .Values.updateStrategy.type }}
     rollingUpdate:
       maxUnavailable: {{ .Values.updateStrategy.maxUnavailable }}
-
   volumeClaimTemplates:
     - apiVersion: v1
       kind: PersistentVolumeClaim
@@ -37,7 +32,6 @@ spec:
           requests:
             storage: {{ .Values.persistence.size | quote }}
         storageClassName: {{ .Values.global.persistence.storageClass }}
-
   template:
     metadata:
       labels:
@@ -45,17 +39,10 @@ spec:
         release: {{ .Release.Name }}
     spec:
       serviceAccountName: flash-discovery
-
-      # ── Feature 5 ── Graceful shutdown budget.
-      # Kubernetes removes the pod from endpoints and sends SIGTERM simultaneously.
-      # The preStop sleep gives the load-balancer time to drain connections before
-      # the process receives SIGTERM. terminationGracePeriodSeconds is the hard
-      # ceiling for the entire shutdown sequence (preStop + SIGTERM handling).
+      # preStop(15s) fills the LB-drain gap before SIGTERM; 60s is the hard ceiling.
       terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
 
-      # ── Feature 1 ── Topology spread constraints (soft, ScheduleAnyway).
-      # Two constraints: spread across hostnames (nodes) AND across zones.
-      # ScheduleAnyway means a pod is never left Pending due to topology skew.
+      # Soft spread across nodes and zones — ScheduleAnyway never blocks scheduling.
       {{- if .Values.topologySpreadConstraints.enabled }}
       topologySpreadConstraints:
         - maxSkew: {{ .Values.topologySpreadConstraints.maxSkew }}
@@ -76,8 +63,6 @@ spec:
 
       affinity:
         {{- if .Values.global.nodeSelectors.enabled }}
-        # Node affinity: hard requirement to land on the correct node pool.
-        # Unchanged from original — uses global.nodeSelectors.infra label.
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
@@ -87,12 +72,7 @@ spec:
                     values:
                       - {{ .Values.global.nodeSelectors.infra }}
         {{- end }}
-
-        # ── Feature 2 ── Preferred pod anti-affinity (weight 100).
-        # Adds strong scheduling pressure to avoid co-locating replicas on the
-        # same node WITHOUT ever blocking scheduling (preferred, not required).
-        # Never use requiredDuringScheduling here — it causes Pending pods when
-        # nodes < replicas.
+        # Preferred anti-affinity: adds scheduling pressure without ever blocking.
         {{- if .Values.podAntiAffinity.enabled }}
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
@@ -176,16 +156,11 @@ spec:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.global.imageRegistry }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-
-          # ── Feature 5 (continued) ── preStop hook.
-          # Sleeps for preStopSleepSeconds before the container receives SIGTERM,
-          # giving the kube-proxy / cloud LB time to remove this pod from the
-          # active endpoint slice and stop routing new requests to it.
+          # Sleep before SIGTERM so the LB stops routing before the process exits.
           lifecycle:
             preStop:
               exec:
                 command: ["sh", "-c", "sleep {{ .Values.preStopSleepSeconds }}"]
-
           env:
             - name: CONFIG_HASH
               value: {{ include "flash-discovery.confighash" . | quote }}
@@ -261,10 +236,7 @@ spec:
               containerPort: {{ .Values.discoveryAPI.port }}
               protocol: TCP
 
-          # ── Feature 4 (continued) ── Readiness probe gates rollout traffic.
-          # A pod is only added to the endpoint slice once /ready returns 200.
-          # During a rolling update the old pod keeps serving until the new pod
-          # passes its readiness check.
+          # Readiness gates endpoint inclusion; old pod keeps serving during rollout.
           readinessProbe:
             httpGet:
               path: /ready
@@ -275,7 +247,6 @@ spec:
             successThreshold: 1
             failureThreshold: 3
 
-          # Liveness probe: restart the container if /live stops returning 200.
           livenessProbe:
             httpGet:
               path: /live

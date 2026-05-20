@@ -6,92 +6,56 @@ replicaCount: 2
 replicaCountMl: 2
 replicaCountSync: 2
 
-# ── High-availability scheduling controls for logiq-flash-sync ─────────────────
-
-# Feature 1: topologySpreadConstraints — soft spread across nodes and zones.
 sync:
   topologySpreadConstraints:
     enabled: true
     maxSkew: 1
-    whenUnsatisfiable: ScheduleAnyway
-
-  # Feature 2: preferred pod anti-affinity — weight 100, never blocks scheduling.
+    whenUnsatisfiable: ScheduleAnyway   # soft — never blocks scheduling
   podAntiAffinity:
     enabled: true
     weight: 100
-
-  # Feature 4: rolling update — 1 pod unavailable at a time.
   updateStrategy:
     type: RollingUpdate
     maxUnavailable: 1
-
-  # Feature 5: graceful shutdown — preStop(15s) fills LB-drain gap before SIGTERM.
   terminationGracePeriodSeconds: 60
   preStopSleepSeconds: 15
-
-  # Feature 3: PodDisruptionBudget — keep N-1 pods alive during drains/upgrades.
-  # Root values.yaml sets replicaCountSync=2 → minAvailable=1 (N-1).
+  # N-1 for replicaCountSync=2
   pdb:
     enabled: true
     minAvailable: 1
 
-# ── High-availability scheduling controls for logiq-flash (primary ingest) ─────
-#
-# NOTE: logiq-flash uses a hard podAntiAffinity (podPerNode) that already
-# guarantees one-pod-per-node. The hostname topologySpreadConstraint and a
-# preferred podAntiAffinity on hostname are both omitted — they would be
-# redundant with the hard rule. Only the zone constraint adds new value.
+# Zone-only spread — hard podAntiAffinity (podPerNode) already covers hostname.
+# preStop is 30s (vs 15s elsewhere) — flash has more persistent TCP connections.
+# terminationGracePeriodSeconds stays at 120s (set in template, not here).
 flash:
   topologySpreadConstraints:
     enabled: true
     maxSkew: 1
-    # Zone only — ScheduleAnyway so single-zone clusters are not blocked.
-    whenUnsatisfiable: ScheduleAnyway
-
-  # Rolling update — 1 pod (all 3 containers) unavailable at a time.
+    whenUnsatisfiable: ScheduleAnyway   # zone only; hostname covered by hard anti-affinity
   updateStrategy:
     type: RollingUpdate
     maxUnavailable: 1
-
-  # Graceful shutdown — 30s preStop (more connections than other workloads).
-  # terminationGracePeriodSeconds stays at 120s (already set in template).
   preStopSleepSeconds: 30
-
-  # PodDisruptionBudget — keep N-1 pods alive during drains/upgrades.
-  # Root values.yaml sets replicaCount=2 → minAvailable=1 (N-1).
+  # N-1 for replicaCount=2
   pdb:
     enabled: true
     minAvailable: 1
 
-# ── High-availability scheduling controls for logiq-flash-ml ───────────────────
-
-# Feature 1: topologySpreadConstraints — soft spread across nodes and zones.
-# ScheduleAnyway means a pod is never left Pending due to topology skew.
 ml:
   topologySpreadConstraints:
     enabled: true
     maxSkew: 1
-    whenUnsatisfiable: ScheduleAnyway
-
-  # Feature 2: preferred pod anti-affinity — weight 100, never blocks scheduling.
-  # NOTE: podPerNode (line below) uses requiredDuringScheduling which is a hard
-  # rule and can cause Pending pods when nodes < replicas. The preferred
-  # anti-affinity here is additive and never blocks.
+    whenUnsatisfiable: ScheduleAnyway   # soft — never blocks scheduling
+  # Preferred anti-affinity: additive alongside the hard podPerNode rule, never blocks.
   podAntiAffinity:
     enabled: true
     weight: 100
-
-  # Feature 4: rolling update — 1 pod unavailable at a time.
   updateStrategy:
     type: RollingUpdate
     maxUnavailable: 1
-
-  # Feature 5: graceful shutdown — preStop(15s) fills LB-drain gap before SIGTERM.
   terminationGracePeriodSeconds: 60
   preStopSleepSeconds: 15
-
-  # Feature 3: PodDisruptionBudget — keep N-1 pods alive during drains/upgrades.
-  # Root values.yaml sets replicaCountMl=2 → minAvailable=1 (N-1).
+  # N-1 for replicaCountMl=2
   pdb:
     enabled: true
     minAvailable: 1

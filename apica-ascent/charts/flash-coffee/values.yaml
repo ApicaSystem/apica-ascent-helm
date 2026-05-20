@@ -15,32 +15,22 @@ coffee:
     pullPolicy: IfNotPresent
   resources: {}
 
-  # High-availability scheduling controls
-  # topologySpreadConstraints: spread pods softly across nodes and zones
   topologySpreadConstraints:
     enabled: true
     maxSkew: 1
-    whenUnsatisfiable: ScheduleAnyway   # never blocks scheduling
-
-  # podAntiAffinity: preferred (soft) — adds scheduling pressure, never blocks
+    whenUnsatisfiable: ScheduleAnyway   # soft — never blocks scheduling
   podAntiAffinity:
     enabled: true
-    weight: 100                          # maximum weight for strongest signal
-
-  # updateStrategy: controls rolling-update behaviour for the StatefulSet
+    weight: 100
   updateStrategy:
     type: RollingUpdate
-    maxUnavailable: 1                    # only 1 pod down at a time during rollout
-
-  # terminationGracePeriodSeconds: total budget for graceful shutdown
-  # preStop sleep fills the gap between endpoint removal and SIGTERM
+    maxUnavailable: 1
   terminationGracePeriodSeconds: 60
   preStopSleepSeconds: 15
-
-  # PodDisruptionBudget: keeps N-1 pods alive during drains / upgrades
+  # N-1 for replicaCount 2; increase minAvailable when scaling up
   pdb:
     enabled: true
-    minAvailable: 1                      # override per-environment; default N-1 for replicaCount 2
+    minAvailable: 1
 
 
 coffee_worker:
@@ -51,24 +41,19 @@ coffee_worker:
   replicaCount: 3
   resources: {}
 
-  # High-availability scheduling controls
   topologySpreadConstraints:
     enabled: true
     maxSkew: 1
-    whenUnsatisfiable: ScheduleAnyway
-
+    whenUnsatisfiable: ScheduleAnyway   # soft — never blocks scheduling
   podAntiAffinity:
     enabled: true
     weight: 100
-
   updateStrategy:
     type: RollingUpdate
     maxUnavailable: 1
-
   terminationGracePeriodSeconds: 60
   preStopSleepSeconds: 15
-
-  # PodDisruptionBudget: for replicaCount 3 → minAvailable 2
+  # N-1 for replicaCount 3
   pdb:
     enabled: true
     minAvailable: 2

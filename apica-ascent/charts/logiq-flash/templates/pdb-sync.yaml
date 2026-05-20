@@ -1,15 +1,5 @@
-# ── Feature 3 ── PodDisruptionBudget for logiq-flash-sync.
-#
-# minAvailable: N-1 guarantees at least N-1 sync pods remain Running during:
-#   • voluntary disruptions: node drain, cluster upgrades, rollout restarts
-#   • kubectl drain / cordon operations
-#
-# Without a PDB, a node drain can evict ALL sync pods simultaneously, causing
-# all sync processing to stall. With minAvailable set to replicaCountSync-1,
-# the cluster will only evict one pod at a time, keeping sync available.
-#
-# Root values.yaml sets replicaCountSync=2 → minAvailable=1 (N-1).
 {{- if .Values.sync.pdb.enabled }}
+# PodDisruptionBudget: keeps N-1 sync pods alive during node drains and cluster upgrades.
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
@@ -25,8 +15,6 @@ metadata:
     app.kubernetes.io/managed-by: {{ .Release.Service }}
     helm.sh/chart: {{ template "logiq-flash.chart" . }}
 spec:
-  # minAvailable keeps this many sync pods alive at all times during voluntary disruptions.
-  # Set to replicaCountSync - 1 so at least one sync pod always processes data.
   minAvailable: {{ .Values.sync.pdb.minAvailable }}
   selector:
     matchLabels:

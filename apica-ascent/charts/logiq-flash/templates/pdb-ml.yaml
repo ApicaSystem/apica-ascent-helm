@@ -1,15 +1,5 @@
-# ── Feature 3 ── PodDisruptionBudget for logiq-flash-ml.
-#
-# minAvailable: N-1 guarantees at least N-1 ML pods remain Running during:
-#   • voluntary disruptions: node drain, cluster upgrades, rollout restarts
-#   • kubectl drain / cordon operations
-#
-# Without a PDB, a node drain can evict ALL ML pods simultaneously, causing
-# a complete ML processing outage. With minAvailable set to replicaCountMl-1,
-# the cluster will only evict one pod at a time, keeping ML available.
-#
-# Root values.yaml sets replicaCountMl=2 → minAvailable=1 (N-1).
 {{- if .Values.ml.pdb.enabled }}
+# PodDisruptionBudget: keeps N-1 ML pods alive during node drains and cluster upgrades.
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
@@ -25,8 +15,6 @@ metadata:
     app.kubernetes.io/managed-by: {{ .Release.Service }}
     helm.sh/chart: {{ template "logiq-flash.chart" . }}
 spec:
-  # minAvailable keeps this many ML pods alive at all times during voluntary disruptions.
-  # Set to replicaCountMl - 1 so at least one ML pod always processes requests.
   minAvailable: {{ .Values.ml.pdb.minAvailable }}
   selector:
     matchLabels:

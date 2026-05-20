@@ -15,17 +15,11 @@ spec:
     matchLabels:
       app: {{ template "logiq-flash.name" . }}
       release: {{ .Release.Name }}
-
-  # ── Feature 4 ── Rolling update: only 1 pod unavailable at a time.
-  # Each pod contains 3 containers (flash, query, tracing) — all 3 are replaced
-  # together per pod. StatefulSet updates proceed pod-by-pod (highest ordinal first).
-  # The readinessProbe on /ready gates traffic so old pods keep serving until
-  # the new pod passes its readiness check.
+  # Rolling update: 1 pod (3 containers) down at a time; readinessProbe gates traffic.
   updateStrategy:
     type: {{ .Values.flash.updateStrategy.type }}
     rollingUpdate:
       maxUnavailable: {{ .Values.flash.updateStrategy.maxUnavailable }}
-
   volumeClaimTemplates:
     - apiVersion: v1
       kind: PersistentVolumeClaim
@@ -38,7 +32,6 @@ spec:
           requests:
             storage: {{ .Values.persistence.size | quote }}
         storageClassName: {{ .Values.global.persistence.storageClass }}
-
   template:
     metadata:
       annotations:
@@ -48,18 +41,11 @@ spec:
         release: {{ .Release.Name }}
     spec:
       serviceAccountName: logiq-flash
-
-      # terminationGracePeriodSeconds: 120s — kept at original value.
-      # Flash drains active TCP connections from log shippers (syslog, fluentd,
-      # filebeat, relp). 120s gives enough time for in-flight data to flush.
-      # The preStop hook below fills the LB-drain gap before SIGTERM arrives.
+      # 120s kept intentionally — flash drains active TCP connections from log shippers.
+      # preStop(30s) fills the LB-drain gap; budget: 30s preStop + 90s SIGTERM = 120s.
       terminationGracePeriodSeconds: 120
 
-      # ── Feature 1 ── Topology spread constraint (zone only, ScheduleAnyway).
-      # The hard podAntiAffinity below already guarantees one-pod-per-node,
-      # so the hostname dimension is covered. Only the zone constraint adds
-      # new value: it steers pods across AZs so a zone failure only takes
-      # down a fraction of flash replicas.
+      # Zone-only spread — hard podAntiAffinity already covers the hostname dimension.
       {{- if .Values.flash.topologySpreadConstraints.enabled }}
       topologySpreadConstraints:
         - maxSkew: {{ .Values.flash.topologySpreadConstraints.maxSkew }}
@@ -73,8 +59,6 @@ spec:
 
       affinity:
         {{- if .Values.global.nodeSelectors.enabled }}
-        # Node affinity: hard requirement to land on the ingest node pool.
-        # Unchanged from original — uses global.nodeSelectors.ingest label.
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
@@ -87,9 +71,7 @@ spec:
 
         podAntiAffinity:
           {{- if .Values.podPerNode }}
-          # Hard pod anti-affinity (podPerNode) — UNCHANGED.
-          # Guarantees one logiq-flash pod per node. Will cause Pending if
-          # nodes < replicas. This is the existing design intent.
+          # Hard rule: one logiq-flash pod per node. Pods go Pending if nodes < replicas.
           requiredDuringSchedulingIgnoredDuringExecution:
             - labelSelector:
                 matchExpressions:
@@ -99,13 +81,7 @@ spec:
                       - {{ template "logiq-flash.name" . }}
               topologyKey: kubernetes.io/hostname
           {{- end }}
-
-          # NOTE: preferred podAntiAffinity on kubernetes.io/hostname is intentionally
-          # omitted here. The required rule above already eliminates all nodes that
-          # have a logiq-flash pod, so a preferred rule on the same topologyKey
-          # would operate on a set of nodes with zero logiq-flash pods — adding
-          # zero scheduling influence. The zone-level signal is handled by
-          # topologySpreadConstraints above.
+          # Preferred anti-affinity omitted on hostname — shadowed by the hard rule above.
 
       {{- if .Values.global.taints.enabled }}
       tolerations:
@@ -193,7 +169,7 @@ spec:
         {{- end }}
 
       containers:
-        # ── Primary ingest container ──────────────────────────────────────────
+        # Primary ingest container — receives logs via syslog/CEF/relp/fluentd/filebeat/gRPC.
         - name: {{ .Chart.Name }}
           image: "{{ .Values.global.imageRegistry }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
@@ -202,17 +178,11 @@ spec:
           args:
             - -c
             - /flash/bin/flash -config /flash/config/config.yaml -install_root /flash -runtime_folder /flash/db -discovery_domain $(DISCOVERY_DOMAIN) -discovery_url $(DISCOVERY_URL) -discovery_id flash1 -pg_max_idle_conns 3 -pg_max_open_Conns 5 -postgres_timeout 20s -workers 150 -connection_channel_size 10 --pg_conn_max_lifetime 5m {{ .Values.global.environment.extraflag }} {{- if .Values.logflow_only.enabled }} {{ .Values.logflow_only.args }} {{- end }} {{- if .Values.kafka_client.enabled }} {{ .Values.kafka_client.kafka_args }} {{- end }}
-
-          # ── Feature 5 ── preStop hook.
-          # Sleeps 30s before SIGTERM — gives kube-proxy and cloud LB time to
-          # stop routing new log shipper connections to this pod. 30s is used
-          # (vs 15s elsewhere) because flash handles more persistent TCP connections
-          # (syslog, fluentd, filebeat, relp). Total budget: 30s + 90s = 120s ceiling.
+          # 30s sleep before SIGTERM — more persistent connections than other workloads.
           lifecycle:
             preStop:
               exec:
                 command: ["sh", "-c", "sleep {{ .Values.flash.preStopSleepSeconds }}"]
-
           env:
             - name: CONFIG_HASH
               value: {{ include "logiq-flash.confighash" . | quote }}
@@ -390,9 +360,8 @@ spec:
               containerPort: 517
               protocol: TCP
 
-          # ── Feature 4 (continued) ── Readiness probe gates rollout traffic.
-          # failureThreshold: 25 is intentional — flash needs time for Raft
-          # consensus, WAL replay, and write buffer warm-up before serving.
+          # failureThreshold: 25 intentional — Raft re-election and WAL replay can take minutes.
+          # A lower threshold causes restart loops during legitimate recovery.
           readinessProbe:
             httpGet:
               path: /ready
@@ -403,9 +372,6 @@ spec:
             successThreshold: 1
             failureThreshold: 25
 
-          # Liveness probe: restart if /ready stops responding.
-          # failureThreshold: 25 matches readiness — same Raft/WAL reasoning.
-          # A lower threshold would cause restart loops during legitimate recovery.
           livenessProbe:
             httpGet:
               path: /ready
@@ -419,8 +385,7 @@ spec:
           resources:
             {{- toYaml .Values.resources.ingest | nindent 12 }}
 
-        # ── Query sidecar container ───────────────────────────────────────────
-        # Same binary as primary, --sidecar-node flag, separate ports.
+        # Query sidecar — same binary as primary, --sidecar-node flag, separate ports.
         - name: logiq-flash-query
           image: "{{ .Values.global.imageRegistry }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
@@ -429,7 +394,6 @@ spec:
           args:
             - -c
             - /flash/bin/flash -config /flash/config/config.yaml -install_root /flash -runtime_folder /flash/db -discovery_domain $(DISCOVERY_DOMAIN) -discovery_url $(DISCOVERY_URL) -discovery_id $(DISCOVERY_ID) -pg_max_idle_conns 3 -pg_max_open_Conns 10 -postgres_timeout 20s --pg_conn_max_lifetime 5m -grpc_port 51054 -health_check_port 18080 --sidecar-node -api_port 19999 {{ .Values.global.environment.extraflag }}
-
           env:
             - name: CONFIG_HASH
               value: {{ include "logiq-flash.confighash" . | quote }}
@@ -544,7 +508,7 @@ spec:
               name: healthcheck
               protocol: TCP
 
-          # Readiness probe — failureThreshold: 25 intentional (same as primary).
+          # failureThreshold: 25 intentional — same Raft/WAL recovery as primary container.
           readinessProbe:
             httpGet:
               path: /ready
@@ -556,8 +520,6 @@ spec:
             successThreshold: 1
             failureThreshold: 25
 
-          # Liveness probe — failureThreshold: 25 intentional.
-          # Query sidecar runs same binary; same Raft/WAL recovery characteristics.
           livenessProbe:
             httpGet:
               path: /ready
@@ -591,8 +553,7 @@ spec:
           resources:
             {{- toYaml .Values.resources.sidecarQuery | nindent 12 }}
 
-        # ── Tracing collector sidecar ─────────────────────────────────────────
-        # Jaeger collector — receives traces via gRPC, stores via localhost:50054.
+        # Jaeger collector sidecar — receives traces via gRPC, stores via localhost:50054.
         - name: {{ .Chart.Name }}-tracing
           image: "{{ .Values.global.imageRegistry }}/{{ .Values.sidecarTracing.image }}:{{ .Values.sidecarTracing.tag }}"
           imagePullPolicy: {{ .Values.sidecarTracing.pullPolicy }}
@@ -617,7 +578,6 @@ spec:
               name: tracing-1
               protocol: TCP
 
-          # Readiness probe — tcpSocket on 14250 (Jaeger gRPC collector port).
           readinessProbe:
             tcpSocket:
               port: 14250
@@ -627,9 +587,7 @@ spec:
             successThreshold: 1
             failureThreshold: 3
 
-          # Liveness probe — same as readiness.
-          # failureThreshold: 3 is correct here — tracing sidecar has no Raft/WAL,
-          # it just restarts the collector loop. Fast restart is safe.
+          # failureThreshold: 3 — tracing sidecar has no state; fast restart is safe.
           livenessProbe:
             tcpSocket:
               port: 14250
