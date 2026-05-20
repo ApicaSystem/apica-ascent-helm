@@ -377,5 +377,20 @@ spec:
             timeoutSeconds: 125
             successThreshold: 1
             failureThreshold: 3
+
+          # Liveness probe: restart the tracing sidecar if /dtracing stops responding.
+          # timeoutSeconds matches readinessProbe (125s) — the Jaeger query process
+          # can be slow to respond under load; a shorter timeout would cause false
+          # restarts and is the likely reason the original readiness used 125s.
+          livenessProbe:
+            httpGet:
+              path: /dtracing
+              port: 16686
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 125
+            successThreshold: 1
+            failureThreshold: 3
+
           resources:
             {{- toYaml .Values.resources.sidecarMlTracing | nindent 12 }}
