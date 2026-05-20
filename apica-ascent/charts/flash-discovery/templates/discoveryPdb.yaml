@@ -1,0 +1,36 @@
+# ── Feature 3 ── PodDisruptionBudget for flash-discovery.
+#
+# minAvailable: N-1 guarantees at least N-1 pods remain Running during:
+#   • voluntary disruptions: node drain, cluster upgrades, rollout restarts
+#   • kubectl drain / cordon operations
+#
+# Without a PDB, a node drain can evict ALL pods simultaneously, causing
+# a complete service outage. With minAvailable set to replicaCount-1, the
+# cluster will only evict one pod at a time, keeping the service available.
+#
+# Default values.yaml: replicaCountDiscovery=1 → minAvailable=1 (no-op for single replica)
+# Root values.yaml overrides replicaCountDiscovery=2 → minAvailable=1 (N-1)
+{{- if .Values.pdb.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ template "flash-discovery.fullname" . }}-pdb
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ template "flash-discovery.name" . }}
+    chart: {{ template "flash-discovery.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+    app.kubernetes.io/name: {{ template "flash-discovery.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    helm.sh/chart: {{ template "flash-discovery.chart" . }}
+spec:
+  # minAvailable keeps this many pods alive at all times during voluntary disruptions.
+  # Set to replicaCountDiscovery - 1 so at least one pod always serves traffic.
+  minAvailable: {{ .Values.pdb.minAvailable }}
+  selector:
+    matchLabels:
+      app: {{ template "flash-discovery.name" . }}
+      release: {{ .Release.Name }}
+{{- end }}
