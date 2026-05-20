@@ -2,8 +2,71 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
-replicaCount: 3
-replicaCountMl: 1
+replicaCount: 2
+replicaCountMl: 2
+replicaCountSync: 2
+
+# ── High-availability scheduling controls for logiq-flash-sync ─────────────────
+
+# Feature 1: topologySpreadConstraints — soft spread across nodes and zones.
+sync:
+  topologySpreadConstraints:
+    enabled: true
+    maxSkew: 1
+    whenUnsatisfiable: ScheduleAnyway
+
+  # Feature 2: preferred pod anti-affinity — weight 100, never blocks scheduling.
+  podAntiAffinity:
+    enabled: true
+    weight: 100
+
+  # Feature 4: rolling update — 1 pod unavailable at a time.
+  updateStrategy:
+    type: RollingUpdate
+    maxUnavailable: 1
+
+  # Feature 5: graceful shutdown — preStop(15s) fills LB-drain gap before SIGTERM.
+  terminationGracePeriodSeconds: 60
+  preStopSleepSeconds: 15
+
+  # Feature 3: PodDisruptionBudget — keep N-1 pods alive during drains/upgrades.
+  # Root values.yaml sets replicaCountSync=2 → minAvailable=1 (N-1).
+  pdb:
+    enabled: true
+    minAvailable: 1
+
+# ── High-availability scheduling controls for logiq-flash-ml ───────────────────
+
+# Feature 1: topologySpreadConstraints — soft spread across nodes and zones.
+# ScheduleAnyway means a pod is never left Pending due to topology skew.
+ml:
+  topologySpreadConstraints:
+    enabled: true
+    maxSkew: 1
+    whenUnsatisfiable: ScheduleAnyway
+
+  # Feature 2: preferred pod anti-affinity — weight 100, never blocks scheduling.
+  # NOTE: podPerNode (line below) uses requiredDuringScheduling which is a hard
+  # rule and can cause Pending pods when nodes < replicas. The preferred
+  # anti-affinity here is additive and never blocks.
+  podAntiAffinity:
+    enabled: true
+    weight: 100
+
+  # Feature 4: rolling update — 1 pod unavailable at a time.
+  updateStrategy:
+    type: RollingUpdate
+    maxUnavailable: 1
+
+  # Feature 5: graceful shutdown — preStop(15s) fills LB-drain gap before SIGTERM.
+  terminationGracePeriodSeconds: 60
+  preStopSleepSeconds: 15
+
+  # Feature 3: PodDisruptionBudget — keep N-1 pods alive during drains/upgrades.
+  # Root values.yaml sets replicaCountMl=2 → minAvailable=1 (N-1).
+  pdb:
+    enabled: true
+    minAvailable: 1
 
 image:
   repository: logiqai/flash
@@ -144,6 +207,11 @@ persistence:
 configurationFiles: true
 configMapName:
 podPerNode: false
+existingSecret:
+
+logflow_only:
+  enabled: false
+  args: ""
 
 resources: 
    sidecarTracing: {}
@@ -176,13 +244,46 @@ affinity: {}
 
 global:
   sharedSecretName: logiq-shared-secret
+  cloudProvider: aws
+
   # NodePort Configuration
   nodePort:
     enabled: false
     ports:
       flash: null
       flashMl: null
-      
+
+  nodeSelectors:
+    enabled: false
+    label: apica-node-pool
+    ingest: ingest
+    infra: base
+    other: base
+    db: common
+    cache: common
+    ingest_sync: base
+
+  taints:
+    enabled: false
+    ingest: flash
+    infra: infra
+    other: coffee
+    db: db
+    cache: cache
+    ingest_sync: sync
+
+  toolbox:
+    image:
+      repository: logiqai/toolbox
+      tag: 2.0.1
+
+  chart:
+    s3gateway: false
+    prometheus: true
+    postgres: true
+    redis: true
+    grafana: false
+
   environment:
     redis_opts: true
     redis_host: "redis-master"
@@ -196,13 +297,19 @@ global:
     s3_url: "http://s3-gateway:9000"
     s3_access: "logiq_access"
     s3_secret: "logiq_secret"
+    s3_bucket: "logiq-bucket"
     s3_region: "us-east-1"
-    AWS_ACCESS_KEY_ID: "AWS_ACCESS" 
+    s3_custom_ca:
+      enabled: false
+      map_name: "kube-root-ca.crt"
+    AWS_ACCESS_KEY_ID: "AWS_ACCESS"
     AWS_SECRET_ACCESS_KEY: "AWS_SECRET"
+    awsServiceEndpoint: "https://s3.amazonaws.com"
     extraflag: ""
+
   persistence:
     createStorageClass:
-       enabled: false
+      enabled: false
     storageClass: oci-bv
 kafka_client:
   enabled: false
