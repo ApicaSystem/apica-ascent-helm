@@ -117,7 +117,15 @@ helm install eg oci://docker.io/envoyproxy/gateway-helm \
 **Reference**: https://gateway.envoyproxy.io/docs/install/install-helm/
 
 > **Note**: The Envoy Gateway chart creates CRDs and the controller, but NOT the GatewayClass or Gateway resources. Those are created by the Apica Ascent chart.
-
+>
+> **CNPG support:** This chart can create CloudNativePG `Cluster` resources when `cnpg.enabled` is set to `true` in `values.yaml`.
+>
+> **Migrating from Bitnami Postgres to CNPG:**
+> 1. Keep `global.chart.postgres: true` so the existing Bitnami Postgres stays running alongside the new CNPG cluster.
+> 2. Set `cnpg.migration.enabled: true`. The CNPG cluster will bootstrap itself by importing from the source using `pg_dump`/`pg_restore` (managed natively by the CNPG operator — no separate Job is required). Configure `cnpg.migration.source` to point at the existing Postgres service. By default `type: monolith` imports all databases and roles; set `type: microservice` to import a single database.
+> 3. Once the CNPG cluster is healthy, update `global.environment.postgres_host`, `postgres_user`, and `postgres_password` to point at the CNPG service (the cluster name or `cnpg.service.host`), then set `cnpg.migration.enabled: false`.
+> 4. Set `global.chart.postgres: false` to remove the old Bitnami Postgres.
+>
 Please read and agree to the [EULA](https://docs.apica.ai/eula/eula) before proceeding.
 
 ### 1.1 Add Ascent helm repository

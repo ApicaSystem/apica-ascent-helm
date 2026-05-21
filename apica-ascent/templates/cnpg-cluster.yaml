@@ -1,0 +1,27 @@
+{{- if .Values.cnpg.enabled }}
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: {{ default (include "logiq.fullname" .) .Values.cnpg.name | trunc 63 | trimSuffix "-" }}
+  namespace: {{ default .Release.Namespace .Values.cnpg.namespace }}
+spec:
+{{- $clusterSpec := deepCopy .Values.cnpg.cluster }}
+{{- if .Values.cnpg.migration.enabled }}
+{{- $sourceSecretName := printf "%s-cnpg-migration-source" (include "logiq.fullname" .) }}
+{{- $sourceSecretKey := "password" }}
+{{- if .Values.cnpg.migration.source.passwordSecret.enabled }}
+{{- $sourceSecretName = .Values.cnpg.migration.source.passwordSecret.name }}
+{{- $sourceSecretKey = .Values.cnpg.migration.source.passwordSecret.key }}
+{{- end }}
+{{- $importType := default "monolith" .Values.cnpg.migration.type }}
+{{- $importSpec := dict "type" $importType "databases" (default (list "*") .Values.cnpg.migration.databases) "source" (dict "externalCluster" "cnpg-migration-source") }}
+{{- if eq $importType "monolith" }}
+{{- $_ := set $importSpec "roles" (default (list "*") .Values.cnpg.migration.roles) }}
+{{- end }}
+{{- $extCluster := dict "name" "cnpg-migration-source" "connectionParameters" (dict "host" .Values.cnpg.migration.source.host "user" .Values.cnpg.migration.source.username "dbname" .Values.cnpg.migration.source.dbname "port" (.Values.cnpg.migration.source.port | toString)) "password" (dict "name" $sourceSecretName "key" $sourceSecretKey) }}
+{{- $migrationOverlay := dict "bootstrap" (dict "initdb" (dict "import" $importSpec)) "externalClusters" (list $extCluster) }}
+{{- $clusterSpec = mergeOverwrite $clusterSpec $migrationOverlay }}
+{{- end }}
+{{ toYaml $clusterSpec | nindent 2 }}
+{{- end }}

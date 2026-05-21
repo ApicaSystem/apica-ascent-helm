@@ -474,6 +474,7 @@ global:
     redis_opts: true
     redis_host: "redis-master"
     redis_port: "6379"
+    # When migrating to CNPG, update these values to point to the new CNPG service.
     postgres_host: "postgres"
     postgres_port: "5432"
     postgres_user: "postgres"
@@ -511,6 +512,82 @@ global:
     redis: true
     s3gateway: false
     grafana: false
+
+cnpg:
+  enabled: false
+  name: ""
+  namespace: ""
+  createSecrets: true
+  service:
+    # override the CNPG service host for application connection or migration target
+    host: ""
+    port: 5432
+  superuserSecret:
+    name: ascent-db-superuser
+    username: postgres
+    password: postgres
+  appUserSecret:
+    name: ascent-db-appuser
+    username: appuser
+    password: apppassword
+  cluster:
+    instances: 2
+    imageName: ghcr.io/cloudnative-pg/postgresql:18
+    storage:
+      size: 20Gi
+    superuserSecret:
+      name: ascent-db-superuser
+    bootstrap:
+      initdb:
+        database: postgres
+        owner: postgres
+        secret:
+          name: ascent-db-appuser
+    managed:
+      services:
+        disabledDefaultServices: ["ro", "r"]
+    backup:
+      barmanObjectStore:
+        destinationPath: s3://cluster-example-full-backup/
+        endpointURL: http://custom-endpoint:1234
+        s3Credentials:
+          accessKeyId:
+            name: backup-creds
+            key: ACCESS_KEY_ID
+          secretAccessKey:
+            name: backup-creds
+            key: ACCESS_SECRET_KEY
+        wal:
+          compression: gzip
+          encryption: AES256
+        data:
+          compression: gzip
+          encryption: AES256
+          immediateCheckpoint: false
+          jobs: 2
+      retentionPolicy: "30d"
+  migration:
+    enabled: false
+    # Import type: "monolith" imports all selected databases and roles (full instance migration).
+    # "microservice" imports a single database, renaming it to bootstrap.initdb.database.
+    type: monolith
+    # Databases to import. Use ["*"] to import all user databases.
+    databases:
+      - "*"
+    # Roles to import (monolith only). Use ["*"] to import all roles.
+    roles:
+      - "*"
+    source:
+      host: postgres
+      port: 5432
+      dbname: postgres
+      username: postgres
+      # Inline password - a Secret is created automatically. Use passwordSecret for production.
+      password: postgres
+      passwordSecret:
+        enabled: false
+        name: ""
+        key: ""
 
 vault:
   enabled: false
