@@ -230,6 +230,7 @@ spec:
                 secretKeyRef:
                   name: {{ template "logiq-flash.fullname" . }}
                   key: postgres_db
+            {{- if .Values.global.sharedSecretName }}
             - name: S3_ACCESS
               valueFrom:
                 secretKeyRef:
@@ -245,6 +246,7 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.global.sharedSecretName }}
                   key: s3_bucket
+            {{- end }}
             {{- if .Values.global.environment.cluster_id }}
             - name: MY_CLUSTER_ID
               value: {{ .Values.global.environment.cluster_id }}

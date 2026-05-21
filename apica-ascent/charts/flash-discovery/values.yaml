@@ -77,12 +77,6 @@ resources:
   #  cpu: 100m
   #  memory: 128Mi
 
-nodeSelector: {}
-
-tolerations: []
-
-affinity: {}
-
 global:
   sharedSecretName: logiq-shared-secret
   nodeSelectors:
