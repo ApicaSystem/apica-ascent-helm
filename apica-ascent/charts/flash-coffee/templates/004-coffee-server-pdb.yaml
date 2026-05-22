@@ -1,0 +1,19 @@
+{{- if .Values.coffee.pdb.enabled }}
+# PodDisruptionBudget: keeps N-1 pods alive during node drains and cluster upgrades.
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: coffee-server-pdb
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: coffee-server-deployment
+    app.kubernetes.io/name: coffee-server
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+spec:
+  minAvailable: {{ .Values.coffee.pdb.minAvailable }}
+  selector:
+    matchLabels:
+      app: coffee-server
+{{- end }}

@@ -1,0 +1,23 @@
+{{- if .Values.sync.pdb.enabled }}
+# PodDisruptionBudget: keeps N-1 sync pods alive during node drains and cluster upgrades.
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ template "logiq-flash.name" . }}-sync-pdb
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ template "logiq-flash.name" . }}-sync
+    chart: {{ template "logiq-flash.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+    app.kubernetes.io/name: {{ template "logiq-flash.name" . }}-sync
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    helm.sh/chart: {{ template "logiq-flash.chart" . }}
+spec:
+  minAvailable: {{ .Values.sync.pdb.minAvailable }}
+  selector:
+    matchLabels:
+      app: {{ template "logiq-flash.name" . }}-sync
+      release: {{ .Release.Name }}
+{{- end }}

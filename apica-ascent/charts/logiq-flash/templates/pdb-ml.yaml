@@ -1,0 +1,23 @@
+{{- if .Values.ml.pdb.enabled }}
+# PodDisruptionBudget: keeps N-1 ML pods alive during node drains and cluster upgrades.
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ template "logiq-flash.name" . }}-ml-pdb
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ template "logiq-flash.name" . }}-ml
+    chart: {{ template "logiq-flash.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+    app.kubernetes.io/name: {{ template "logiq-flash.name" . }}-ml
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    helm.sh/chart: {{ template "logiq-flash.chart" . }}
+spec:
+  minAvailable: {{ .Values.ml.pdb.minAvailable }}
+  selector:
+    matchLabels:
+      app: {{ template "logiq-flash.name" . }}-ml
+      release: {{ .Release.Name }}
+{{- end }}

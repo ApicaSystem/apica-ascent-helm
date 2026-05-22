@@ -15,18 +15,23 @@ spec:
     matchLabels:
       app: {{ template "flash-discovery.name" . }}
       release: {{ .Release.Name }}
+  # Rolling update: 1 pod down at a time; readinessProbe gates traffic during rollout.
+  updateStrategy:
+    type: {{ .Values.updateStrategy.type }}
+    rollingUpdate:
+      maxUnavailable: {{ .Values.updateStrategy.maxUnavailable }}
   volumeClaimTemplates:
-  - apiVersion: v1
-    kind: PersistentVolumeClaim
-    metadata:
-      name: data
-    spec:
-      accessModes:
-        - ReadWriteOnce
-      resources:
-        requests:
-          storage: {{ .Values.persistence.size | quote }}
-      storageClassName: {{ .Values.global.persistence.storageClass }}
+    - apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: {{ .Values.persistence.size | quote }}
+        storageClassName: {{ .Values.global.persistence.storageClass }}
   template:
     metadata:
       labels:
@@ -34,145 +39,195 @@ spec:
         release: {{ .Release.Name }}
     spec:
       serviceAccountName: flash-discovery
-      {{- if .Values.global.nodeSelectors.enabled }}
+      # preStop(15s) fills the LB-drain gap before SIGTERM; 60s is the hard ceiling.
+      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
+
+      # Soft spread across nodes and zones — ScheduleAnyway never blocks scheduling.
+      {{- if .Values.topologySpreadConstraints.enabled }}
+      topologySpreadConstraints:
+        - maxSkew: {{ .Values.topologySpreadConstraints.maxSkew }}
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: {{ .Values.topologySpreadConstraints.whenUnsatisfiable }}
+          labelSelector:
+            matchLabels:
+              app: {{ template "flash-discovery.name" . }}
+              release: {{ .Release.Name }}
+        - maxSkew: {{ .Values.topologySpreadConstraints.maxSkew }}
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: {{ .Values.topologySpreadConstraints.whenUnsatisfiable }}
+          labelSelector:
+            matchLabels:
+              app: {{ template "flash-discovery.name" . }}
+              release: {{ .Release.Name }}
+      {{- end }}
+
       affinity:
+        {{- if .Values.global.nodeSelectors.enabled }}
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
-            - matchExpressions:
-              - key: {{ .Values.global.nodeSelectors.label }}
-                operator: In
-                values:
-                - {{ .Values.global.nodeSelectors.infra }}
-      {{- end }}
+              - matchExpressions:
+                  - key: {{ .Values.global.nodeSelectors.label }}
+                    operator: In
+                    values:
+                      - {{ .Values.global.nodeSelectors.infra }}
+        {{- end }}
+        # Preferred anti-affinity: adds scheduling pressure without ever blocking.
+        {{- if .Values.podAntiAffinity.enabled }}
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: {{ .Values.podAntiAffinity.weight }}
+              podAffinityTerm:
+                topologyKey: kubernetes.io/hostname
+                labelSelector:
+                  matchLabels:
+                    app: {{ template "flash-discovery.name" . }}
+                    release: {{ .Release.Name }}
+        {{- end }}
+
       {{- if .Values.global.taints.enabled }}
       tolerations:
-      - key: dedicated
-        operator: Equal
-        value: {{ .Values.global.taints.infra }}
-        effect: NoSchedule
+        - key: dedicated
+          operator: Equal
+          value: {{ .Values.global.taints.infra }}
+          effect: NoSchedule
       {{- end }}
+
       securityContext:
         fsGroup: 1000
         runAsUser: 1000
         runAsGroup: 1000
-      initContainers:
-      - name: check-postgres
-        image: {{ .Values.global.imageRegistry }}/{{ .Values.global.toolbox.image.repository }}:{{ .Values.global.toolbox.image.tag }}
-        imagePullPolicy: IfNotPresent
-        env:
-          - name: POSTGRES_PASSWORD
-            valueFrom:
-              secretKeyRef:
-                name: {{ template "flash-discovery.fullname" . }}
-                key: postgres_password
-          - name: POSTGRES_HOST
-            valueFrom:
-              secretKeyRef:
-                name: {{ template "flash-discovery.fullname" . }}
-                key: postgres_host
-          - name: DATABASE_URL
-            valueFrom:
-              secretKeyRef:
-                name: {{ template "flash-discovery.fullname" . }}
-                key: database_url
-        command: ['sh', '-c', 
-          'until pg_isready -h $(POSTGRES_HOST) -p {{ .Values.global.environment.postgres_port}} -d $(DATABASE_URL);
-          do echo waiting for database; sleep 1; done;']
-      {{ if .Values.useSecret }}
+
+      {{- if .Values.useSecret }}
       imagePullSecrets:
         - name: {{ required "pullSecretName is required" .Values.pullSecretName }}
-      {{ end }}
+      {{- end }}
+
+      initContainers:
+        - name: check-postgres
+          image: {{ .Values.global.imageRegistry }}/{{ .Values.global.toolbox.image.repository }}:{{ .Values.global.toolbox.image.tag }}
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ template "flash-discovery.fullname" . }}
+                  key: postgres_password
+            - name: POSTGRES_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: {{ template "flash-discovery.fullname" . }}
+                  key: postgres_host
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ template "flash-discovery.fullname" . }}
+                  key: database_url
+          command:
+            - sh
+            - -c
+            - >
+              until pg_isready -h $(POSTGRES_HOST) -p {{ .Values.global.environment.postgres_port }}
+              -d $(DATABASE_URL); do echo waiting for database; sleep 1; done;
+
       volumes:
-        {{ if .Values.configurationFiles }}
+        {{- if .Values.configurationFiles }}
         - name: config
           configMap:
             name: {{ template "flash-discovery.name" . }}-config
-        {{ end }}
-        {{ if .Values.secrets }}
+        {{- end }}
+        {{- if .Values.secrets }}
         - name: certs
           secret:
             secretName: {{ template "flash-discovery.name" . }}-certs
-        {{ end }}
-        {{ if .Values.global.environment.license }}
+        {{- end }}
+        {{- if .Values.global.environment.license }}
         - name: license
           secret:
             secretName: {{ template "flash-discovery.fullname" . }}-license
-        {{ end }}
-        {{ if .Values.global.sharedSecretName }}
+        {{- end }}
+        {{- if .Values.global.sharedSecretName }}
         - name: sharedcert
           secret:
             secretName: {{ .Values.global.sharedSecretName }}
-        {{ end }}
+        {{- end }}
+
       containers:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.global.imageRegistry }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          # Sleep before SIGTERM so the LB stops routing before the process exits.
+          lifecycle:
+            preStop:
+              exec:
+                command: ["sh", "-c", "sleep {{ .Values.preStopSleepSeconds }}"]
           env:
-          - name: CONFIG_HASH
-            value: {{ include "flash-discovery.confighash" . | quote }}
-          - name: POSTGRES_USER
-            valueFrom:
-              secretKeyRef:
-                name: {{ template "flash-discovery.fullname" . }}
-                key: postgres_user
-          - name: POSTGRES_PASSWORD
-            valueFrom:
-              secretKeyRef:
-                name: {{ template "flash-discovery.fullname" . }}
-                key: postgres_password
-          - name: POSTGRES_HOST
-            valueFrom:
-              secretKeyRef:
-                name: {{ template "flash-discovery.fullname" . }}
-                key: postgres_host
-          - name: POSTGRES_PORT
-            valueFrom:
-              secretKeyRef:
-                name: {{ template "flash-discovery.fullname" . }}
-                key: postgres_port
-          - name: POSTGRES_DB
-            valueFrom:
-              secretKeyRef:
-                name: {{ template "flash-discovery.fullname" . }}
-                key: postgres_db
-          - name: MY_APP_NAME
-            value: {{ template "flash-discovery.name" . }}
-          - name: MY_NODE_NAME
-            valueFrom:
-              fieldRef:
-                fieldPath: spec.nodeName
-          - name: MY_POD_NAME
-            valueFrom:
-              fieldRef:
-                fieldPath: metadata.name
-          - name: MY_POD_NAMESPACE
-            valueFrom:
-              fieldRef:
-                fieldPath: metadata.namespace
-          - name: MY_POD_IP
-            valueFrom:
-              fieldRef:
-                fieldPath: status.podIP                
-          {{ if .Values.global.environment.cluster_id }}  
-          - name: MY_CLUSTER_ID
-            value: {{ .Values.global.environment.cluster_id }}
-          {{ end }}      
+            - name: CONFIG_HASH
+              value: {{ include "flash-discovery.confighash" . | quote }}
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ template "flash-discovery.fullname" . }}
+                  key: postgres_user
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ template "flash-discovery.fullname" . }}
+                  key: postgres_password
+            - name: POSTGRES_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: {{ template "flash-discovery.fullname" . }}
+                  key: postgres_host
+            - name: POSTGRES_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: {{ template "flash-discovery.fullname" . }}
+                  key: postgres_port
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: {{ template "flash-discovery.fullname" . }}
+                  key: postgres_db
+            - name: MY_APP_NAME
+              value: {{ template "flash-discovery.name" . }}
+            - name: MY_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: MY_POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: MY_POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: MY_POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            {{- if .Values.global.environment.cluster_id }}
+            - name: MY_CLUSTER_ID
+              value: {{ .Values.global.environment.cluster_id }}
+            {{- end }}
+
           volumeMounts:
-          - mountPath: /flash/db
-            name: data
-          {{ if .Values.secrets }}
-          - mountPath: /flash/certs
-            name: certs
-          {{ end }}
-          {{ if .Values.global.environment.license }}
-          - mountPath: /flash/license
-            name: license
-          {{ end }}
-          {{ if .Values.global.sharedSecretName }}
-          - mountPath: /flash/sharedcerts
-            name: sharedcert
-          {{ end }}
+            - mountPath: /flash/db
+              name: data
+            {{- if .Values.secrets }}
+            - mountPath: /flash/certs
+              name: certs
+            {{- end }}
+            {{- if .Values.global.environment.license }}
+            - mountPath: /flash/license
+              name: license
+            {{- end }}
+            {{- if .Values.global.sharedSecretName }}
+            - mountPath: /flash/sharedcerts
+              name: sharedcert
+            {{- end }}
+
           ports:
             - name: healthcheck
               containerPort: {{ .Values.discoveryHealth.port }}
@@ -180,31 +235,27 @@ spec:
             - name: discovery
               containerPort: {{ .Values.discoveryAPI.port }}
               protocol: TCP
-          livenessProbe:
-            httpGet:
-              path: /live
-              port: healthcheck
-            initialDelaySeconds: 10
-            failureThreshold: 3
-            periodSeconds: 10
+
+          # Readiness gates endpoint inclusion; old pod keeps serving during rollout.
           readinessProbe:
             httpGet:
               path: /ready
               port: healthcheck
             initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+            successThreshold: 1
             failureThreshold: 3
-            periodSeconds: 10             
+
+          livenessProbe:
+            httpGet:
+              path: /live
+              port: healthcheck
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            successThreshold: 1
+            failureThreshold: 3
+
           resources:
-{{ toYaml .Values.resources | indent 12 }}
-    {{ with .Values.nodeSelector }}
-      nodeSelector:
-{{ toYaml . | indent 8 }}
-    {{ end }}
-    {{ with .Values.affinity }}
-      affinity:
-{{ toYaml . | indent 8 }}
-    {{ end }}
-    {{ with .Values.tolerations }}
-      tolerations:
-{{ toYaml . | indent 8 }}
-    {{ end }}
+            {{- toYaml .Values.resources | nindent 12 }}

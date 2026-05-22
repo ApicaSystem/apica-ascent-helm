@@ -1,0 +1,24 @@
+{{- if .Values.flash.pdb.enabled }}
+# PodDisruptionBudget: keeps N-1 flash pods alive during node drains and cluster upgrades.
+# Each pod contains 3 containers (flash, logiq-flash-query, logiq-flash-tracing).
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ template "logiq-flash.name" . }}-pdb
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ template "logiq-flash.name" . }}
+    chart: {{ template "logiq-flash.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+    app.kubernetes.io/name: {{ template "logiq-flash.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    helm.sh/chart: {{ template "logiq-flash.chart" . }}
+spec:
+  minAvailable: {{ .Values.flash.pdb.minAvailable }}
+  selector:
+    matchLabels:
+      app: {{ template "logiq-flash.name" . }}
+      release: {{ .Release.Name }}
+{{- end }}

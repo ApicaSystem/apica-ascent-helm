@@ -2,9 +2,26 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
-replicaCountDiscovery: 1
+replicaCountDiscovery: 2
 useSecret: false
 pullSecretName:
+
+topologySpreadConstraints:
+  enabled: true
+  maxSkew: 1
+  whenUnsatisfiable: ScheduleAnyway   # soft — never blocks scheduling
+podAntiAffinity:
+  enabled: true
+  weight: 100
+updateStrategy:
+  type: RollingUpdate
+  maxUnavailable: 1
+terminationGracePeriodSeconds: 60
+preStopSleepSeconds: 15
+# N-1 for replicaCountDiscovery=2
+pdb:
+  enabled: true
+  minAvailable: 1
 
 image:
   repository: logiqai/flash-discovery
@@ -59,12 +76,6 @@ resources:
   # requests:
   #  cpu: 100m
   #  memory: 128Mi
-
-nodeSelector: {}
-
-tolerations: []
-
-affinity: {}
 
 global:
   sharedSecretName: logiq-shared-secret

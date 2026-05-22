@@ -1,0 +1,23 @@
+{{- if .Values.pdb.enabled }}
+# PodDisruptionBudget: keeps N-1 pods alive during node drains and cluster upgrades.
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ template "flash-discovery.fullname" . }}-pdb
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ template "flash-discovery.name" . }}
+    chart: {{ template "flash-discovery.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+    app.kubernetes.io/name: {{ template "flash-discovery.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    helm.sh/chart: {{ template "flash-discovery.chart" . }}
+spec:
+  minAvailable: {{ .Values.pdb.minAvailable }}
+  selector:
+    matchLabels:
+      app: {{ template "flash-discovery.name" . }}
+      release: {{ .Release.Name }}
+{{- end }}
