@@ -117,15 +117,7 @@ helm install eg oci://docker.io/envoyproxy/gateway-helm \
 **Reference**: https://gateway.envoyproxy.io/docs/install/install-helm/
 
 > **Note**: The Envoy Gateway chart creates CRDs and the controller, but NOT the GatewayClass or Gateway resources. Those are created by the Apica Ascent chart.
->
-> **CNPG support:** This chart can create CloudNativePG `Cluster` resources when `cnpg.enabled` is set to `true` in `values.yaml`.
->
-> **Migrating from Bitnami Postgres to CNPG:**
-> 1. Keep `global.chart.postgres: true` so the existing Bitnami Postgres stays running alongside the new CNPG cluster.
-> 2. Set `cnpg.migration.enabled: true`. The CNPG cluster will bootstrap itself by importing from the source using `pg_dump`/`pg_restore` (managed natively by the CNPG operator — no separate Job is required). Configure `cnpg.migration.source` to point at the existing Postgres service. By default `type: monolith` imports all databases and roles; set `type: microservice` to import a single database.
-> 3. Once the CNPG cluster is healthy, update `global.environment.postgres_host`, `postgres_user`, and `postgres_password` to point at the CNPG service (the cluster name or `cnpg.service.host`), then set `cnpg.migration.enabled: false`.
-> 4. Set `global.chart.postgres: false` to remove the old Bitnami Postgres.
->
+
 Please read and agree to the [EULA](https://docs.apica.ai/eula/eula) before proceeding.
 
 ### 1.1 Add Ascent helm repository
@@ -337,7 +329,51 @@ helm install apica --namespace apica \
 >
 > Auto vacuum automates the execution of `VACUUM` and `ANALYZE` \(to gather statistics\) commands. Auto vacuum checks for bloated tables in the database and reclaims the space for reuse.
 
-### 3.6 Upload Ascent professional license
+### 3.6 Using CloudNativePG (CNPG) as the Postgres provider
+
+This chart can deploy a CloudNativePG cluster as the Ascent Postgres backend via the [cnpg/cluster](https://github.com/cloudnative-pg/charts/tree/main/charts/cluster) subchart. The [CloudNativePG operator](https://cloudnative-pg.io/) must be installed in the cluster before enabling this.
+
+**Install the CNPG operator:**
+
+```bash
+helm repo add cnpg https://cloudnative-pg.github.io/charts
+helm upgrade --install cnpg-operator cnpg/cloudnative-pg \
+  --namespace cnpg-system \
+  --create-namespace
+```
+
+**Deploy Ascent with a CNPG cluster (fresh):**
+
+```bash
+helm install apica apica-repo/apica \
+  --namespace apica \
+  --set global.chart.postgres=false \
+  --set cnpg.enabled=true \
+  --set global.environment.postgres_host=<release-name>-cnpg-rw \
+  --set global.environment.postgres_user=postgres \
+  --set global.environment.postgres_password=<password> \
+  --set cnpg.superuserSecret.password=<password>
+```
+
+The CNPG read-write service is named `<cnpg.fullnameOverride>-rw`, or `<release-name>-cnpg-rw` when `fullnameOverride` is unset.
+
+**Migrating from Bitnami Postgres to CNPG:**
+
+1. Keep `global.chart.postgres: true` so the existing Bitnami Postgres stays running.
+2. Set `cnpg.enabled: true` and `cnpg.mode: recovery`. Configure `cnpg.recovery.import.source` to point at the Bitnami service. The CNPG operator bootstraps the new cluster via `pg_dump`/`pg_restore` — no separate Job is required.
+3. Once the CNPG cluster is healthy, update `global.environment.postgres_host` to `<release-name>-cnpg-rw` (or your `fullnameOverride` equivalent) and sync `postgres_password` with `cnpg.superuserSecret.password`.
+4. Set `cnpg.mode: standalone` and `global.chart.postgres: false` to decommission the Bitnami instance.
+
+| HELM Option | Description | Default |
+| :--- | :--- | :--- |
+| `cnpg.enabled` | Deploy a CNPG cluster as the Postgres backend | `false` |
+| `cnpg.mode` | `standalone` for a new cluster; `recovery` to import from an existing Postgres | `standalone` |
+| `cnpg.fullnameOverride` | Override the cluster name (affects the RW service name) | `""` |
+| `cnpg.cluster.instances` | Number of CNPG instances | `2` |
+| `cnpg.cluster.storage.size` | PVC size for each instance | `20Gi` |
+| `cnpg.backups.enabled` | Enable WAL archiving and scheduled backups to object storage | `false` |
+
+### 3.7 Upload Ascent professional license
 
 The deployment described above offers 30 days trial license. Email `license@apica.ai` to obtain a professional license. After obtaining the license, use the apicactl tool to apply the license to the deployment. Please refer `apicactl` details at [https://apicactl.apica.ai/](https://apicactl.apica.ai/). You will need API-token from Ascent UI as shown below
 

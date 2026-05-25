@@ -514,80 +514,106 @@ global:
     grafana: false
 
 cnpg:
+  # -- Set to true to deploy a CloudNativePG cluster via the cnpg/cluster subchart.
   enabled: false
-  name: ""
-  namespace: ""
-  createSecrets: true
-  service:
-    # override the CNPG service host for application connection or migration target
-    host: ""
-    port: 5432
+
+  # -- Override the cluster name. Defaults to <release-name>-cnpg.
+  # The CNPG read-write service will be <fullnameOverride>-rw (or <release-name>-cnpg-rw if unset).
+  fullnameOverride: ""
+  # -- Override the namespace. Defaults to the release namespace.
+  namespaceOverride: ""
+
+  # -- Credentials used to pre-create the superuser Secret referenced by cluster.superuserSecret.
+  # The application connects to CNPG using these credentials via global.environment.postgres_*.
   superuserSecret:
     name: ascent-db-superuser
     username: postgres
     password: postgres
-  appUserSecret:
-    name: ascent-db-appuser
-    username: appuser
-    password: apppassword
+
+  # -- Cluster mode of operation.
+  # "standalone" creates a fresh cluster.
+  # "recovery" bootstraps from an existing Postgres instance via import (use for migration from Bitnami).
+  mode: standalone
+
+  # -- Recovery / migration configuration. Required when mode is "recovery".
+  # To migrate from Bitnami Postgres: set mode to "recovery", configure recovery.import.source,
+  # then once the cluster is healthy update global.environment.postgres_host to the CNPG RW service
+  # and set global.chart.postgres to false.
+  recovery:
+    method: import
+    import:
+      # "monolith" imports all databases and roles. "microservice" imports a single database.
+      type: monolith
+      databases:
+        - "*"
+      roles:
+        - "*"
+      source:
+        host: postgres
+        port: 5432
+        username: postgres
+        database: postgres
+        # Use "disable" for in-cluster migration without TLS; "verify-full" for external sources.
+        sslMode: disable
+        passwordSecret:
+          # The source password secret is pre-created by this chart (see cnpg-secrets.yaml).
+          # Set a name here so the CNPG operator can reference it.
+          create: false
+          name: cnpg-import-source-password
+          key: password
+          # Password value written into the pre-created secret.
+          value: postgres
+
   cluster:
     instances: 2
     imageName: ghcr.io/cloudnative-pg/postgresql:18
     storage:
       size: 20Gi
-    superuserSecret:
-      name: ascent-db-superuser
-    bootstrap:
-      initdb:
-        database: postgres
-        owner: postgres
-        secret:
-          name: ascent-db-appuser
-    managed:
-      services:
-        disabledDefaultServices: ["ro", "r"]
-    backup:
-      barmanObjectStore:
-        destinationPath: s3://cluster-example-full-backup/
-        endpointURL: http://custom-endpoint:1234
-        s3Credentials:
-          accessKeyId:
-            name: backup-creds
-            key: ACCESS_KEY_ID
-          secretAccessKey:
-            name: backup-creds
-            key: ACCESS_SECRET_KEY
-        wal:
-          compression: gzip
-          encryption: AES256
-        data:
-          compression: gzip
-          encryption: AES256
-          immediateCheckpoint: false
-          jobs: 2
-      retentionPolicy: "30d"
-  migration:
+    enableSuperuserAccess: true
+    # -- References the superuser secret created above.
+    superuserSecret: ascent-db-superuser
+    initdb:
+      database: postgres
+      owner: postgres
+    services:
+      disabledDefaultServices:
+        - ro
+        - r
+    postgresql:
+      parameters:
+        max_connections: "400"
+        shared_buffers: "1024MB"
+    monitoring:
+      enabled: false
+      podMonitor:
+        enabled: true
+
+  # -- Backup configuration. Disabled by default; configure provider credentials before enabling.
+  backups:
     enabled: false
-    # Import type: "monolith" imports all selected databases and roles (full instance migration).
-    # "microservice" imports a single database, renaming it to bootstrap.initdb.database.
-    type: monolith
-    # Databases to import. Use ["*"] to import all user databases.
-    databases:
-      - "*"
-    # Roles to import (monolith only). Use ["*"] to import all roles.
-    roles:
-      - "*"
-    source:
-      host: postgres
-      port: 5432
-      dbname: postgres
-      username: postgres
-      # Inline password - a Secret is created automatically. Use passwordSecret for production.
-      password: postgres
-      passwordSecret:
-        enabled: false
-        name: ""
-        key: ""
+    provider: s3
+    s3:
+      region: ""
+      bucket: ""
+      path: "/"
+      accessKey: ""
+      secretKey: ""
+    destinationPath: ""
+    retentionPolicy: "30d"
+    wal:
+      compression: gzip
+      encryption: AES256
+    data:
+      compression: gzip
+      encryption: AES256
+      jobs: 2
+    scheduledBackups:
+      - name: daily-backup
+        schedule: "0 0 0 * * *"
+        backupOwnerReference: self
+        method: barmanObjectStore
+
+  poolers: []
 
 vault:
   enabled: false
