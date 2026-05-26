@@ -579,6 +579,15 @@ cnpg:
       disabledDefaultServices:
         - ro
         - r
+    # Required for OCI Object Storage S3-compatible endpoint:
+    # - AWS_DEFAULT_REGION: ensures SigV4 signing uses the correct region
+    # - AWS_REQUEST_CHECKSUM_CALCULATION=when_required: disables botocore 1.35+ trailing
+    #   checksum behavior which switches to chunked encoding; OCI requires Content-Length.
+    env: []
+    #  - name: AWS_DEFAULT_REGION
+    #    value: us-ashburn-1
+    #  - name: AWS_REQUEST_CHECKSUM_CALCULATION
+    #    value: when_required
     postgresql:
       parameters:
         max_connections: "400"
@@ -600,6 +609,7 @@ cnpg:
       secretKey: ""
     destinationPath: ""
     retentionPolicy: "30d"
+    endpointURL: "https://<bucket-namespace>.compat.objectstorage.<region>.oraclecloud.com"    
     wal:
       compression: gzip
       encryption: AES256
