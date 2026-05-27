@@ -572,9 +572,6 @@ cnpg:
     enableSuperuserAccess: true
     # -- References the superuser secret created above.
     superuserSecret: ascent-db-superuser
-    initdb:
-      database: postgres
-      owner: postgres
     services:
       disabledDefaultServices:
         - ro
