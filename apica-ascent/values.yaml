@@ -556,12 +556,9 @@ cnpg:
         # Use "disable" for in-cluster migration without TLS; "verify-full" for external sources.
         sslMode: disable
         passwordSecret:
-          # The source password secret is pre-created by this chart (see cnpg-secrets.yaml).
-          # Set a name here so the CNPG operator can reference it.
-          create: false
           name: cnpg-import-source-password
           key: password
-          # Password value written into the pre-created secret.
+          # Secret is created by templates/cnpg-secrets.yaml when mode is "recovery".
           value: postgres
 
   cluster:

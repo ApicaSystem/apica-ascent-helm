@@ -359,10 +359,20 @@ The CNPG read-write service is named `<cnpg.fullnameOverride>-rw`, or `<release-
 
 **Migrating from Bitnami Postgres to CNPG:**
 
-1. Keep `global.chart.postgres: true` so the existing Bitnami Postgres stays running.
-2. Set `cnpg.enabled: true` and `cnpg.mode: recovery`. Configure `cnpg.recovery.import.source` to point at the Bitnami service. The CNPG operator bootstraps the new cluster via `pg_dump`/`pg_restore` — no separate Job is required.
-3. Once the CNPG cluster is healthy, update `global.environment.postgres_host` to `<release-name>-cnpg-rw` (or your `fullnameOverride` equivalent) and sync `postgres_password` with `cnpg.superuserSecret.password`.
-4. Set `cnpg.mode: standalone` and `global.chart.postgres: false` to decommission the Bitnami instance.
+> **Important — do steps 2 and 3 in a single `helm upgrade`.** If you switch `postgres_host` to the CNPG service in a separate later upgrade, any writes made to Bitnami between the import completing and the switchover will be lost. The safe approach is to change both at once: applications will fail to reach the database while CNPG imports (expected downtime), and reconnect successfully once the import completes with all data intact.
+
+1. Keep `global.chart.postgres: true` so the existing Bitnami Postgres stays running during migration.
+2. In a **single upgrade**, enable CNPG in recovery mode and switch the application connection to CNPG simultaneously:
+   - Set `cnpg.enabled: true` and `cnpg.mode: recovery`
+   - Configure `cnpg.recovery.import.source` to point at the Bitnami service (`host: postgres`, `sslMode: disable` for in-cluster)
+   - Set `global.environment.postgres_host` to `<release-name>-cnpg-rw`
+   - The CNPG operator bootstraps the new cluster via `pg_dump`/`pg_restore` — no separate Job is required
+3. Wait for the CNPG cluster to reach `Cluster in healthy state`. Applications will reconnect automatically once the RW service becomes available.
+4. Set `global.chart.postgres: false` to decommission the Bitnami instance.
+
+> **Note:** The `monolith` import copies all user databases (`coffee`, `flash`, `casdoor`, etc.) but skips the `postgres` database — it is a reserved name in CNPG and is never imported. Verify no application schema lives in the `postgres` database before migrating (the default Ascent setup stores no schema there).
+
+> **Note:** The CNPG cluster `bootstrap` configuration is immutable after creation. After a successful migration, `cnpg.mode: recovery` in values has no effect on the running cluster and can be left as-is or changed to `standalone` for documentation purposes only.
 
 | HELM Option | Description | Default |
 | :--- | :--- | :--- |
