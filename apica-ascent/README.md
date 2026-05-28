@@ -403,7 +403,7 @@ apicactl license set -l=license.jws
 apicactl license get
 ```
 
-### 3.7 Customize Admin account
+### 3.8 Customize Admin account
 
 ```bash
 helm install apica --namespace apica \
@@ -415,11 +415,11 @@ helm install apica --namespace apica \
 
 | HELM Option | Description | Default |
 | :--- | :--- | :--- |
-| `global.environment.admin_name` | Ascent Administrator name | flash-admin@foo.com |
-| `global.environment.admin_password` | Ascent Administrator password | flash-password |
+| `global.environment.admin_name` | Ascent Administrator name | devops@apica.io |
+| `global.environment.admin_password` | Ascent Administrator password | password |
 | `global.environment.admin_email` | Ascent Administrator e-mail | flash-admin@foo.com |
 
-### 3.8 Using external Redis instance
+### 3.9 Using external Redis instance
 
 To use external Redis for your Ascent deployment, execute the following command.
 
@@ -438,7 +438,7 @@ helm install apica --namespace apica \
 | `global.environment.redis_host` | Host IP/DNS of the external Redis cluster | redis-master |
 | `global.environment.redis_port` | Host Port where external Redis service is exposed | 6379 |
 
-### 3.9 Configuring cluster id
+### 3.10 Configuring cluster id
 
 When deploying Ascent, configure the cluster id to monitor your own Ascent deployment. For details about the `cluster_id` refer to section [Managing multiple K8S clusters](agentless.md#managing-multiple-k-8-s-clusters-in-a-single-apica-instance)
 
@@ -452,7 +452,7 @@ helm install apica --namespace apica \
 | :--- | :--- | :--- |
 | global.environment.cluster\_id | Cluster Id being used for the K8S cluster running Ascent. See Section on [Managing multiple K8S](agentless.md#managing-multiple-k-8-s-clusters-in-a-single-apica-instance) clusters for more details. | Ascent |
 
-### 3.10 Sizing your Ascent cluster
+### 3.11 Sizing your Ascent cluster
 
 When deploying Ascent, size your infrastructure to provide appropriate vcpu and memory requirements. We recommened the following minimum size for small. medium and large cluster specification from [Section 1.3 ](k8s-quickstart-guide.md#1-3-prepare-your-values-YAML-file) values yaml files.
 
@@ -462,7 +462,7 @@ When deploying Ascent, size your infrastructure to provide appropriate vcpu and 
 | medium  | 20| 56 gb | 5 |
 | large  | 32| 88 gb | 8 |
 
-### 3.11 Gateway Service Type Configuration
+### 3.12 Gateway Service Type Configuration
 
 The Envoy Gateway service type can be configured:
 
@@ -486,7 +486,7 @@ For cloud-specific configurations, see the platform-specific values files:
 - `values.k3s.yaml` - K3s with NodePort
 - `values.microk8s.yaml` - MicroK8s with NodePort
 
-### 3.12 Using Node Selectors
+### 3.13 Using Node Selectors
 
 The Ascent stack deployment can be optimized using node labels and node selectors to place various components of the stack optimally
 
@@ -514,7 +514,7 @@ In the example above, there are two node selectors in use - `ingest` and `common
 
 > Node selectors are enabled by setting `enabled` to `true` for `globals.nodeSelectors`
 
-### 3.13 Installing Thanos
+### 3.14 Installing Thanos
 
 The Ascent stack includes Thanos as part of the deployment as an optional component for larger deployments. To enable Thanos, follow the steps below
 
