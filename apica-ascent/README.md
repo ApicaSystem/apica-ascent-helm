@@ -374,10 +374,40 @@ The CNPG read-write service is named `<cnpg.fullnameOverride>-rw`, or `<release-
 
 > **Note:** The CNPG cluster `bootstrap` configuration is immutable after creation. After a successful migration, `cnpg.mode: recovery` in values has no effect on the running cluster and can be left as-is or changed to `standalone` for documentation purposes only.
 
+**Restoring from a barman backup:**
+
+To recreate a CNPG cluster from an existing barman object store backup (disaster recovery, environment rebuild):
+
+```yaml
+cnpg:
+  enabled: true
+  mode: recovery
+  recovery:
+    method: object_store
+    clusterName: "<release-name>"   # top-level directory name in the backup bucket
+    pitrTarget:
+      time: ""                      # RFC3339 timestamp for PITR; leave empty for latest backup
+    provider: s3
+    endpointURL: "https://<namespace>.compat.objectstorage.<region>.oraclecloud.com"
+    s3:
+      region: "<region>"
+      bucket: "<backup-bucket>"
+      path: "/"
+      accessKey: "<key>"
+      secretKey: "<secret>"
+    secret:
+      create: true
+```
+
+The `clusterName` must match the serverName stored in the backup — it is the top-level directory visible in the backup bucket (e.g. a bucket containing `cnpg-test/base/...` uses `clusterName: "cnpg-test"`).
+
 | HELM Option | Description | Default |
 | :--- | :--- | :--- |
 | `cnpg.enabled` | Deploy a CNPG cluster as the Postgres backend | `false` |
-| `cnpg.mode` | `standalone` for a new cluster; `recovery` to import from an existing Postgres | `standalone` |
+| `cnpg.mode` | `standalone` for a new cluster; `recovery` to import from Bitnami or restore from backup | `standalone` |
+| `cnpg.recovery.method` | `import` (from live Postgres), `object_store` (from barman backup), `backup` (from CNPG Backup object) | `import` |
+| `cnpg.recovery.clusterName` | serverName in the backup store — must match the backup bucket directory name | `""` |
+| `cnpg.recovery.pitrTarget.time` | RFC3339 timestamp for point-in-time recovery; empty = latest | `""` |
 | `cnpg.fullnameOverride` | Override the cluster name (affects the RW service name) | `""` |
 | `cnpg.cluster.instances` | Number of CNPG instances | `2` |
 | `cnpg.cluster.storage.size` | PVC size for each instance | `20Gi` |

@@ -536,9 +536,28 @@ cnpg:
   mode: standalone
 
   # -- Recovery / migration configuration. Required when mode is "recovery".
-  # To migrate from Bitnami Postgres: set mode to "recovery", configure recovery.import.source,
-  # then once the cluster is healthy update global.environment.postgres_host to the CNPG RW service
-  # and set global.chart.postgres to false.
+  # Two recovery methods are supported:
+  #
+  # 1. Import from a live Postgres (Bitnami migration):
+  #    method: import  (default)
+  #
+  # 2. Restore from a barman object store backup:
+  #    method: object_store
+  #    recovery:
+  #      method: object_store
+  #      clusterName: "<release-name>"   # serverName in backup — directory name in bucket, e.g. s3://bucket/cnpg-test/ → "cnpg-test"
+  #      pitrTarget:
+  #        time: ""                      # Optional RFC3339 timestamp for PITR; leave empty for latest backup
+  #      provider: s3                    # or azure / google
+  #      endpointURL: "https://<namespace>.compat.objectstorage.<region>.oraclecloud.com"
+  #      s3:
+  #        region: "<region>"
+  #        bucket: "<bucket-name>"
+  #        path: "/"
+  #        accessKey: ""
+  #        secretKey: ""
+  #      secret:
+  #        create: true                  # cluster subchart creates the S3 credentials Secret
   recovery:
     method: import
     import:
