@@ -42,9 +42,16 @@ spec:
   affinity:
     {{- toYaml . | nindent 4 }}
   {{- end }}
-  {{- with .Values.cluster.env }}
+  {{- $env := default list .Values.cluster.env }}
+  {{- if .Values.cluster.awsDefaultRegion }}
+  {{- $env = append $env (dict "name" "AWS_DEFAULT_REGION" "value" (.Values.cluster.awsDefaultRegion | toString)) }}
+  {{- end }}
+  {{- if .Values.cluster.awsRequestChecksumCalculation }}
+  {{- $env = append $env (dict "name" "AWS_REQUEST_CHECKSUM_CALCULATION" "value" (.Values.cluster.awsRequestChecksumCalculation | toString)) }}
+  {{- end }}
+  {{- if $env }}
   env:
-    {{- toYaml . | nindent 4 }}
+    {{- toYaml $env | nindent 4 }}
   {{- end }}
   {{- with .Values.cluster.envFrom }}
   envFrom:
