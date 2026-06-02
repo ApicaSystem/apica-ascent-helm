@@ -9,7 +9,6 @@ apica-ascent/
 ├── Chart.yaml              # Dependencies declared here
 ├── values.yaml             # Canonical defaults
 ├── values-test.yaml        # Live test deployment on OKE (cnpg-test namespace)
-├── values.{oke,aws,azure,k3s,microk8s}.yaml  # Cloud-specific starting points
 ├── values.{small,medium,large,single}.yaml   # Sizing profiles
 ├── templates/              # ~37 templates; most are Envoy Gateway and PerfectScale
 └── charts/                 # Vendored subcharts (apica + cnpg/cluster)
