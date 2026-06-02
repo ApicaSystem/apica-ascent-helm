@@ -12,7 +12,7 @@ apica-ascent/
 ├── values.{oke,aws,azure,k3s,microk8s}.yaml  # Cloud-specific starting points
 ├── values.{small,medium,large,single}.yaml   # Sizing profiles
 ├── templates/              # ~37 templates; most are Envoy Gateway and PerfectScale
-└── charts/                 # Vendored subcharts (bitnami + local + cnpg/cluster)
+└── charts/                 # Vendored subcharts (apica + cnpg/cluster)
 ```
 
 ## Components
