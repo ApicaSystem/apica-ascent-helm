@@ -1,3 +1,4 @@
+apica-ascent/charts/*.tgz
 rendered.yaml
 
 # installer config with real credentials
