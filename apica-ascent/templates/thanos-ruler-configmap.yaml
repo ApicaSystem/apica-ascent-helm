@@ -2,10 +2,15 @@ apiVersion: v1
 data:
   ruler.yml: |-
     groups:
-      - name: "metamonitoring"
+      - name: metamonitoring
         rules:
-          - alert: "PrometheusDown"
-            expr: absent(up{prometheus="{{ .Release.Namespace }}/{{ .Release.Namespace }}-prometheus-prometheus"})
+          - alert: PrometheusDown
+            expr: absent(up{prometheus="apica-ascent/apica-ascent-prometheus-prometheus"})
+            for: 5m
+            labels:
+              severity: critical
+            annotations:
+              summary: Prometheus is down
 kind: ConfigMap
 metadata:
   name: thanos-ruler-configmap
