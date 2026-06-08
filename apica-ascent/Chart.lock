@@ -1,0 +1,21 @@
+dependencies:
+- name: flash-coffee
+  repository: ""
+  version: 1.0.0
+- name: logiq-flash
+  repository: ""
+  version: 1.0.0
+- name: logiqctl
+  repository: ""
+  version: 1.0.0
+- name: flash-discovery
+  repository: ""
+  version: 1.0.0
+- name: redis
+  repository: oci://ghcr.io/helmforgedev/helm
+  version: 1.6.17
+- name: thanos
+  repository: oci://ghcr.io/thanos-community/helm-charts
+  version: 0.18.0
+digest: sha256:f9bd2999435e29f7d2696508c24d72490df4d379ff7fe84fed03035331906c0c
+generated: "2026-06-05T14:51:43.589365784Z"
