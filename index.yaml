@@ -6,7 +6,7 @@ entries:
       licenses: Apache-2.0
     apiVersion: v2
     appVersion: v2.16.6
-    created: "2026-06-16T16:00:34.125388+02:00"
+    created: "2026-06-16T16:04:05.478388+02:00"
     dependencies:
     - condition: global.chart.flash-coffee
       name: flash-coffee
@@ -90,7 +90,7 @@ entries:
       licenses: Apache-2.0
     apiVersion: v2
     appVersion: v2.16.1
-    created: "2026-06-16T16:00:34.106666+02:00"
+    created: "2026-06-16T16:04:05.460056+02:00"
     dependencies:
     - condition: global.chart.flash-coffee
       name: flash-coffee
@@ -169,88 +169,4 @@ entries:
     urls:
     - apica-ascent-3.1.1.tgz
     version: 3.1.1
-  - annotations:
-      category: Observability
-      licenses: Apache-2.0
-    apiVersion: v2
-    appVersion: v2.16.0
-    created: "2026-06-16T16:00:34.089707+02:00"
-    dependencies:
-    - condition: global.chart.flash-coffee
-      name: flash-coffee
-      repository: ""
-      version: 1.0.0
-    - condition: global.chart.logiq-flash
-      name: logiq-flash
-      repository: ""
-      version: 1.0.0
-    - condition: global.chart.logiqctl
-      name: logiqctl
-      repository: ""
-      version: 1.0.0
-    - condition: global.chart.flash-discovery
-      name: flash-discovery
-      repository: ""
-      version: 1.0.0
-    - alias: postgres
-      condition: global.chart.postgres
-      name: postgresql
-      repository: https://charts.bitnami.com/bitnami
-      version: 8.7.3
-    - alias: redis
-      condition: global.chart.redis
-      name: redis
-      repository: https://charts.bitnami.com/bitnami
-      version: 10.6.5
-    - alias: prometheus
-      condition: global.chart.prometheus
-      name: kube-prometheus
-      repository: https://charts.bitnami.com/bitnami
-      version: 6.5.3
-    - alias: grafana
-      condition: global.chart.grafana
-      name: grafana
-      repository: https://charts.bitnami.com/bitnami
-      version: 4.2.4
-    - alias: common
-      condition: global.chart.grafana
-      name: common
-      repository: https://charts.bitnami.com/bitnami
-      version: 1.1.1
-    - alias: thanos
-      condition: global.chart.thanos
-      name: thanos
-      repository: https://charts.bitnami.com/bitnami
-      version: 8.2.5
-    description: Apica Ascent - Cloud-native observability platform
-    digest: 6e1b51c6c41fee6b29bd308a5b715eaba7040ff26abca20e2a4c75fe6264bce9
-    home: https://apica.io
-    icon: https://www.apica.io/wp-content/uploads/2023/01/apica-logo-white-2022.png
-    keywords:
-    - apica
-    - ascent
-    - observability
-    - logging
-    - monitoring
-    - tracing
-    - metrics
-    - gateway-api
-    - envoy-gateway
-    kubeVersion: '>=1.24.0-0'
-    maintainers:
-    - email: manchal.sharma@apica.io
-      name: manchal
-    - email: support@apica.io
-      name: support
-    - email: kumar.vishnu@apica.io
-      name: vishnu
-    - email: lokesh.sm@apica.io
-      name: lokesh
-    name: apica-ascent
-    sources:
-    - https://github.com/apica-io/apica-ascent-helm
-    type: application
-    urls:
-    - apica-ascent-3.1.0.tgz
-    version: 3.1.0
-generated: "2026-06-16T16:00:34.068299+02:00"
+generated: "2026-06-16T16:04:05.438912+02:00"
