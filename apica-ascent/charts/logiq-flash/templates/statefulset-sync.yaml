@@ -19,6 +19,7 @@ spec:
   updateStrategy:
     type: {{ .Values.sync.updateStrategy.type }}
     rollingUpdate:
+      maxSurge: {{ .Values.sync.updateStrategy.maxSurge }}
       maxUnavailable: {{ .Values.sync.updateStrategy.maxUnavailable }}
   template:
     metadata:

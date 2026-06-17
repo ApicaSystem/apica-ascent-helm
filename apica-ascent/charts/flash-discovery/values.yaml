@@ -15,7 +15,8 @@ podAntiAffinity:
   weight: 100
 updateStrategy:
   type: RollingUpdate
-  maxUnavailable: 1
+  maxSurge: 2
+  maxUnavailable: 0
 terminationGracePeriodSeconds: 60
 preStopSleepSeconds: 15
 # N-1 for replicaCountDiscovery=2
