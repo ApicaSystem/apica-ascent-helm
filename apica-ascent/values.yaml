@@ -515,7 +515,7 @@ global:
 
 cnpg:
   # -- Set to true to deploy a CloudNativePG cluster via the cnpg/cluster subchart.
-  enabled: false
+  enabled: true
 
   # -- Override the cluster name. Defaults to <release-name>-cnpg.
   # The CNPG read-write service will be <fullnameOverride>-rw (or <release-name>-cnpg-rw if unset).
@@ -609,7 +609,7 @@ cnpg:
 
   # -- Backup configuration. Disabled by default; configure provider credentials before enabling.
   backups:
-    enabled: false
+    enabled: true
     provider: s3
     s3:
       region: ""
