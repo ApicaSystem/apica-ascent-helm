@@ -52,7 +52,7 @@
                     "type": "string"
                 },
                 "enabled": {
-                    "type": "boolean"
+                    "type": ["boolean", "string"]
                 },
                 "endpointCA": {
                     "type": "object",
