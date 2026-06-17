@@ -87,7 +87,7 @@ Without `AWS_REQUEST_CHECKSUM_CALCULATION=when_required`: botocore 1.35+ adds tr
 
 #### Cluster subchart patches
 
-The vendored `cloudnative-pg/cluster` subchart at `apica-ascent/charts/cluster/` contains two local patches that have not been upstreamed yet. When upgrading the subchart version, these must be reapplied manually.
+The vendored `cloudnative-pg/cluster` subchart at `apica-ascent/charts/cluster/` contains local patches that have not been upstreamed yet. When upgrading the subchart version, these must be reapplied manually.
 
 **1. `templates/_backup.tpl` — conditional compression fields**
 
@@ -137,6 +137,16 @@ env:
 ```
 
 **Why:** GitOps tools such as Harness can only override named string values in values.yaml — they cannot target array elements by index. The upstream template puts these env vars in `cluster.env` (an array), making them impossible to override without redefining the whole array. The patch extracts the two OCI-required env vars into named scalar fields (`awsDefaultRegion`, `awsRequestChecksumCalculation`) that can be targeted directly, then merges them with any remaining entries in `cluster.env`.
+
+**4. `templates/_backup.tpl` — string-safe `backups.enabled` guard**
+
+The `{{- if .Values.backups.enabled }}` guard is replaced with an explicit string comparison:
+
+```yaml
+{{- if eq (.Values.backups.enabled | toString) "true" }}
+```
+
+**Why:** Go templates treat any non-empty string as truthy. Without this patch, passing `backups.enabled: "false"` as a string (required by GitOps tools like ArgoCD that only support string pipeline variables) would incorrectly enable backups. Converting to string first and comparing against `"true"` makes the field accept both boolean `true`/`false` and string `"true"`/`"false"`.
 
 #### Failover characteristics
 
