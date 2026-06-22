@@ -206,64 +206,8 @@ flash-coffee:
         memory: 2000Mi
 
 thanos:
-  createObjstoreSecret: true
-  receive:
-    logLevel: info
-    service:
-      type: ClusterIP
-    enabled: true
-    requests:
-      memory: 100Mi
-      cpu: 50m
-    limits:
-      memory: 200Mi
-  query:
-    enabled: true
-    dnsDiscovery:
-      enabled: true
-    requests:
-      memory: 100Mi
-      cpu: 50m
-    limits:
-      memory: 200Mi
-  bucketweb:
-    enabled: true
-    requests:
-      memory: 100Mi
-      cpu: 50m
-    limits:
-      memory: 200Mi
-  compactor:
-    enabled: true
-    requests:
-      memory: 100Mi
-      cpu: 50m
-    limits:
-      memory: 200Mi
-    persistence:
-      enabled: true
-      size: 75Gi
-  metrics:
-    enabled: true
-    serviceMonitor:
-      enabled: true
-  storegateway:
-    enabled: true
-    requests:
-      memory: 100Mi
-      cpu: 50m
-    limits:
-      memory: 200Mi
   ruler:
     enabled: true
-    alertmanagers:
-      - prometheus-alertmanager
-    existingConfigmap: thanos-ruler-configmap
-    requests:
-      memory: 100Mi
-      cpu: 50m
-    limits:
-      memory: 200Mi
 
 # Gateway API configuration
 gateway:
