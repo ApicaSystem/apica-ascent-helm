@@ -584,7 +584,7 @@ cnpg:
     instances: 2
     imageName: ghcr.io/cloudnative-pg/postgresql:18
     storage:
-      size: 20Gi
+      size: 50Gi
     enableSuperuserAccess: true
     # -- References the superuser secret created above.
     superuserSecret: ascent-db-superuser
