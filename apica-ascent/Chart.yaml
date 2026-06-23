@@ -33,15 +33,16 @@ dependencies:
   - name: flash-discovery
     version: 1.0.0
     condition: global.chart.flash-discovery
-  - alias: postgres
-    condition: global.chart.postgres
-    name: postgresql
-    repository: https://charts.bitnami.com/bitnami
-    version: 8.7.3
-  - name: redis
+#  - alias: postgres
+#    condition: global.chart.postgres
+#    name: postgresql
+#    repository: https://charts.bitnami.com/bitnami
+#    version: 8.7.3
+  - name: valkey
     condition: global.chart.redis
-    repository: oci://ghcr.io/helmforgedev/helm
-    version: 1.6.17
+    repository: https://valkey.io/valkey-helm
+    version: 0.9.0
+    alias: redis
   - name: thanos
     condition: global.chart.thanos
     repository: oci://ghcr.io/thanos-community/helm-charts
