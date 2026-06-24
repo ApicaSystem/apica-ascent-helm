@@ -16,6 +16,11 @@ annotations:
   category: Observability
   licenses: Apache-2.0
 dependencies:
+  - alias: cnpg
+    condition: cnpg.enabled
+    name: cluster
+    repository: https://cloudnative-pg.github.io/charts
+    version: 0.6.1
   - name: flash-coffee
     version: 1.0.0
     condition: global.chart.flash-coffee

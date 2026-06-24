@@ -474,6 +474,7 @@ global:
     redis_opts: true
     redis_host: "redis-master"
     redis_port: "6379"
+    # When migrating to CNPG, update these values to point to the new CNPG service.
     postgres_host: "postgres"
     postgres_port: "5432"
     postgres_user: "postgres"
@@ -511,6 +512,135 @@ global:
     redis: true
     s3gateway: false
     grafana: false
+
+cnpg:
+  # -- Set to true to deploy a CloudNativePG cluster via the cnpg/cluster subchart.
+  enabled: true
+
+  # -- Override the cluster name. Defaults to <release-name>-cnpg.
+  # The CNPG read-write service will be <fullnameOverride>-rw (or <release-name>-cnpg-rw if unset).
+  fullnameOverride: ""
+  # -- Override the namespace. Defaults to the release namespace.
+  namespaceOverride: ""
+
+  # -- Credentials used to pre-create the superuser Secret referenced by cluster.superuserSecret.
+  # The application connects to CNPG using these credentials via global.environment.postgres_*.
+  superuserSecret:
+    name: ascent-db-superuser
+    username: postgres
+    password: postgres
+
+  # -- Cluster mode of operation.
+  # "standalone" creates a fresh cluster.
+  # "recovery" bootstraps from an existing Postgres instance via import (use for migration from Bitnami).
+  mode: standalone
+
+  # -- Recovery / migration configuration. Required when mode is "recovery".
+  # Two recovery methods are supported:
+  #
+  # 1. Import from a live Postgres (Bitnami migration):
+  #    method: import  (default)
+  #
+  # 2. Restore from a barman object store backup:
+  #    method: object_store
+  #    recovery:
+  #      method: object_store
+  #      clusterName: "<release-name>"   # serverName in backup — directory name in bucket, e.g. s3://bucket/cnpg-test/ → "cnpg-test"
+  #      pitrTarget:
+  #        time: ""                      # Optional RFC3339 timestamp for PITR; leave empty for latest backup
+  #      provider: s3                    # or azure / google
+  #      endpointURL: "https://<namespace>.compat.objectstorage.<region>.oraclecloud.com"
+  #      s3:
+  #        region: "<region>"
+  #        bucket: "<bucket-name>"
+  #        path: "/"
+  #        accessKey: ""
+  #        secretKey: ""
+  #      secret:
+  #        create: true                  # cluster subchart creates the S3 credentials Secret
+  recovery:
+    method: import
+    import:
+      # "monolith" imports all databases and roles. "microservice" imports a single database.
+      type: monolith
+      databases:
+        - "*"
+      roles:
+        - "*"
+      source:
+        host: postgres
+        port: 5432
+        username: postgres
+        database: postgres
+        # Use "disable" for in-cluster migration without TLS; "verify-full" for external sources.
+        sslMode: disable
+        passwordSecret:
+          name: cnpg-import-source-password
+          key: password
+          # Secret is created by templates/cnpg-secrets.yaml when mode is "recovery".
+          value: postgres
+
+  cluster:
+    instances: 2
+    imageName: ghcr.io/cloudnative-pg/postgresql:18
+    storage:
+      size: 50Gi
+    enableSuperuserAccess: true
+    # -- References the superuser secret created above.
+    superuserSecret: ascent-db-superuser
+    services:
+      disabledDefaultServices:
+        - ro
+        - r
+    # Required for OCI Object Storage S3-compatible endpoint:
+    # - awsDefaultRegion: ensures SigV4 signing uses the correct region
+    # - awsRequestChecksumCalculation=when_required: disables botocore 1.35+ trailing
+    #   checksum behavior which switches to chunked encoding; OCI requires Content-Length.
+    awsDefaultRegion: us-ashburn-1
+    awsRequestChecksumCalculation: when_required
+    # -- nodeSelector is derived automatically from global.nodeSelectors.label / global.nodeSelectors.db.
+    resources:
+      requests:
+        cpu: 500m
+        memory: 4000Mi
+      limits:
+        memory: 20000Mi
+    postgresql:
+      parameters:
+        max_connections: "400"
+        shared_buffers: "1024MB"
+    monitoring:
+      enabled: false
+      podMonitor:
+        enabled: true
+
+  # -- Backup configuration. Disabled by default; configure provider credentials before enabling.
+  backups:
+    enabled: true
+    provider: s3
+    s3:
+      region: ""
+      bucket: ""
+      path: "/"
+      accessKey: ""
+      secretKey: ""
+    destinationPath: ""
+    retentionPolicy: "30d"
+    endpointURL: "https://<bucket-namespace>.compat.objectstorage.<region>.oraclecloud.com"    
+    wal:
+      compression: gzip
+      encryption: AES256
+    data:
+      compression: gzip
+      encryption: AES256
+      jobs: 2
+    scheduledBackups:
+      - name: daily-backup
+        schedule: "0 0 0 * * *"
+        backupOwnerReference: self
+        method: barmanObjectStore
+
+  poolers: []
 
 vault:
   enabled: false

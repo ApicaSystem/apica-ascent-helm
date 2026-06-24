@@ -329,7 +329,91 @@ helm install apica --namespace apica \
 >
 > Auto vacuum automates the execution of `VACUUM` and `ANALYZE` \(to gather statistics\) commands. Auto vacuum checks for bloated tables in the database and reclaims the space for reuse.
 
-### 3.6 Upload Ascent professional license
+### 3.6 Using CloudNativePG (CNPG) as the Postgres provider
+
+This chart can deploy a CloudNativePG cluster as the Ascent Postgres backend via the [cnpg/cluster](https://github.com/cloudnative-pg/charts/tree/main/charts/cluster) subchart. The [CloudNativePG operator](https://cloudnative-pg.io/) must be installed in the cluster before enabling this.
+
+**Install the CNPG operator:**
+
+```bash
+helm repo add cnpg https://cloudnative-pg.github.io/charts
+helm upgrade --install cnpg-operator cnpg/cloudnative-pg \
+  --namespace cnpg-system \
+  --create-namespace
+```
+
+**Deploy Ascent with a CNPG cluster (fresh):**
+
+```bash
+helm install apica apica-repo/apica \
+  --namespace apica \
+  --set global.chart.postgres=false \
+  --set cnpg.enabled=true \
+  --set global.environment.postgres_host=<release-name>-cnpg-rw \
+  --set global.environment.postgres_user=postgres \
+  --set global.environment.postgres_password=<password> \
+  --set cnpg.superuserSecret.password=<password>
+```
+
+The CNPG read-write service is named `<cnpg.fullnameOverride>-rw`, or `<release-name>-cnpg-rw` when `fullnameOverride` is unset.
+
+**Migrating from Bitnami Postgres to CNPG:**
+
+> **Important — do steps 2 and 3 in a single `helm upgrade`.** If you switch `postgres_host` to the CNPG service in a separate later upgrade, any writes made to Bitnami between the import completing and the switchover will be lost. The safe approach is to change both at once: applications will fail to reach the database while CNPG imports (expected downtime), and reconnect successfully once the import completes with all data intact.
+
+1. Keep `global.chart.postgres: true` so the existing Bitnami Postgres stays running during migration.
+2. In a **single upgrade**, enable CNPG in recovery mode and switch the application connection to CNPG simultaneously:
+   - Set `cnpg.enabled: true` and `cnpg.mode: recovery`
+   - Configure `cnpg.recovery.import.source` to point at the Bitnami service (`host: postgres`, `sslMode: disable` for in-cluster)
+   - Set `global.environment.postgres_host` to `<release-name>-cnpg-rw`
+   - The CNPG operator bootstraps the new cluster via `pg_dump`/`pg_restore` — no separate Job is required
+3. Wait for the CNPG cluster to reach `Cluster in healthy state`. Applications will reconnect automatically once the RW service becomes available.
+4. Set `global.chart.postgres: false` to decommission the Bitnami instance.
+
+> **Note:** The `monolith` import copies all user databases (`coffee`, `flash`, `casdoor`, etc.) but skips the `postgres` database — it is a reserved name in CNPG and is never imported. Verify no application schema lives in the `postgres` database before migrating (the default Ascent setup stores no schema there).
+
+> **Note:** The CNPG cluster `bootstrap` configuration is immutable after creation. After a successful migration, `cnpg.mode: recovery` in values has no effect on the running cluster and can be left as-is or changed to `standalone` for documentation purposes only.
+
+**Restoring from a barman backup:**
+
+To recreate a CNPG cluster from an existing barman object store backup (disaster recovery, environment rebuild):
+
+```yaml
+cnpg:
+  enabled: true
+  mode: recovery
+  recovery:
+    method: object_store
+    clusterName: "<release-name>"   # top-level directory name in the backup bucket
+    pitrTarget:
+      time: ""                      # RFC3339 timestamp for PITR; leave empty for latest backup
+    provider: s3
+    endpointURL: "https://<namespace>.compat.objectstorage.<region>.oraclecloud.com"
+    s3:
+      region: "<region>"
+      bucket: "<backup-bucket>"
+      path: "/"
+      accessKey: "<key>"
+      secretKey: "<secret>"
+    secret:
+      create: true
+```
+
+The `clusterName` must match the serverName stored in the backup — it is the top-level directory visible in the backup bucket (e.g. a bucket containing `cnpg-test/base/...` uses `clusterName: "cnpg-test"`).
+
+| HELM Option | Description | Default |
+| :--- | :--- | :--- |
+| `cnpg.enabled` | Deploy a CNPG cluster as the Postgres backend | `false` |
+| `cnpg.mode` | `standalone` for a new cluster; `recovery` to import from Bitnami or restore from backup | `standalone` |
+| `cnpg.recovery.method` | `import` (from live Postgres), `object_store` (from barman backup), `backup` (from CNPG Backup object) | `import` |
+| `cnpg.recovery.clusterName` | serverName in the backup store — must match the backup bucket directory name | `""` |
+| `cnpg.recovery.pitrTarget.time` | RFC3339 timestamp for point-in-time recovery; empty = latest | `""` |
+| `cnpg.fullnameOverride` | Override the cluster name (affects the RW service name) | `""` |
+| `cnpg.cluster.instances` | Number of CNPG instances | `2` |
+| `cnpg.cluster.storage.size` | PVC size for each instance | `20Gi` |
+| `cnpg.backups.enabled` | Enable WAL archiving and scheduled backups to object storage | `false` |
+
+### 3.7 Upload Ascent professional license
 
 The deployment described above offers 30 days trial license. Email `license@apica.ai` to obtain a professional license. After obtaining the license, use the apicactl tool to apply the license to the deployment. Please refer `apicactl` details at [https://apicactl.apica.ai/](https://apicactl.apica.ai/). You will need API-token from Ascent UI as shown below
 
@@ -349,7 +433,7 @@ apicactl license set -l=license.jws
 apicactl license get
 ```
 
-### 3.7 Customize Admin account
+### 3.8 Customize Admin account
 
 ```bash
 helm install apica --namespace apica \
@@ -361,11 +445,11 @@ helm install apica --namespace apica \
 
 | HELM Option | Description | Default |
 | :--- | :--- | :--- |
-| `global.environment.admin_name` | Ascent Administrator name | flash-admin@foo.com |
-| `global.environment.admin_password` | Ascent Administrator password | flash-password |
+| `global.environment.admin_name` | Ascent Administrator name | devops@apica.io |
+| `global.environment.admin_password` | Ascent Administrator password | password |
 | `global.environment.admin_email` | Ascent Administrator e-mail | flash-admin@foo.com |
 
-### 3.8 Using external Redis instance
+### 3.9 Using external Redis instance
 
 To use external Redis for your Ascent deployment, execute the following command.
 
@@ -384,7 +468,7 @@ helm install apica --namespace apica \
 | `global.environment.redis_host` | Host IP/DNS of the external Redis cluster | redis-master |
 | `global.environment.redis_port` | Host Port where external Redis service is exposed | 6379 |
 
-### 3.9 Configuring cluster id
+### 3.10 Configuring cluster id
 
 When deploying Ascent, configure the cluster id to monitor your own Ascent deployment. For details about the `cluster_id` refer to section [Managing multiple K8S clusters](agentless.md#managing-multiple-k-8-s-clusters-in-a-single-apica-instance)
 
@@ -398,7 +482,7 @@ helm install apica --namespace apica \
 | :--- | :--- | :--- |
 | global.environment.cluster\_id | Cluster Id being used for the K8S cluster running Ascent. See Section on [Managing multiple K8S](agentless.md#managing-multiple-k-8-s-clusters-in-a-single-apica-instance) clusters for more details. | Ascent |
 
-### 3.10 Sizing your Ascent cluster
+### 3.11 Sizing your Ascent cluster
 
 When deploying Ascent, size your infrastructure to provide appropriate vcpu and memory requirements. We recommened the following minimum size for small. medium and large cluster specification from [Section 1.3 ](k8s-quickstart-guide.md#1-3-prepare-your-values-YAML-file) values yaml files.
 
@@ -408,7 +492,7 @@ When deploying Ascent, size your infrastructure to provide appropriate vcpu and 
 | medium  | 20| 56 gb | 5 |
 | large  | 32| 88 gb | 8 |
 
-### 3.11 Gateway Service Type Configuration
+### 3.12 Gateway Service Type Configuration
 
 The Envoy Gateway service type can be configured:
 
@@ -432,7 +516,7 @@ For cloud-specific configurations, see the platform-specific values files:
 - `values.k3s.yaml` - K3s with NodePort
 - `values.microk8s.yaml` - MicroK8s with NodePort
 
-### 3.12 Using Node Selectors
+### 3.13 Using Node Selectors
 
 The Ascent stack deployment can be optimized using node labels and node selectors to place various components of the stack optimally
 
@@ -460,7 +544,7 @@ In the example above, there are two node selectors in use - `ingest` and `common
 
 > Node selectors are enabled by setting `enabled` to `true` for `globals.nodeSelectors`
 
-### 3.13 Installing Thanos
+### 3.14 Installing Thanos
 
 The Ascent stack includes Thanos as part of the deployment as an optional component for larger deployments. To enable Thanos, follow the steps below
 
