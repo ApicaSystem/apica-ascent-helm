@@ -138,6 +138,23 @@ env:
 
 **Why:** GitOps tools such as Harness can only override named string values in values.yaml — they cannot target array elements by index. The upstream template puts these env vars in `cluster.env` (an array), making them impossible to override without redefining the whole array. The patch extracts the two OCI-required env vars into named scalar fields (`awsDefaultRegion`, `awsRequestChecksumCalculation`) that can be targeted directly, then merges them with any remaining entries in `cluster.env`.
 
+**4. `templates/cluster.yaml` — nodeSelector derived from `global.nodeSelectors`**
+
+The `{{- with .Values.cluster.affinity }}` block is replaced with logic that merges a nodeSelector built from the parent chart's `global.nodeSelectors` into the affinity map:
+
+```yaml
+{{- $affinity := default dict .Values.cluster.affinity }}
+{{- if .Values.global.nodeSelectors.enabled }}
+{{- $affinity = merge $affinity (dict "nodeSelector" (dict (.Values.global.nodeSelectors.label | toString) (.Values.global.nodeSelectors.db | toString))) }}
+{{- end }}
+{{- if $affinity }}
+affinity:
+  {{- toYaml $affinity | nindent 4 }}
+{{- end }}
+```
+
+**Why:** The upstream template only accepts a static `cluster.affinity` map. Other components in the parent chart derive their node scheduling from `global.nodeSelectors` (label key + per-workload value), which Helm propagates automatically to all subcharts. Without this patch, the CNPG cluster node selector would have to be hardcoded separately from the global config, creating a duplication that drifts when environments change. The patch keeps `global.nodeSelectors.db` as the single source of truth for database workload scheduling, consistent with how the Bitnami postgres subchart works. Any additional affinity fields (e.g. `topologyKey`, which defaults to `topology.kubernetes.io/zone` in the subchart) are preserved via `merge`.
+
 #### Failover characteristics
 
 - **Planned switchover** (node drain, rolling upgrade): CNPG does a graceful handoff — ~2–5 seconds. With a PgBouncer pooler in front, client connections are queued transparently (zero errors).

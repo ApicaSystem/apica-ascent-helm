@@ -598,6 +598,13 @@ cnpg:
     #   checksum behavior which switches to chunked encoding; OCI requires Content-Length.
     awsDefaultRegion: us-ashburn-1
     awsRequestChecksumCalculation: when_required
+    # -- nodeSelector is derived automatically from global.nodeSelectors.label / global.nodeSelectors.db.
+    resources:
+      requests:
+        cpu: 500m
+        memory: 4000Mi
+      limits:
+        memory: 20000Mi
     postgresql:
       parameters:
         max_connections: "400"

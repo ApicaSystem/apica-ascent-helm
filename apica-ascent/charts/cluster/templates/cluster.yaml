@@ -38,9 +38,13 @@ spec:
   resources:
     {{- toYaml . | nindent 4 }}
   {{ end }}
-  {{- with .Values.cluster.affinity }}
+  {{- $affinity := default dict .Values.cluster.affinity }}
+  {{- if .Values.global.nodeSelectors.enabled }}
+  {{- $affinity = merge $affinity (dict "nodeSelector" (dict (.Values.global.nodeSelectors.label | toString) (.Values.global.nodeSelectors.db | toString))) }}
+  {{- end }}
+  {{- if $affinity }}
   affinity:
-    {{- toYaml . | nindent 4 }}
+    {{- toYaml $affinity | nindent 4 }}
   {{- end }}
   {{- $env := default list .Values.cluster.env }}
   {{- if .Values.cluster.awsDefaultRegion }}
