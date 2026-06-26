@@ -358,7 +358,7 @@ spec:
           {{- end }}
 
         - name: ssr-report-gen
-          image: {{ .Values.global.imageRegistry }}/logiqai/ssr-server:ssr-v16.0.3
+          image: {{ .Values.global.imageRegistry }}/logiqai/ssr-server:ssr-v3.23.0-rc1
           imagePullPolicy: IfNotPresent
           env:
             - name: SSR_HOST
