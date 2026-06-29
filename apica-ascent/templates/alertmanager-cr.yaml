@@ -1,0 +1,21 @@
+{{- if and .Values.global.chart.prometheus .Values.prometheus.alertmanager.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: Alertmanager
+metadata:
+  name: {{ .Release.Namespace }}-prometheus-alertmanager
+  namespace: {{ .Release.Namespace }}
+  labels:
+    release: prometheus
+spec:
+  replicas: {{ .Values.prometheus.alertmanager.replicaCount }}
+  {{- if .Values.prometheus.alertmanager.persistence.enabled }}
+  storage:
+    volumeClaimTemplate:
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: {{ .Values.prometheus.alertmanager.persistence.size }}
+  {{- end }}
+{{- end }}
