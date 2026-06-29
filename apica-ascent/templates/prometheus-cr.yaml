@@ -1,0 +1,43 @@
+{{- if .Values.global.chart.prometheus }}
+apiVersion: monitoring.coreos.com/v1
+kind: Prometheus
+metadata:
+  name: {{ .Release.Namespace }}-prometheus-prometheus
+  namespace: {{ .Release.Namespace }}
+  labels:
+    release: prometheus
+spec:
+  replicas: {{ .Values.prometheus.prometheus.replicaCount }}
+  resources:
+    {{- toYaml .Values.prometheus.prometheus.resources | nindent 4 }}
+  serviceMonitorSelector:
+    matchLabels:
+      release: prometheus
+  serviceMonitorNamespaceSelector:
+    matchNames:
+      - {{ .Release.Namespace }}
+  ruleSelector: {}
+  {{- if .Values.prometheus.prometheus.persistence.enabled }}
+  storage:
+    volumeClaimTemplate:
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: {{ .Values.prometheus.prometheus.persistence.size }}
+  {{- end }}
+  {{- if .Values.prometheus.prometheus.thanos.create }}
+  thanos:
+    objectStorageConfig:
+      key: {{ .Values.prometheus.prometheus.thanos.objectStorageConfig.secretKey }}
+      name: {{ .Values.prometheus.prometheus.thanos.objectStorageConfig.secretName }}
+    resources:
+      {{- toYaml .Values.prometheus.prometheus.thanos.resources | nindent 6 }}
+  {{- end }}
+  alerting:
+    alertmanagers:
+      - namespace: {{ .Release.Namespace }}
+        name: alertmanager-{{ .Release.Namespace }}-prometheus-alertmanager
+        port: web
+{{- end }}

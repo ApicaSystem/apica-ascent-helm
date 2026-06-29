@@ -320,7 +320,7 @@ spec:
             {{- end }}
             {{- if .Values.global.chart.prometheus }}
             - name: PROM_ALERT_MGR_URL
-              value: {{ .Release.Name }}-prometheus-alertmanager:9093
+              value: alertmanager-{{ .Release.Namespace }}-prometheus-alertmanager:9093
             {{- end }}
             - name: EVENT_REPORTING_WEBHOOKS
               value: ""
