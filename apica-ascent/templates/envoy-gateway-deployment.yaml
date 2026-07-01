@@ -20,10 +20,10 @@ spec:
       app.kubernetes.io/name: gateway-helm
       control-plane: envoy-gateway
   strategy:
-    rollingUpdate:
-      maxSurge: 25%
-      maxUnavailable: 25%
-    type: RollingUpdate
+  rollingUpdate:
+    maxSurge: {{ .Values.envoyGateway.updateStrategy.maxSurge }}
+    maxUnavailable: {{ .Values.envoyGateway.updateStrategy.maxUnavailable }}
+  type: {{ .Values.envoyGateway.updateStrategy.type }}
   template:
     metadata:
       annotations:

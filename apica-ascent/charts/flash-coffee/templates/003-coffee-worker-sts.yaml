@@ -15,6 +15,7 @@ spec:
   updateStrategy:
     type: {{ .Values.coffee_worker.updateStrategy.type }}
     rollingUpdate:
+      maxSurge: {{ .Values.coffee_worker.updateStrategy.maxSurge }}
       maxUnavailable: {{ .Values.coffee_worker.updateStrategy.maxUnavailable }}
   template:
     metadata:

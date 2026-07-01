@@ -274,6 +274,10 @@ gateway:
 # Envoy Gateway Configuration for Oracle Cloud (OKE)
 envoyGateway:
   enabled: true
+  updateStrategy:
+    type: RollingUpdate
+    maxSurge: 2
+    maxUnavailable: 0
 
   controller:
     clusterRoleName: eg-gateway-helm-envoy-gateway-role
