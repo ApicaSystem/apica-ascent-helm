@@ -33,11 +33,6 @@ dependencies:
   - name: flash-discovery
     version: 1.0.0
     condition: global.chart.flash-discovery
-#  - alias: postgres
-#    condition: global.chart.postgres
-#    name: postgresql
-#    repository: https://charts.bitnami.com/bitnami
-#    version: 8.7.3
   - name: valkey
     condition: global.chart.redis
     repository: https://valkey.io/valkey-helm
@@ -52,14 +47,16 @@ sources:
   - https://github.com/apica-io/apica-ascent-helm
 icon: https://www.apica.io/wp-content/uploads/2023/01/apica-logo-white-2022.png
 maintainers:
-  - email: manchal.sharma@apica.io
-    name: manchal
-  - email: support@apica.io
-    name: support
+  - email: eric.sproul@apica.io
+    name: esproul
   - email: kumar.vishnu@apica.io
     name: vishnu
   - email: lokesh.sm@apica.io
     name: lokesh
+  - email: manchal.sharma@apica.io
+    name: manchal
+  - email: support@apica.io
+    name: support
 name: apica-ascent
 type: application
 kubeVersion: ">=1.24.0-0"
