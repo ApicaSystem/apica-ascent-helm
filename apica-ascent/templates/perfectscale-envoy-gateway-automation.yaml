@@ -1,0 +1,15 @@
+{{- if .Values.perfectscale.enabled }}
+---
+apiVersion: perfectscale.io/v1
+kind: WorkloadAutomationConfig
+metadata:
+  name: envoy-gateway-automation
+  namespace: {{ .Release.Namespace }}
+spec:
+  targetRef:
+    kind: Deployment
+    name: envoy-gateway
+  automation:
+    operational:
+      automationMode: "Disabled"
+{{- end }}
