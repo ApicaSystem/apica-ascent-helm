@@ -19,7 +19,6 @@ spec:
   updateStrategy:
     type: {{ .Values.updateStrategy.type }}
     rollingUpdate:
-      maxSurge: {{ .Values.updateStrategy.maxSurge }}
       maxUnavailable: {{ .Values.updateStrategy.maxUnavailable }}
   volumeClaimTemplates:
     - apiVersion: v1

@@ -16,7 +16,6 @@ sync:
     weight: 100
   updateStrategy:
     type: RollingUpdate
-    maxSurge: 2
     maxUnavailable: 0
   terminationGracePeriodSeconds: 60
   preStopSleepSeconds: 15
@@ -35,7 +34,6 @@ flash:
     whenUnsatisfiable: ScheduleAnyway   # zone only; hostname covered by hard anti-affinity
   updateStrategy:
     type: RollingUpdate
-    maxSurge: 2
     maxUnavailable: 0
   preStopSleepSeconds: 30
   # N-1 for replicaCount=2
@@ -54,7 +52,6 @@ ml:
     weight: 100
   updateStrategy:
     type: RollingUpdate
-    maxSurge: 2
     maxUnavailable: 0
   terminationGracePeriodSeconds: 60
   preStopSleepSeconds: 15

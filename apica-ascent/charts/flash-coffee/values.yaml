@@ -24,7 +24,6 @@ coffee:
     weight: 100
   updateStrategy:
     type: RollingUpdate
-    maxSurge: 2
     maxUnavailable: 0
   terminationGracePeriodSeconds: 60
   preStopSleepSeconds: 15
@@ -51,7 +50,6 @@ coffee_worker:
     weight: 100
   updateStrategy:
     type: RollingUpdate
-    maxSurge: 2
     maxUnavailable: 0
   terminationGracePeriodSeconds: 60
   preStopSleepSeconds: 15
