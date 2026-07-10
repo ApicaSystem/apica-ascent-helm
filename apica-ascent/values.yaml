@@ -145,38 +145,6 @@ redis:
     create: true
     name: redis
 
-postgres:
-  enabled: true
-  fullnameOverride: postgres
-  postgresqlPostgresPassword: postgres
-  postgresqlUsername: postgres
-  postgresqlDatabase: postgres
-  postgresqlPassword: postgres
-  postgresqlExtendedConf:
-    maxConnections: "400"
-    sharedBuffers: "1024MB"
-  metrics:
-    enabled: true
-    serviceMonitor:
-      enabled: true
-    additionalLabels:
-      release: prometheus
-  persistence:
-    size: 20Gi
-  resources:
-    limits:
-      memory: 20000Mi
-    requests:
-      memory: 4000Mi
-      cpu: 500m
-  securityContext:
-    enabled: true
-    fsGroup: 1001
-    runAsUser: 1001
-  serviceAccount:
-    enabled: true
-    name: postgres
-
 flash-coffee:
   service:
     type: ClusterIP
@@ -291,14 +259,7 @@ envoyGateway:
     enabled: true
     # Compression quality (1-9, where 6 is default, 9 is best compression)
     quality: 6
-apicaTLSSecret:
-  enabled: true
-
 prometheus:
-  fullnameOverride: prometheus
-  persistence:
-    enabled: true
-    size: 20Gi
   alertmanager:
     enabled: true
     replicaCount: 1
@@ -306,7 +267,6 @@ prometheus:
       enabled: true
       size: 20Gi
   prometheus:
-    enabled: true
     resources:
       requests:
         memory: 15Gi
@@ -328,45 +288,6 @@ prometheus:
           memory: 100Mi
         limits:
           memory: 200Mi
-  operator:
-    enabled: true
-    replicaCount: 1
-    kubeletService:
-      enabled: false
-  kube-state-metrics:
-    serviceMonitor:
-      enabled: false
-  node-exporter:
-    serviceMonitor:
-      enabled: false
-  kubeApiServer:
-    enabled: false
-  kubeControllerManager:
-    enabled: false
-    service:
-      enabled: false
-  kubeScheduler:
-    enabled: false
-    service:
-      enabled: false
-  kubelet:
-    enabled: false
-  coreDns:
-    enabled: false
-    service:
-      enabled: false
-  kubeProxy:
-    enabled: false
-    service:
-      enabled: false
-  exporters:
-    node-exporter:
-      enabled: false
-    kube-state-metrics:
-      enabled: false
-
-grafana:
-  fullnameOverride: grafana
 
 logiqctl:
   image:
@@ -420,10 +341,10 @@ global:
     logiq_flash_host: logiq-flash
     logiq_flash_port: 9999
     redis_opts: true
-    redis_host: "redis-master"
+    redis_host: "redis"
     redis_port: "6379"
     # When migrating to CNPG, update these values to point to the new CNPG service.
-    postgres_host: "postgres"
+    postgres_host: "apica-ascent-cnpg-rw"
     postgres_port: "5432"
     postgres_user: "postgres"
     postgres_password: "postgres"
@@ -456,11 +377,14 @@ global:
   persistence:
     storageClass: oci-bv
   chart:
+    flash-coffee: true
+    flash-discovery: true
+    logiq-flash: true
+    logiqctl: true
     prometheus: true
-    postgres: true
     redis: true
     s3gateway: false
-    grafana: false
+    thanos: true
 
 cnpg:
   # -- Set to true to deploy a CloudNativePG cluster via the cnpg/cluster subchart.
