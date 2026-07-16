@@ -177,12 +177,7 @@ spec:
             - /bin/bash
           args:
             - -c
-            {{- $extraflag := .Values.global.environment.extraflag }}
-            {{- if .Values.logflow_only.enabled }}
-            {{- /* logflow_only.args sets its own -max_bytes_per_sec; drop the extraflag one so the flag appears once */}}
-            {{- $extraflag = regexReplaceAll `-max_bytes_per_sec=\S+` $extraflag "" | trim }}
-            {{- end }}
-            - /flash/bin/flash -config /flash/config/config.yaml -install_root /flash -runtime_folder /flash/db -discovery_domain $(DISCOVERY_DOMAIN) -discovery_url $(DISCOVERY_URL) -discovery_id flash1 -pg_max_idle_conns 3 -pg_max_open_Conns 5 -postgres_timeout 20s -workers 150 -connection_channel_size 10 --pg_conn_max_lifetime 5m {{ $extraflag }} {{- if .Values.logflow_only.enabled }} {{ .Values.logflow_only.args }} {{- end }} {{- if .Values.kafka_client.enabled }} {{ .Values.kafka_client.kafka_args }} {{- end }}
+            - /flash/bin/flash -config /flash/config/config.yaml -install_root /flash -runtime_folder /flash/db -discovery_domain $(DISCOVERY_DOMAIN) -discovery_url $(DISCOVERY_URL) -discovery_id flash1 -pg_max_idle_conns 3 -pg_max_open_Conns 5 -postgres_timeout 20s -workers 150 -connection_channel_size 10 --pg_conn_max_lifetime 5m {{ .Values.global.environment.extraflag }} {{- if .Values.logflow_only.enabled }} {{ .Values.logflow_only.args }} {{- else }} {{ .Values.global.environment.rate_limit_flags }} {{- end }} {{- if .Values.kafka_client.enabled }} {{ .Values.kafka_client.kafka_args }} {{- end }}
           # 30s sleep before SIGTERM — more persistent connections than other workloads.
           lifecycle:
             preStop:
@@ -400,7 +395,7 @@ spec:
             - /bin/bash
           args:
             - -c
-            - /flash/bin/flash -config /flash/config/config.yaml -install_root /flash -runtime_folder /flash/db -discovery_domain $(DISCOVERY_DOMAIN) -discovery_url $(DISCOVERY_URL) -discovery_id $(DISCOVERY_ID) -pg_max_idle_conns 3 -pg_max_open_Conns 10 -postgres_timeout 20s --pg_conn_max_lifetime 5m -grpc_port 51054 -health_check_port 18080 --sidecar-node -api_port 19999 {{ .Values.global.environment.extraflag }}
+            - /flash/bin/flash -config /flash/config/config.yaml -install_root /flash -runtime_folder /flash/db -discovery_domain $(DISCOVERY_DOMAIN) -discovery_url $(DISCOVERY_URL) -discovery_id $(DISCOVERY_ID) -pg_max_idle_conns 3 -pg_max_open_Conns 10 -postgres_timeout 20s --pg_conn_max_lifetime 5m -grpc_port 51054 -health_check_port 18080 --sidecar-node -api_port 19999 {{ .Values.global.environment.extraflag }} {{ .Values.global.environment.rate_limit_flags }}
           env:
             - name: CONFIG_HASH
               value: {{ include "logiq-flash.confighash" . | quote }}
