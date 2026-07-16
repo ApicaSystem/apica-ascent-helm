@@ -53,7 +53,7 @@ logiq-flash:
         memory: 750Mi
   logflow_only:
     enabled: false
-    args: -object_writers=1 -rl_type=tokenbucket -max_bytes_per_sec=1246485
+    args: -object_writers=1 -max_bytes_per_sec=1246485
   kafka_client:
     enabled: false
     kafka_args: -kafka_ca_cert_path=/flash/kafka/ca.crt -kafka_client_key_path=/flash/kafka/tls.key -kafka_client_cert_path=/flash/kafka/tls.crt
@@ -468,8 +468,8 @@ global:
     external_cert_key: ''
     internal_cert_crt: ''
     internal_cert_key: ''
-    extraflag: -hauler-node-affinity=false --tail_longpoll=true -persist=true
-    rate_limit_flags: -rl_type=tokenbucket -max_bytes_per_sec=346729
+    extraflag: -hauler-node-affinity=false --tail_longpoll=true -persist=true -rl_type=tokenbucket
+    rate_limit_flags: -max_bytes_per_sec=346729
   persistence:
     storageClass: openebs-hostpath
   chart:
