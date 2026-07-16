@@ -292,6 +292,7 @@ global:
     AWS_SECRET_ACCESS_KEY: "AWS_SECRET"
     awsServiceEndpoint: "https://s3.amazonaws.com"
     extraflag: ""
+    rate_limit_flags: ""
 
   persistence:
     createStorageClass:
