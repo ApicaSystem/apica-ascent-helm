@@ -6,7 +6,7 @@ logiq-flash:
     type: NodePort
   image:
     repository: logiqai/flash
-    tag: v4.0.1
+    tag: v3.21.5
     pullPolicy: IfNotPresent
   persistence:
     enabled: true
@@ -152,7 +152,7 @@ flash-coffee:
     replicaCount: 2
     image:
       repository: logiqai/flash-brew-coffee
-      tag: v4.0.1
+      tag: v3.22.7
       pullPolicy: IfNotPresent
     resources:
       requests:
@@ -164,7 +164,7 @@ flash-coffee:
     replicaCount: 2
     image:
       repository: logiqai/flash-brew-coffee
-      tag: v4.0.1
+      tag: v3.22.7
       pullPolicy: IfNotPresent
     resources:
       requests:
