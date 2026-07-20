@@ -1,6 +1,6 @@
 apiVersion: v2
 version: 4.0.0
-appVersion: v2.16.6
+appVersion: v2.16.7
 description: Apica Ascent - Cloud-native observability platform
 keywords:
   - apica
