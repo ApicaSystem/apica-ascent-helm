@@ -1,1 +1,0 @@
-exclude_files: "apica-ascent/charts/cluster/**, apica-ascent/charts/common/**, apica-ascent/charts/grafana/**, apica-ascent/charts/kube-prometheus/**, apica-ascent/charts/postgresql/**, apica-ascent/charts/redis/**, apica-ascent/charts/thanos/**"
