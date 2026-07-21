@@ -1,13 +1,5 @@
-# STANDALONE Claude PR review for apica-ascent-helm.
-#
-# This repo is PUBLIC, and a public repo cannot call the org's private/internal
-# reusable workflow (ApicaSystem/shared-workflows) — GitHub blocks it. So the
-# reusable workflow's logic is inlined here instead of `uses:`-ing it.
-# TRADEOFF: this file does NOT auto-track shared-workflows@v1 — when the central
-# model/prompt/tuning changes there, mirror the change here by hand.
-#
-# Keep in sync with shared-workflows/.github/workflows/claude-review.reusable.yml.
-# Don't rename the workflow name or job ids; never add `synchronize` (cost).
+# Standalone (not a caller): this repo is public and can't use the org's
+# internal reusable workflow. Keep in sync with shared-workflows @v1.
 
 name: Claude PR Review
 
@@ -28,8 +20,6 @@ on:
 
 jobs:
   claude-review:
-    # Skip drafts, and skip fork PRs: secrets are not available to
-    # fork-originated runs, so the job would fail.
     if: >-
       github.event_name == 'pull_request' &&
       github.event.pull_request.draft == false &&
@@ -107,8 +97,6 @@ jobs:
             --max-turns 30
             --allowedTools "Read,Grep,Glob,mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr review:*)"
 
-      # A dead run (turn budget, transient error) already posted its
-      # incremental inline comments — surface the failure on the PR.
       - name: Notify on incomplete review
         if: failure()
         env:
@@ -119,8 +107,6 @@ jobs:
             --body "The automatic Claude review did not complete (turn budget exhausted or a transient error — see the run log). Inline comments already posted above still stand. Mention @claude to continue or re-run the review."
 
   claude-mention:
-    # Ignore bot-authored events to prevent self-trigger loops from Claude's
-    # own comments; only react to "@claude" mentions on pull requests.
     if: |
       github.event.sender.type != 'Bot' && (
         (github.event_name == 'issue_comment' && github.event.issue.pull_request && contains(github.event.comment.body, '@claude')) ||
