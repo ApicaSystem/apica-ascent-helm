@@ -537,7 +537,7 @@ cnpg:
       podMonitor:
         enabled: true
   backups:
-    enabled: true
+    enabled: false
     provider: s3
     s3:
       region: ''
