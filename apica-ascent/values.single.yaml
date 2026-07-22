@@ -6,7 +6,7 @@ logiq-flash:
     type: NodePort
   image:
     repository: logiqai/flash
-    tag: v3.21.4
+    tag: v4.0.1
     pullPolicy: IfNotPresent
   persistence:
     enabled: true
@@ -179,7 +179,7 @@ flash-coffee:
     replicaCount: 1
     image:
       repository: logiqai/flash-brew-coffee
-      tag: v3.22.6
+      tag: v4.0.1
       pullPolicy: IfNotPresent
     resources:
       requests:
@@ -191,7 +191,7 @@ flash-coffee:
     replicaCount: 1
     image:
       repository: logiqai/flash-brew-coffee
-      tag: v3.22.6
+      tag: v4.0.1
       pullPolicy: IfNotPresent
     resources:
       requests:
@@ -264,6 +264,10 @@ gateway:
     secretName: my-ascent-ingress
 envoyGateway:
   enabled: true
+  updateStrategy:
+    type: RollingUpdate
+    maxSurge: 2
+    maxUnavailable: 0
   controller:
     clusterRoleName: eg-gateway-helm-envoy-gateway-role
     image: docker.io/envoyproxy/gateway:v1.6.0
@@ -478,6 +482,85 @@ global:
     redis: true
     s3gateway: false
     grafana: false
+cnpg:
+  enabled: true
+  fullnameOverride: ''
+  namespaceOverride: ''
+  superuserSecret:
+    name: ascent-db-superuser
+    username: postgres
+    password: postgres
+  mode: standalone
+  recovery:
+    method: import
+    import:
+      type: monolith
+      databases:
+      - '*'
+      roles:
+      - '*'
+      source:
+        host: postgres
+        port: 5432
+        username: postgres
+        database: postgres
+        sslMode: disable
+        passwordSecret:
+          name: cnpg-import-source-password
+          key: password
+          value: postgres
+  cluster:
+    instances: 2
+    imageName: ghcr.io/cloudnative-pg/postgresql:18
+    storage:
+      size: 50Gi
+    enableSuperuserAccess: true
+    superuserSecret: ascent-db-superuser
+    services:
+      disabledDefaultServices:
+      - ro
+      - r
+    awsDefaultRegion: us-ashburn-1
+    awsRequestChecksumCalculation: when_required
+    resources:
+      requests:
+        cpu: 500m
+        memory: 4000Mi
+      limits:
+        memory: 20000Mi
+    postgresql:
+      parameters:
+        max_connections: '400'
+        shared_buffers: 1024MB
+    monitoring:
+      enabled: false
+      podMonitor:
+        enabled: true
+  backups:
+    enabled: true
+    provider: s3
+    s3:
+      region: ''
+      bucket: ''
+      path: /
+      accessKey: ''
+      secretKey: ''
+    destinationPath: ''
+    retentionPolicy: 30d
+    endpointURL: https://<bucket-namespace>.compat.objectstorage.<region>.oraclecloud.com
+    wal:
+      compression: gzip
+      encryption: AES256
+    data:
+      compression: gzip
+      encryption: AES256
+      jobs: 2
+    scheduledBackups:
+    - name: daily-backup
+      schedule: 0 0 0 * * *
+      backupOwnerReference: self
+      method: barmanObjectStore
+  poolers: []
 vault:
   enabled: false
   serverCaCertificateB64: ''
