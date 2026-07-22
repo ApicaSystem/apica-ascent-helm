@@ -74,7 +74,8 @@ foreach my $size (@tshirts) {
     $clone->{'logiq-flash'}{secrets_name} = 'my-ascent-ingest';
     $clone->{gateway}{tls}{secretName} = 'my-ascent-ingress';
 
-    # Turn off cnpg backups by default, can be re-enabled if desired, and S3 settings added
+    # Turn off cnpg by default
+    $clone->{cnpg}{enabled} = $JSON::PP::false;
     $clone->{cnpg}{backups}{enabled} = $JSON::PP::false;
 
     # Envoy proxy annotations not needed

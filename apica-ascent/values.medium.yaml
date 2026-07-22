@@ -483,7 +483,7 @@ global:
     s3gateway: false
     grafana: false
 cnpg:
-  enabled: true
+  enabled: false
   fullnameOverride: ''
   namespaceOverride: ''
   superuserSecret:
