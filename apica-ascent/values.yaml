@@ -613,14 +613,11 @@ cnpg:
     postgresql:
       parameters:
         pg_stat_statements.max: "5000"
-        pg_stat_statements.max: "5000"
         pg_stat_statements.track: all
         max_connections: "400"
         shared_buffers: "1024MB"
     shared_preload_libraries:
       - pg_stat_statements
-        max_connections: "400"
-        shared_buffers: "1024MB"
     monitoring:
       enabled: false
       podMonitor:
