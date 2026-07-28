@@ -612,6 +612,8 @@ cnpg:
         memory: 20000Mi
     postgresql:
       parameters:
+        pg_stat_statements.max: "5000"
+        pg_stat_statements.track: all
         max_connections: "400"
         shared_buffers: "1024MB"
     monitoring:
