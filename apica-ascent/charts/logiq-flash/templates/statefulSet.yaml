@@ -167,6 +167,9 @@ spec:
           configMap:
             name: {{ .Values.global.environment.s3_custom_ca.map_name }}
         {{- end }}
+        - name: casdoor-conf
+          configMap:
+            name: casdoor-conf
 
       containers:
         # Primary ingest container — receives logs via syslog/CEF/relp/fluentd/filebeat/gRPC.
@@ -289,6 +292,12 @@ spec:
                 fieldRef:
                   fieldPath: status.podIP
 
+            - name: dataSourceName
+              valueFrom:
+                configMapKeyRef:
+                  name: casdoor-conf
+                  key: dataSourceName
+
           volumeMounts:
             - mountPath: /flash/config
               name: config
@@ -311,6 +320,9 @@ spec:
               name: s3-custom-ca
               subPath: ca.crt
             {{- end }}
+            - mountPath: /flash/conf/casdoor.conf
+              name: casdoor-conf
+              subPath: casdoor.conf
 
           ports:
             - name: grpc
@@ -498,6 +510,12 @@ spec:
                 fieldRef:
                   fieldPath: status.podIP
 
+            - name: dataSourceName
+              valueFrom:
+                configMapKeyRef:
+                  name: casdoor-conf
+                  key: dataSourceName
+
           ports:
             - containerPort: 51054
               name: grpc
@@ -553,6 +571,9 @@ spec:
               name: s3-custom-ca
               subPath: ca.crt
             {{- end }}
+            - mountPath: /flash/conf/casdoor.conf
+              name: casdoor-conf
+              subPath: casdoor.conf
 
           resources:
             {{- toYaml .Values.resources.sidecarQuery | nindent 12 }}
