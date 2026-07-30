@@ -168,8 +168,8 @@ spec:
             name: {{ .Values.global.environment.s3_custom_ca.map_name }}
         {{- end }}
         - name: casdoor-conf
-          configMap:
-            name: casdoor-conf
+          secret:
+            secretName: casdoor-conf
 
       containers:
         # Primary ingest container — receives logs via syslog/CEF/relp/fluentd/filebeat/gRPC.
@@ -294,7 +294,7 @@ spec:
 
             - name: dataSourceName
               valueFrom:
-                configMapKeyRef:
+                secretKeyRef:
                   name: casdoor-conf
                   key: dataSourceName
 
@@ -512,7 +512,7 @@ spec:
 
             - name: dataSourceName
               valueFrom:
-                configMapKeyRef:
+                secretKeyRef:
                   name: casdoor-conf
                   key: dataSourceName
 

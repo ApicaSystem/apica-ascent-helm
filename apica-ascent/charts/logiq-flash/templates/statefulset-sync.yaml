@@ -144,8 +144,8 @@ spec:
         - name: data
           emptyDir: {}
         - name: casdoor-conf
-          configMap:
-            name: casdoor-conf
+          secret:
+            secretName: casdoor-conf
 
       containers:
         - name: {{ .Chart.Name }}-sync
@@ -262,7 +262,7 @@ spec:
                   fieldPath: status.podIP
             - name: dataSourceName
               valueFrom:
-                configMapKeyRef:
+                secretKeyRef:
                   name: casdoor-conf
                   key: dataSourceName
 
