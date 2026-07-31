@@ -520,7 +520,7 @@ global:
 
 cnpg:
   # -- Set to true to deploy a CloudNativePG cluster via the cnpg/cluster subchart.
-  enabled: true
+  enabled: false
 
   # -- Override the cluster name. Defaults to <release-name>-cnpg.
   # The CNPG read-write service will be <fullnameOverride>-rw (or <release-name>-cnpg-rw if unset).
