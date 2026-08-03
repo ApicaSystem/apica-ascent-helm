@@ -153,6 +153,9 @@ spec:
           secret:
             secretName: {{ .Values.global.sharedSecretName }}
         {{- end }}
+        - name: casdoor-conf
+          secret:
+            secretName: casdoor-conf
 
       containers:
         - name: {{ .Chart.Name }}-ml
@@ -269,6 +272,11 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: status.podIP
+            - name: dataSourceName
+              valueFrom:
+                secretKeyRef:
+                  name: casdoor-conf
+                  key: dataSourceName
 
           volumeMounts:
             - mountPath: /flash/config
@@ -283,6 +291,9 @@ spec:
             - mountPath: /flash/sharedcerts
               name: sharedcert
             {{- end }}
+            - mountPath: /flash/conf/casdoor.conf
+              name: casdoor-conf
+              subPath: casdoor.conf
 
           ports:
             - name: grpc
