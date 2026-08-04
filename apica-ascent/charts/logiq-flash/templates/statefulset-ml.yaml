@@ -323,7 +323,7 @@ spec:
 
         - name: {{ .Chart.Name }}-tracing
           image: "{{ .Values.global.imageRegistry }}/{{ .Values.sidecarTracingMl.image }}:{{ .Values.sidecarTracingMl.tag }}"
-          imagePullPolicy: {{ .Values.sidecarTracingMl.pullPolicy }}
+          imagePullPolicy: {{ .Values.sidecarTracingMl.imagePullPolicy }}
           command:
             - /bin/sh
             - -c

@@ -1,0 +1,20 @@
+{{- if or .Values.flash.keda.enabled .Values.metrics.envoyPodMonitor.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: envoy-gateway-proxy-{{ .Release.Name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ template "logiq-flash.name" . }}
+    chart: {{ template "logiq-flash.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  selector:
+    matchLabels:
+      gateway.envoyproxy.io/owning-gateway-name: {{ .Release.Name }}-gateway
+  podMetricsEndpoints:
+    - port: metrics
+      path: /stats/prometheus
+      interval: {{ .Values.metrics.envoyPodMonitor.interval | quote }}
+{{- end }}

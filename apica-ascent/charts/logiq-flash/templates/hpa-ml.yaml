@@ -1,0 +1,50 @@
+{{- if .Values.ml.hpa.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ template "logiq-flash.name" . }}-ml
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ template "logiq-flash.name" . }}-ml
+    chart: {{ template "logiq-flash.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: StatefulSet
+    name: {{ template "logiq-flash.name" . }}-ml
+  minReplicas: {{ .Values.ml.hpa.minReplicas }}
+  maxReplicas: {{ .Values.ml.hpa.maxReplicas }}
+
+  metrics:
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.ml.hpa.targetMemoryUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.ml.hpa.targetCPUUtilizationPercentage }}
+
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: {{ .Values.ml.hpa.scaleUp.stabilizationWindowSeconds }}
+      policies:
+        - type: Pods
+          value: {{ .Values.ml.hpa.scaleUp.podsValue }}
+          periodSeconds: {{ .Values.ml.hpa.scaleUp.podsPeriodSeconds }}
+      selectPolicy: Max
+
+    scaleDown:
+      stabilizationWindowSeconds: {{ .Values.ml.hpa.scaleDown.stabilizationWindowSeconds }}
+      policies:
+        - type: Pods
+          value: {{ .Values.ml.hpa.scaleDown.podsValue }}
+          periodSeconds: {{ .Values.ml.hpa.scaleDown.podsPeriodSeconds }}
+      selectPolicy: Min
+{{- end }}

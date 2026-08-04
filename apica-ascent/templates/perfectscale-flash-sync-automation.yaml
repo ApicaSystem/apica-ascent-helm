@@ -11,7 +11,11 @@ spec:
     name: logiq-flash-sync
   automation:
     operational:
+      {{- if (index .Values "logiq-flash").sync.hpa.enabled }}
+      automationMode: "Disabled"
+      {{- else }}
       automationMode: "Enabled"
+      {{- end }}
     containers:
       logiq-flash-sync:
         operational:

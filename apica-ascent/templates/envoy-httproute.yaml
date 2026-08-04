@@ -19,64 +19,6 @@ spec:
   {{- end }}
 
   rules:
-  # Health and readiness probes used by Kubernetes and load balancers.
-  # Port 8080 is the liveness-port exposed by logiq-flash service
-  - matches:
-    - path:
-        type: PathPrefix
-        value: /live
-    backendRefs:
-      - group: ''
-        kind: Service
-        name: logiq-flash
-        port: 8080
-        weight: 1
-
-  - matches:
-    - path:
-        type: PathPrefix
-        value: /ready
-    backendRefs:
-      - group: ''
-        kind: Service
-        name: logiq-flash
-        port: 8080
-        weight: 1
-
-  # OpenTelemetry ingestion endpoints.
-  - matches:
-    - path:
-        type: PathPrefix
-        value: /v1/logs
-    backendRefs:
-      - group: ''
-        kind: Service
-        name: logiq-flash
-        port: 9999
-        weight: 1
-
-  - matches:
-    - path:
-        type: PathPrefix
-        value: /v1/traces
-    backendRefs:
-      - group: ''
-        kind: Service
-        name: logiq-flash
-        port: 9999
-        weight: 1
-
-  - matches:
-    - path:
-        type: PathPrefix
-        value: /v1/metrics
-    backendRefs:
-      - group: ''
-        kind: Service
-        name: logiq-flash
-        port: 9999
-        weight: 1
-
   # Distributed tracing UI (Jaeger-style UI exposed by ML service).
   - matches:
     - path:
@@ -96,18 +38,6 @@ spec:
         port: 16686
         weight: 1
     {{- end }}
-
-  # Prometheus remote-write receive endpoint (must come before /v1 route)
-  - matches:
-    - path:
-        type: PathPrefix
-        value: /v1/receive/prometheus
-    backendRefs:
-      - group: ''
-        kind: Service
-        name: logiq-flash
-        port: 9999
-        weight: 1
 
   # Thanos remote-write receive endpoint (optional, enabled per deployment).
   {{- if .Values.global.chart.thanos }}
@@ -143,30 +73,8 @@ spec:
         weight: 1
     {{- end }}
 
-  # JSON ingestion endpoints (must come before general /v1 route).
-  - matches:
-    - path:
-        type: PathPrefix
-        value: /v1/json_batch
-    backendRefs:
-      - group: ''
-        kind: Service
-        name: logiq-flash
-        port: 9999
-        weight: 1
-
-  - matches:
-    - path:
-        type: PathPrefix
-        value: /v1/json
-    backendRefs:
-      - group: ''
-        kind: Service
-        name: logiq-flash
-        port: 9999
-        weight: 1
-
-  # API v1 endpoints (general routing - must come AFTER all specific /v1/* routes).
+  # API v1 endpoints — general ML routing, must come AFTER all specific /v1/* routes
+  # which are handled in envoy-httproute-flash.yaml.
   - matches:
     - path:
         type: PathPrefix
@@ -186,32 +94,6 @@ spec:
         weight: 1
     {{- end }}
 
-  # Jaeger-compatible trace ingestion.
-  - matches:
-    - path:
-        type: PathPrefix
-        value: /api/traces
-    backendRefs:
-      - group: ''
-        kind: Service
-        name: logiq-flash
-        port: 14268
-        weight: 1
-
-  # General API endpoints (organization, etc.)
-  # This must come after specific /api routes (/api/v1/receive, /api/traces)
-  # but before the catch-all / route
-  - matches:
-    - path:
-        type: PathPrefix
-        value: /api
-    backendRefs:
-      - group: ''
-        kind: Service
-        name: coffee
-        port: 80
-        weight: 1
-
   # Additional routes injected via values.yaml (cloud or environment specific).
   {{- if .Values.gateway.extraRoutes }}
   {{- range .Values.gateway.extraRoutes }}
@@ -226,6 +108,19 @@ spec:
         port: {{ .backend.service.port.number }}
   {{- end }}
   {{- end }}
+
+  # General API endpoints (organization, etc.)
+  # Must come after specific /api routes (/api/v1/receive, /api/traces).
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /api
+    backendRefs:
+      - group: ''
+        kind: Service
+        name: coffee
+        port: 80
+        weight: 1
 
   # Static assets are cacheable and immutable; must be evaluated before "/" route.
   - matches:
@@ -263,4 +158,3 @@ spec:
         port: 80
         weight: 1
 {{- end }}
-

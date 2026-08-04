@@ -23,10 +23,22 @@ sync:
   pdb:
     enabled: true
     minAvailable: 1
+  hpa:
+    enabled: false
+    minReplicas: 2
+    maxReplicas: 10
+    targetMemoryUtilizationPercentage: 75
+    targetCPUUtilizationPercentage: 65
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      podsValue: 1
+      podsPeriodSeconds: 120
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      podsValue: 2
+      podsPeriodSeconds: 60
 
 # Zone-only spread — hard podAntiAffinity (podPerNode) already covers hostname.
-# preStop is 30s (vs 15s elsewhere) — flash has more persistent TCP connections.
-# terminationGracePeriodSeconds stays at 120s (set in template, not here).
 flash:
   topologySpreadConstraints:
     enabled: true
@@ -35,11 +47,38 @@ flash:
   updateStrategy:
     type: RollingUpdate
     maxUnavailable: 1
-  preStopSleepSeconds: 30
   # N-1 for replicaCount=2
   pdb:
     enabled: true
     minAvailable: 1
+
+  # Graceful shutdown via PreStop flush before SIGTERM.
+  # Budget: flushCurlTimeoutSeconds(900) + status-poll-max(60) + SIGTERM-buffer(60) + overhead(30) = 1050
+  flushCurlTimeoutSeconds: 900
+  flushAppTimeoutSeconds: 600
+  terminationGracePeriodSeconds: 1050
+
+  # KEDA: event-driven autoscaling driven by Envoy ingestion throughput.
+  # Requires KEDA installed in cluster. PodMonitor auto-enables when keda.enabled=true.
+  # Prometheus address auto-derived: http://prometheus-operated.<namespace>.svc:9090
+  # Metrics source: envoy_cluster_upstream_cx_tx_bytes_total on <release>-flash-http HTTPRoute.
+  # threshold: max bytes/sec per pod. 1 GB/hr = 1073741824 / 3600 = 298261 bytes/sec.
+  keda:
+    enabled: false
+    minReplicas: 2
+    maxReplicas: 20
+    threshold: "298261"
+    fallbackReplicas: 2
+    targetMemoryUtilizationPercentage: 75
+    targetCPUUtilizationPercentage: 75
+    scaleDown:
+      stabilizationWindowSeconds: 600
+      podsValue: 1
+      podsPeriodSeconds: 300
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      podsValue: 4
+      podsPeriodSeconds: 60
 
 ml:
   topologySpreadConstraints:
@@ -59,6 +98,20 @@ ml:
   pdb:
     enabled: true
     minAvailable: 1
+  hpa:
+    enabled: false
+    minReplicas: 2
+    maxReplicas: 10
+    targetMemoryUtilizationPercentage: 75
+    targetCPUUtilizationPercentage: 65
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      podsValue: 1
+      podsPeriodSeconds: 120
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      podsValue: 2
+      podsPeriodSeconds: 60
 
 image:
   repository: logiqai/flash
@@ -81,6 +134,13 @@ metrics:
     enabled: false
     selector:
       release: prometheus
+
+  # PodMonitor that scrapes Envoy proxy pods on port 19001 (/stats/prometheus).
+  # Required for flash.keda to have data. Prometheus picks this up automatically
+  # (podMonitorSelector: {} in the Prometheus CR).
+  envoyPodMonitor:
+    enabled: false
+    interval: 15s
 
 secrets_name:
 pullSecretName: 
@@ -205,12 +265,10 @@ logflow_only:
   enabled: false
   args: ""
 
-resources: 
-   sidecarTracing: {}
-
-   sidecarTracingMl: {}   
-
-   sidecar: {}
+resources:
+  sidecarQuery: {}
+  sidecarMlTracing: {}
+  sidecarTracing: {}
 
 
 

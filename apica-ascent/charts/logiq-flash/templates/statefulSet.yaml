@@ -41,9 +41,9 @@ spec:
         release: {{ .Release.Name }}
     spec:
       serviceAccountName: logiq-flash
-      # 120s kept intentionally — flash drains active TCP connections from log shippers.
-      # preStop(30s) fills the LB-drain gap; budget: 30s preStop + 90s SIGTERM = 120s.
-      terminationGracePeriodSeconds: 120
+      # Budget: flushCurlTimeoutSeconds + 60s status-poll + 60s SIGTERM-flush + 30s overhead.
+      # Set via values.flash.terminationGracePeriodSeconds (default 1050s).
+      terminationGracePeriodSeconds: {{ .Values.flash.terminationGracePeriodSeconds }}
 
       # Zone-only spread — hard podAntiAffinity already covers the hostname dimension.
       {{- if .Values.flash.topologySpreadConstraints.enabled }}
@@ -178,11 +178,37 @@ spec:
           args:
             - -c
             - /flash/bin/flash -config /flash/config/config.yaml -install_root /flash -runtime_folder /flash/db -discovery_domain $(DISCOVERY_DOMAIN) -discovery_url $(DISCOVERY_URL) -discovery_id flash1 -pg_max_idle_conns 3 -pg_max_open_Conns 5 -postgres_timeout 20s -workers 150 -connection_channel_size 10 --pg_conn_max_lifetime 5m {{ .Values.global.environment.extraflag }} {{- if eq (toString .Values.logflow_only.enabled) "true" }} {{ .Values.logflow_only.args }} {{- else }} {{ .Values.global.environment.rate_limit_flags }} {{- end }} {{- if .Values.kafka_client.enabled }} {{ .Values.kafka_client.kafka_args }} {{- end }}
-          # 30s sleep before SIGTERM — more persistent connections than other workloads.
+          # PreStop: blocking flush to S3 before kubelet sends SIGTERM.
+          # 1. POST /flush blocks until flush is done (wait=true) or curl timeout fires.
+          # 2. Poll /flush/status as a safety net in case wait=true returned early.
+          # SIGTERM then triggers a fast second flush (near-instant — data already flushed).
           lifecycle:
             preStop:
               exec:
-                command: ["sh", "-c", "sleep {{ .Values.flash.preStopSleepSeconds }}"]
+                command:
+                  - /bin/sh
+                  - -c
+                  - |
+                    t1=$(date +%s%3N); t1h=$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)
+                    echo "{\"ts\":${t1},\"ts_human\":\"${t1h}\",\"event\":\"T1_prestop_flush_start\",\"pod\":\"${HOSTNAME}\"}"
+
+                    resp=$(curl -s \
+                      -m {{ .Values.flash.flushCurlTimeoutSeconds }} \
+                      -w "\nHTTP_CODE:%{http_code}" \
+                      -XPOST "http://localhost:8080/flush?timeout={{ .Values.flash.flushAppTimeoutSeconds }}s&restore=false&wait=true")
+
+                    t2=$(date +%s%3N); t2h=$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)
+                    echo "{\"ts\":${t2},\"ts_human\":\"${t2h}\",\"event\":\"T2_curl_returned\",\"pod\":\"${HOSTNAME}\",\"response\":\"$(echo "$resp" | tr -d '\n')\"}"
+
+                    i=0
+                    while [ $i -lt 30 ]; do
+                      curl -s -m 5 http://localhost:8080/flush/status | grep -q '"state":"complete"' && break
+                      sleep 2
+                      i=$((i+1))
+                    done
+
+                    t3=$(date +%s%3N); t3h=$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)
+                    echo "{\"ts\":${t3},\"ts_human\":\"${t3h}\",\"event\":\"T3_flush_complete\",\"pod\":\"${HOSTNAME}\"}"
           env:
             - name: CONFIG_HASH
               value: {{ include "logiq-flash.confighash" . | quote }}
@@ -560,7 +586,7 @@ spec:
         # Jaeger collector sidecar — receives traces via gRPC, stores via localhost:50054.
         - name: {{ .Chart.Name }}-tracing
           image: "{{ .Values.global.imageRegistry }}/{{ .Values.sidecarTracing.image }}:{{ .Values.sidecarTracing.tag }}"
-          imagePullPolicy: {{ .Values.sidecarTracing.pullPolicy }}
+          imagePullPolicy: {{ .Values.sidecarTracing.imagePullPolicy }}
           command:
             - /bin/sh
             - -c

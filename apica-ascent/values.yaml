@@ -26,11 +26,13 @@ logiq-flash:
         memory: 4000Mi
     sidecarQuery:
       requests:
+        cpu: 10m
         memory: 100Mi
       limits:
         memory: 4000Mi
     sidecarTracing:
       requests:
+        cpu: 10m
         memory: 20Mi
       limits:
         memory: 4000Mi
@@ -44,6 +46,7 @@ logiq-flash:
 
     sidecarMlTracing:
       requests:
+        cpu: 10m
         memory: 20Mi
       limits:
         memory: 1500Mi
@@ -54,6 +57,16 @@ logiq-flash:
         memory: 300Mi
       limits:
         memory: 750Mi
+  # flash.keda.enabled: when true, KEDA manages flash scaling and PerfectScale is disabled.
+  flash:
+    keda:
+      enabled: true
+  ml:
+    hpa:
+      enabled: true
+  sync:
+    hpa:
+      enabled: true
   logflow_only:
     enabled: false
     args: '-object_writers=1 -max_bytes_per_sec=1246485'
