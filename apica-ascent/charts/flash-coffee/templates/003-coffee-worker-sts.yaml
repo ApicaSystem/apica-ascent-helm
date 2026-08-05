@@ -91,8 +91,17 @@ spec:
             - sh
             - -c
             - >
-              until redis-cli -h {{ .Values.global.environment.redis_host }} ping;
+              until redis-cli
+              {{- if and .Values.global.environment.redis_tls.enabled .Values.tls.certSecretName }} --tls --cacert /coffee/certs/redis-ca.crt
+              {{- else if .Values.global.environment.redis_tls.enabled }} --tls
+              {{- end }}
+              -h {{ .Values.global.environment.redis_host }} ping;
               do echo "waiting for {{ .Values.global.environment.redis_host }}"; sleep 1; done;
+          {{- if and .Values.global.environment.redis_tls.enabled .Values.tls.certSecretName }}
+          volumeMounts:
+            - mountPath: /coffee/certs
+              name: tls-certs
+          {{- end }}
 
         - name: check-postgres
           image: {{ .Values.global.imageRegistry }}/{{ .Values.global.toolbox.image.repository }}:{{ .Values.global.toolbox.image.tag }}
@@ -125,6 +134,11 @@ spec:
         - name: sharedcert
           secret:
             secretName: {{ .Values.global.sharedSecretName }}
+        {{- end }}
+        {{- if .Values.tls.certSecretName }}
+        - name: tls-certs
+          secret:
+            secretName: {{ .Values.tls.certSecretName }}
         {{- end }}
 
       containers:
@@ -199,7 +213,15 @@ spec:
                   name: {{ template "flash-coffee.fullname" . }}
                   key: redis_host
             - name: REDIS_URL
-              value: redis://{{ .Values.global.environment.redis_host }}:{{ .Values.global.environment.redis_port }}/0
+              value: {{ if .Values.global.environment.redis_tls.enabled }}rediss{{ else }}redis{{ end }}://{{ .Values.global.environment.redis_host }}:{{ .Values.global.environment.redis_port }}/0
+            {{- if .Values.global.environment.redis_tls.enabled }}
+            {{- if .Values.tls.certSecretName }}
+            - name: REDIS_SSL_CA_CERTS
+              value: /coffee/certs/redis-ca.crt
+            {{- end }}
+            - name: REDIS_SSL_CERT_REQS
+              value: {{ .Values.global.environment.redis_tls.cert_reqs | default "required" }}
+            {{- end }}
             - name: POSTGRES_USER
               valueFrom:
                 secretKeyRef:
@@ -331,6 +353,10 @@ spec:
             {{- if .Values.global.sharedSecretName }}
             - name: sharedcert
               mountPath: /app/sharedcerts
+            {{- end }}
+            {{- if .Values.tls.certSecretName }}
+            - name: tls-certs
+              mountPath: /coffee/certs
             {{- end }}
 
           # tcpSocket on port 5173 (ssr-report-gen sidecar) — no HTTP port on the worker itself.

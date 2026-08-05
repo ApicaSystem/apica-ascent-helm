@@ -108,8 +108,18 @@ spec:
             - sh
             - -c
             - >
-              until redis-cli -h {{ .Values.global.environment.redis_host }} ping;
+              until redis-cli
+              {{- if and .Values.global.environment.redis_tls.enabled .Values.global.environment.redis_tls.skip_verify }} --tls --insecure
+              {{- else if and .Values.global.environment.redis_tls.enabled .Values.secrets_name }} --tls --cacert /flash/certs/redis-ca.crt
+              {{- else if .Values.global.environment.redis_tls.enabled }} --tls
+              {{- end }}
+              -h {{ .Values.global.environment.redis_host }} ping;
               do echo "waiting for {{ .Values.global.environment.redis_host }}"; sleep 1; done;
+          {{- if and .Values.global.environment.redis_tls.enabled .Values.secrets_name (not .Values.global.environment.redis_tls.skip_verify) }}
+          volumeMounts:
+            - mountPath: /flash/certs
+              name: certs
+          {{- end }}
 
         {{- if .Values.global.chart.s3gateway }}
         - name: check-s3-gateway
@@ -272,6 +282,32 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: status.podIP
+            {{- if .Values.global.environment.postgres_tls.enabled }}
+            - name: POSTGRES_SSLMODE
+              value: {{ .Values.global.environment.postgres_tls.sslmode }}
+            {{- if .Values.tls.postgres.sslrootcert }}
+            - name: POSTGRES_SSLROOTCERT
+              value: {{ .Values.tls.postgres.sslrootcert }}
+            {{- end }}
+            {{- if .Values.global.environment.postgres_tls.mtls }}
+            - name: POSTGRES_SSLCERT
+              value: {{ .Values.tls.postgres.sslcert }}
+            - name: POSTGRES_SSLKEY
+              value: {{ .Values.tls.postgres.sslkey }}
+            {{- end }}
+            {{- end }}
+            {{- if .Values.global.environment.redis_tls.enabled }}
+            - name: REDIS_TLS
+              value: "true"
+            {{- if .Values.tls.redis.caCert }}
+            - name: REDIS_CA_CERT
+              value: {{ .Values.tls.redis.caCert }}
+            {{- end }}
+            {{- if .Values.global.environment.redis_tls.skip_verify }}
+            - name: REDIS_TLS_SKIP_VERIFY
+              value: "true"
+            {{- end }}
+            {{- end }}
             - name: dataSourceName
               valueFrom:
                 secretKeyRef:
