@@ -72,9 +72,9 @@ flash:
     targetMemoryUtilizationPercentage: 75
     targetCPUUtilizationPercentage: 75
     scaleDown:
-      stabilizationWindowSeconds: 600
+      stabilizationWindowSeconds: 300
       podsValue: 1
-      podsPeriodSeconds: 300
+      podsPeriodSeconds: 150
     scaleUp:
       stabilizationWindowSeconds: 0
       podsValue: 4
