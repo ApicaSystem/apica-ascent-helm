@@ -266,6 +266,9 @@ logflow_only:
   args: ""
 
 resources:
+  ingest: {}
+  ml: {}
+  sync: {}
   sidecarQuery: {}
   sidecarMlTracing: {}
   sidecarTracing: {}

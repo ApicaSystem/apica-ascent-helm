@@ -11,6 +11,7 @@ metadata:
 spec:
   serviceName: {{ template "logiq-flash.name" . }}-headless
   replicas: {{ .Values.replicaCount }}
+  podManagementPolicy: Parallel
   selector:
     matchLabels:
       app: {{ template "logiq-flash.name" . }}
@@ -202,7 +203,7 @@ spec:
 
                     i=0
                     while [ $i -lt 30 ]; do
-                      curl -s -m 5 http://localhost:8080/flush/status | grep -q '"state":"complete"' && break
+                      curl -s -m 5 http://localhost:8080/flush/status | grep -q '"is_flush_complete":true' && break
                       sleep 2
                       i=$((i+1))
                     done
@@ -385,7 +386,7 @@ spec:
               containerPort: 8080
               protocol: TCP
             - name: rawtcp
-              containerPort: 517
+              containerPort: {{ .Values.rawtcp.containerPort }}
               protocol: TCP
 
           # failureThreshold: 25 intentional — Raft re-election and WAL replay can take minutes.

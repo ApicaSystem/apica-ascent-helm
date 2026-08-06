@@ -73,8 +73,7 @@ spec:
         weight: 1
     {{- end }}
 
-  # API v1 endpoints — general ML routing, must come AFTER all specific /v1/* routes
-  # which are handled in envoy-httproute-flash.yaml.
+  # /v1 catch-all for ML; specific flash /v1/* rules in envoy-httproute-flash.yaml take priority.
   - matches:
     - path:
         type: PathPrefix

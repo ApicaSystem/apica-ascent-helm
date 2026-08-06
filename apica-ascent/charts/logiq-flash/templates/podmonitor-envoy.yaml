@@ -10,6 +10,9 @@ metadata:
     release: {{ .Release.Name }}
     heritage: {{ .Release.Service }}
 spec:
+  namespaceSelector:
+    matchNames:
+      - {{ .Release.Namespace }}
   selector:
     matchLabels:
       gateway.envoyproxy.io/owning-gateway-name: {{ .Release.Name }}-gateway

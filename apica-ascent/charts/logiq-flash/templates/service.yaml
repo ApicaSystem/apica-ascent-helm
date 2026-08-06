@@ -4,7 +4,7 @@ metadata:
   name: {{ template "logiq-flash.name" . }}
   namespace: {{ .Release.Namespace }}
   labels:
-    app: logiq-flash
+    app: {{ template "logiq-flash.name" . }}
     chart: {{ template "logiq-flash.chart" . }}
     release: {{ .Release.Name }}
     heritage: {{ .Release.Service }}

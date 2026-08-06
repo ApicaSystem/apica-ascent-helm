@@ -38,21 +38,19 @@ spec:
               periodSeconds: {{ .Values.flash.keda.scaleUp.podsPeriodSeconds }}
           selectPolicy: Max
   triggers:
-    # Trigger 1: Envoy ingestion byte rate from the dedicated flash HTTPRoute.
-    # All rules in <release>-flash-http are flash — no index regex needed.
-    # Prometheus address auto-derived from release namespace.
+    # Flash-only HTTPRoute: no cluster-name regex needed; serverAddress derived from .Release.Namespace.
     - type: prometheus
       metadata:
         serverAddress: http://prometheus-operated.{{ .Release.Namespace }}.svc:9090
         threshold: {{ .Values.flash.keda.threshold | quote }}
         query: |
           sum(rate(envoy_cluster_upstream_cx_tx_bytes_total{envoy_cluster_name=~"httproute/{{ .Release.Namespace }}/{{ .Release.Name }}-flash-http/rule/.*"}[2m]))
-    # Trigger 2: Memory — catches buffer pressure independent of byte rate.
+    # Memory: catches buffer pressure when ingestion byte rate alone would not yet trigger scale-out.
     - type: memory
       metricType: Utilization
       metadata:
         value: {{ .Values.flash.keda.targetMemoryUtilizationPercentage | quote }}
-    # Trigger 3: CPU — secondary guard for compute-bound spikes.
+    # CPU: guards against compute-bound spikes independent of ingestion throughput.
     - type: cpu
       metricType: Utilization
       metadata:
