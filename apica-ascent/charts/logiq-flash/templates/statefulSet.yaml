@@ -12,6 +12,9 @@ spec:
   serviceName: {{ template "logiq-flash.name" . }}-headless
   replicas: {{ .Values.replicaCount }}
   podManagementPolicy: Parallel
+  persistentVolumeClaimRetentionPolicy:
+    whenDeleted: Retain
+    whenScaled: Delete
   selector:
     matchLabels:
       app: {{ template "logiq-flash.name" . }}
