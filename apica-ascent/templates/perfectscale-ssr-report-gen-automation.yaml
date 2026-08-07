@@ -3,17 +3,17 @@
 apiVersion: perfectscale.io/v1
 kind: WorkloadAutomationConfig
 metadata:
-  name: coffee-worker-automation
+  name: ssr-report-gen-automation
   namespace: {{ .Release.Namespace }}
 spec:
   targetRef:
     kind: StatefulSet
-    name: coffee-worker
+    name: ssr-report-gen
   automation:
     operational:
       automationMode: "Enabled"
     containers:
-      coffee-worker:
+      ssr-report-gen:
         operational:
           restrictions:
             cpuManagement:

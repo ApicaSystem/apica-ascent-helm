@@ -1,0 +1,19 @@
+{{- if .Values.ssr_report_gen.pdb.enabled }}
+# PodDisruptionBudget: keeps N-1 pods alive during node drains and cluster upgrades.
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: ssr-report-gen-pdb
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: ssr-report-gen-deployment
+    app.kubernetes.io/name: ssr-report-gen
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+spec:
+  minAvailable: {{ .Values.ssr_report_gen.pdb.minAvailable }}
+  selector:
+    matchLabels:
+      app: ssr-report-gen
+{{- end }}
