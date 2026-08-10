@@ -563,27 +563,27 @@ cnpg:
   #        secretKey: ""
   #      secret:
   #        create: true                  # cluster subchart creates the S3 credentials Secret
-  recovery:
-    method: import
-    import:
-      # "monolith" imports all databases and roles. "microservice" imports a single database.
-      type: monolith
-      databases:
-        - "*"
-      roles:
-        - "*"
-      source:
-        host: postgres
-        port: 5432
-        username: postgres
-        database: postgres
-        # Use "disable" for in-cluster migration without TLS; "verify-full" for external sources.
-        sslMode: disable
-        passwordSecret:
-          name: cnpg-import-source-password
-          key: password
-          # Secret is created by templates/cnpg-secrets.yaml when mode is "recovery".
-          value: postgres
+  # recovery:
+  #   method: import
+  #   import:
+  #     # "monolith" imports all databases and roles. "microservice" imports a single database.
+  #     type: monolith
+  #     databases:
+  #       - "*"
+  #     roles:
+  #       - "*"
+  #     source:
+  #       host: postgres
+  #       port: 5432
+  #       username: postgres
+  #       database: postgres
+  #       # Use "disable" for in-cluster migration without TLS; "verify-full" for external sources.
+  #       sslMode: disable
+  #       passwordSecret:
+  #         name: cnpg-import-source-password
+  #         key: password
+  #         # Secret is created by templates/cnpg-secrets.yaml when mode is "recovery".
+  #         value: postgres
 
   cluster:
     instances: 2

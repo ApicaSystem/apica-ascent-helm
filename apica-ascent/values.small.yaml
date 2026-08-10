@@ -499,24 +499,24 @@ cnpg:
     username: postgres
     password: postgres
   mode: standalone
-  recovery:
-    method: import
-    import:
-      type: monolith
-      databases:
-      - '*'
-      roles:
-      - '*'
-      source:
-        host: postgres
-        port: 5432
-        username: postgres
-        database: postgres
-        sslMode: disable
-        passwordSecret:
-          name: cnpg-import-source-password
-          key: password
-          value: postgres
+  # recovery:
+  #   method: import
+  #   import:
+  #     type: monolith
+  #     databases:
+  #     - '*'
+  #     roles:
+  #     - '*'
+  #     source:
+  #       host: postgres
+  #       port: 5432
+  #       username: postgres
+  #       database: postgres
+  #       sslMode: disable
+  #       passwordSecret:
+  #         name: cnpg-import-source-password
+  #         key: password
+  #         value: postgres
   cluster:
     instances: 2
     imageName: ghcr.io/cloudnative-pg/postgresql:18
