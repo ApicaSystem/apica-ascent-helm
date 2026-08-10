@@ -285,34 +285,6 @@ spec:
               mountPath: /app/sharedcerts
             {{- end }}
 
-          # No HTTP port on the worker; verify the celery worker process itself responds.
-          # readinessProbe uses the real (slower) functional check; livenessProbe stays
-          # to a cheap process check so a briefly-overloaded worker gets excluded from
-          # rollout readiness instead of restart-killed alongside every other replica.
-          readinessProbe:
-            exec:
-              command:
-                - bash
-                - -c
-                - celery --app=redash.worker inspect ping -d celery@$HOSTNAME
-            initialDelaySeconds: 15
-            periodSeconds: 15
-            timeoutSeconds: 10
-            successThreshold: 1
-            failureThreshold: 3
-
-          livenessProbe:
-            exec:
-              command:
-                - bash
-                - -c
-                - pgrep -f "celery worker" > /dev/null
-            initialDelaySeconds: 30
-            periodSeconds: 30
-            timeoutSeconds: 10
-            successThreshold: 1
-            failureThreshold: 5
-
           {{- if .Values.coffee_worker.resources }}
           resources:
             {{- toYaml .Values.coffee_worker.resources | nindent 12 }}
