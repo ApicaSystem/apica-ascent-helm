@@ -14,8 +14,10 @@ spec:
   # Rolling update: 1 pod down at a time; readinessProbe gates traffic during rollout.
   updateStrategy:
     type: {{ .Values.ssr_report_gen.updateStrategy.type }}
+    {{- if eq .Values.ssr_report_gen.updateStrategy.type "RollingUpdate" }}
     rollingUpdate:
       maxUnavailable: {{ .Values.ssr_report_gen.updateStrategy.maxUnavailable }}
+    {{- end }}
   template:
     metadata:
       labels:
