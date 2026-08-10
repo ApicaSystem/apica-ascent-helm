@@ -513,7 +513,7 @@ global:
     storageClass: oci-bv
   chart:
     prometheus: true
-    postgres: true
+    postgres: false
     redis: true
     s3gateway: false
     grafana: false
