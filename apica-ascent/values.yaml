@@ -146,7 +146,7 @@ redis:
     name: redis
 
 postgres:
-  enabled: true
+  enabled: false
   fullnameOverride: postgres
   postgresqlPostgresPassword: postgres
   postgresqlUsername: postgres

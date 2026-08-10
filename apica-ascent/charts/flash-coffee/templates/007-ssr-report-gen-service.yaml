@@ -4,9 +4,9 @@ metadata:
   name: ssr-report-gen
   namespace: {{ .Release.Namespace }}
 spec:
-  # Headless: this is the StatefulSet's governing service, giving pods stable
-  # per-pod DNS (<pod>.ssr-report-gen.<ns>.svc.cluster.local).
-  # clusterIP: None this Headless service won't fit in this scenorio
+  # This is the StatefulSet's governing service. Not headless (no clusterIP:
+  # None) since per-pod DNS isn't needed here — coffee-worker only talks to
+  # ssr-report-gen via the ClusterIP, load-balanced across all pods.
   type: ClusterIP
   ports:
   - name: "http"
