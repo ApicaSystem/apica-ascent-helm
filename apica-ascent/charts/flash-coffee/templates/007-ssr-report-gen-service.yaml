@@ -4,12 +4,13 @@ metadata:
   name: ssr-report-gen
   namespace: {{ .Release.Namespace }}
 spec:
-  type: {{ .Values.service.type }}
+  # Headless: this is the StatefulSet's governing service, giving pods stable
+  # per-pod DNS (<pod>.ssr-report-gen.<ns>.svc.cluster.local).
+  # clusterIP: None this Headless service won't fit in this scenorio
+  type: ClusterIP
   ports:
   - name: "http"
     port: {{ .Values.ssr_report_gen.port }}
     targetPort: {{ .Values.ssr_report_gen.targetPort }}
   selector:
     app: ssr-report-gen
-status:
-  loadBalancer: {}

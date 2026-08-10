@@ -7,7 +7,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
 spec:
   replicas: {{ .Values.ssr_report_gen.replicaCount }}
-  serviceName: coffee
+  serviceName: ssr-report-gen
   selector:
     matchLabels:
       app: ssr-report-gen

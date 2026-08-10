@@ -57,6 +57,7 @@ topologySpreadConstraints:
         app: {{ $app }}
 {{- end }}
 
+{{- if or $root.Values.global.nodeSelectors.enabled $values.podAntiAffinity.enabled }}
 affinity:
   {{- if $root.Values.global.nodeSelectors.enabled }}
   nodeAffinity:
@@ -79,6 +80,7 @@ affinity:
             matchLabels:
               app: {{ $app }}
   {{- end }}
+{{- end }}
 
 {{- if $root.Values.global.taints.enabled }}
 tolerations:

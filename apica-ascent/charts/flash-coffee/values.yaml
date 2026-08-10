@@ -84,7 +84,9 @@ ingress:
 ssr_report_gen:
   image:
     tag: ssr-v4.0.1
-  port: 80
+  # port == targetPort: the only port ever in play was the container's own
+  # 5173 (the old sidecar had no Service at all, just localhost:5173).
+  port: 5173
   targetPort: 5173
   replicaCount: 3
   resources: {}

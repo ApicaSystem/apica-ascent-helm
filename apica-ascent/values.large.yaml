@@ -199,6 +199,14 @@ flash-coffee:
         cpu: 100m
       limits:
         memory: 2000Mi
+  ssr_report_gen:
+    replicaCount: 4
+    resources:
+      requests:
+        memory: 300Mi
+        cpu: 100m
+      limits:
+        memory: 1000Mi
 thanos:
   createObjstoreSecret: true
   receive:
