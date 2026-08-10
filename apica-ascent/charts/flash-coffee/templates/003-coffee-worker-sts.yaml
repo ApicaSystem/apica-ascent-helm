@@ -294,7 +294,7 @@ spec:
               command:
                 - bash
                 - -c
-                - celery inspect ping --app=redash.worker -d celery@$HOSTNAME
+                - celery --app=redash.worker inspect ping -d celery@$HOSTNAME
             initialDelaySeconds: 15
             periodSeconds: 15
             timeoutSeconds: 10
