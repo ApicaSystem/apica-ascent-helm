@@ -296,7 +296,7 @@ global:
     postgres_tls:
       enabled: false
       sslmode: "verify-full"
-      mtls: false     # set true to add POSTGRES_SSLCERT/KEY (requires pg-client.crt/pg-client.key in secrets_name secret)
+      mtls: false     # set true to add POSTGRES_SSLCERT/KEY (requires pg-client.crt/pg-client.key in tls.certSecretName secret)
     redis_tls:
       enabled: false
       skip_verify: false  # REDIS_TLS_SKIP_VERIFY; encrypts without server auth — logs a warning
@@ -309,13 +309,13 @@ kafka_client:
   enabled: false
   kafka_args: ""
 
-# Paths inside flash containers for TLS cert files.
-# The certs are served from the secrets_name secret (already mounted at /flash/certs).
-# Add pg-ca.crt and/or redis-ca.crt to that secret to enable verified TLS for private CAs.
 tls:
+  # Secret mounted into flash pods at /flash/tls-certs.
+  # Must be set whenever any cert path below is configured.
+  certSecretName: ""
   postgres:
-    sslrootcert: ""   # path inside container, e.g. /flash/certs/pg-ca.crt; omit for publicly-signed certs
-    sslcert: "/flash/certs/pg-client.crt"   # mTLS client cert
-    sslkey: "/flash/certs/pg-client.key"    # mTLS client key
+    sslrootcert: ""                              # e.g. /flash/tls-certs/pg-ca.crt; omit for publicly-signed certs
+    sslcert: "/flash/tls-certs/pg-client.crt"   # mTLS client cert
+    sslkey: "/flash/tls-certs/pg-client.key"    # mTLS client key
   redis:
-    caCert: ""        # path inside container, e.g. /flash/certs/redis-ca.crt; omit for publicly-signed certs
+    caCert: ""        # e.g. /flash/tls-certs/redis-ca.crt; omit for publicly-signed certs

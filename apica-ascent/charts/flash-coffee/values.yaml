@@ -155,6 +155,10 @@ global:
     storageClass: oci-bv
 
 tls:
-  # Secret holding pg-ca.crt, redis-ca.crt (and pg-client.crt/pg-client.key for mTLS).
-  # Mounted into coffee pods at /coffee/certs. Leave empty to disable cert-file verification.
+  # Secret mounted into coffee pods at /coffee/certs.
+  # Must be set whenever any cert path below is configured.
   certSecretName: ""
+  postgres:
+    caCert: ""    # e.g. /coffee/certs/pg-ca.crt; omit for publicly-signed certs
+  redis:
+    caCert: ""    # e.g. /coffee/certs/redis-ca.crt; omit for publicly-signed certs

@@ -92,12 +92,12 @@ spec:
             - -c
             - >
               until redis-cli
-              {{- if and .Values.global.environment.redis_tls.enabled .Values.tls.certSecretName }} --tls --cacert /coffee/certs/redis-ca.crt
+              {{- if and .Values.global.environment.redis_tls.enabled .Values.tls.redis.caCert }} --tls --cacert {{ .Values.tls.redis.caCert }}
               {{- else if .Values.global.environment.redis_tls.enabled }} --tls
               {{- end }}
               -h {{ .Values.global.environment.redis_host }} ping;
               do echo "waiting for {{ .Values.global.environment.redis_host }}"; sleep 1; done;
-          {{- if and .Values.global.environment.redis_tls.enabled .Values.tls.certSecretName }}
+          {{- if and .Values.global.environment.redis_tls.enabled .Values.tls.redis.caCert }}
           volumeMounts:
             - mountPath: /coffee/certs
               name: tls-certs
@@ -210,9 +210,9 @@ spec:
             - name: REDIS_URL
               value: {{ if .Values.global.environment.redis_tls.enabled }}rediss{{ else }}redis{{ end }}://{{ .Values.global.environment.redis_host }}:{{ .Values.global.environment.redis_port }}/0
             {{- if .Values.global.environment.redis_tls.enabled }}
-            {{- if .Values.tls.certSecretName }}
+            {{- if .Values.tls.redis.caCert }}
             - name: REDIS_SSL_CA_CERTS
-              value: /coffee/certs/redis-ca.crt
+              value: {{ .Values.tls.redis.caCert }}
             {{- end }}
             - name: REDIS_SSL_CERT_REQS
               value: {{ .Values.global.environment.redis_tls.cert_reqs | default "required" }}
