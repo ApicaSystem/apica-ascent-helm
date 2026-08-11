@@ -58,7 +58,29 @@ topologySpreadConstraints:
 {{- end }}
 
 {{- if or $root.Values.global.nodeSelectors.enabled $values.podAntiAffinity.enabled }}
+{{- if or $root.Values.global.nodeSelectors.enabled $values.podAntiAffinity.enabled }}
 affinity:
+  {{- if $root.Values.global.nodeSelectors.enabled }}
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: {{ $root.Values.global.nodeSelectors.label }}
+              operator: In
+              values:
+                - {{ $root.Values.global.nodeSelectors.other }}
+  {{- end }}
+  {{- if $values.podAntiAffinity.enabled }}
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: {{ $values.podAntiAffinity.weight }}
+        podAffinityTerm:
+          topologyKey: kubernetes.io/hostname
+          labelSelector:
+            matchLabels:
+              app: {{ $app }}
+  {{- end }}
+{{- end }}
   {{- if $root.Values.global.nodeSelectors.enabled }}
   nodeAffinity:
     requiredDuringSchedulingIgnoredDuringExecution:
