@@ -61,6 +61,11 @@ logiq-flash:
   flash:
     keda:
       enabled: true
+      # Override if kube-state-metrics is in a different namespace, has different labels, or uses a different port.
+      # kubeStateMetrics:
+      #   namespace: monitoring
+      #   serviceSelectorLabel: kube-state-metrics
+      #   port: http
   ml:
     hpa:
       enabled: true

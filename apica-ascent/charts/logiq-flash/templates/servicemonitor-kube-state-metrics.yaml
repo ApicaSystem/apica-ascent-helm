@@ -1,0 +1,34 @@
+{{- if .Values.flash.keda.enabled }}
+# Scrapes kube_pod_deletion_timestamp for flash pods from kube-state-metrics.
+# Required by the KEDA termination-aware trigger (keda-flash.yaml) to detect terminating pods.
+# K8s counts Terminating pods in currentReplicas for external metrics — this metric feeds the
+# trigger that compensates by adding the terminating count to the desired replica count.
+# ServiceMonitor (not PodMonitor) because kube-state-metrics is a single stable service.
+# metricRelabelings keep only the one metric needed — avoids duplicating all kube-state-metrics
+# data in this Prometheus instance.
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: kube-state-metrics-{{ .Release.Name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ template "logiq-flash.name" . }}
+    chart: {{ template "logiq-flash.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  namespaceSelector:
+    matchNames:
+      - {{ .Values.flash.keda.kubeStateMetrics.namespace }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ .Values.flash.keda.kubeStateMetrics.serviceSelectorLabel }}
+  endpoints:
+    - port: {{ .Values.flash.keda.kubeStateMetrics.port }}
+      honorLabels: true
+      interval: 15s
+      metricRelabelings:
+        - sourceLabels: [__name__, namespace, pod]
+          regex: 'kube_pod_deletion_timestamp;{{ .Release.Namespace }};{{ include "logiq-flash.name" . }}-[0-9]+'
+          action: keep
+{{- end }}

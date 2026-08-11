@@ -91,6 +91,13 @@ flash:
       stabilizationWindowSeconds: 0
       podsValue: 4
       podsPeriodSeconds: 60
+    # kube-state-metrics service location for the termination-aware trigger ServiceMonitor.
+    # Override in root values.yaml under logiq-flash.flash.keda.kubeStateMetrics if your
+    # kube-state-metrics is in a different namespace or has different labels/port.
+    kubeStateMetrics:
+      namespace: monitoring
+      serviceSelectorLabel: kube-state-metrics   # value of app.kubernetes.io/name on the service
+      port: http                                  # named port on the kube-state-metrics service
 
 ml:
   topologySpreadConstraints:
