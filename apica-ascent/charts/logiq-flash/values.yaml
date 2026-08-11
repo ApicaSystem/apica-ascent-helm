@@ -58,11 +58,23 @@ flash:
   flushAppTimeoutSeconds: 600
   terminationGracePeriodSeconds: 1050
 
-  # KEDA: event-driven autoscaling driven by Envoy ingestion throughput.
-  # Requires KEDA installed in cluster. PodMonitor auto-enables when keda.enabled=true.
-  # Prometheus address auto-derived: http://prometheus-operated.<namespace>.svc:9090
-  # Metrics source: envoy_cluster_upstream_cx_tx_bytes_total on <release>-flash-http HTTPRoute.
-  # threshold: max bytes/sec per pod. 1 GB/hr = 1073741824 / 3600 = 298261 bytes/sec.
+  # KEDA autoscaling for flash — scales on Envoy ingestion throughput.
+  # Requires: KEDA + kube-state-metrics in cluster. PodMonitor auto-enables when keda.enabled=true.
+  #
+  # Four triggers (keda-flash.yaml), KEDA picks the highest desired across all:
+  #   1. Envoy bytes/sec    — primary signal; 1 pod per 1 GB/hr (298261 bytes/sec).
+  #   2. Termination-aware  — desired = ceil(bytes/threshold) + count(terminating pods).
+  #                           K8s counts Terminating pods in currentReplicas for external metrics,
+  #                           so trigger 1 stalls during scale-down (desired==current, no new pods).
+  #                           Trigger 2 breaks the stall: desired exceeds current → HPA acts.
+  #                           Uses kube_pod_deletion_timestamp from kube-state-metrics.
+  #   3. Memory (75%)       — fallback; resource triggers already exclude Terminating pods (K8s 1.20+).
+  #   4. CPU (75%)          — same fallback for compute spikes.
+  #
+  # threshold: 1 GB/hr per pod = 1073741824 / 3600 = 298261 bytes/sec.
+  # scaleDown.stabilizationWindowSeconds=300: waits 5 min of sustained low load before scaling down.
+  # scaleDown.periodSeconds=150: removes at most 1 pod per 2.5 min; trigger 2 creates replacements
+  #   immediately if load returns while old pods are still terminating (terminationGracePeriod=1050s).
   keda:
     enabled: false
     minReplicas: 2

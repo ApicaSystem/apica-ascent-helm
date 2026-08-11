@@ -38,19 +38,35 @@ spec:
               periodSeconds: {{ .Values.flash.keda.scaleUp.podsPeriodSeconds }}
           selectPolicy: Max
   triggers:
-    # Flash-only HTTPRoute: no cluster-name regex needed; serverAddress derived from .Release.Namespace.
+    # Trigger 1: primary scale signal — Envoy bytes/sec to flash pods.
     - type: prometheus
       metadata:
         serverAddress: http://prometheus-operated.{{ .Release.Namespace }}.svc:9090
         threshold: {{ .Values.flash.keda.threshold | quote }}
         query: |
           sum(rate(envoy_cluster_upstream_cx_tx_bytes_total{envoy_cluster_name=~"httproute/{{ .Release.Namespace }}/{{ .Release.Name }}-flash-http/rule/.*"}[2m]))
-    # Memory: catches buffer pressure when ingestion byte rate alone would not yet trigger scale-out.
+    # Trigger 2: termination-aware scale signal.
+    # K8s counts Terminating pods in currentReplicas for external metrics, so trigger 1 stalls
+    # when pods are terminating (desired == current → no new pods). This trigger breaks the stall
+    # by adding the terminating pod count to the desired: desired = ceil(bytes/threshold) + terminating.
+    # threshold:"1" + metricType:Value means desiredReplicas = query result directly.
+    # Requires kube-state-metrics (kube_pod_deletion_timestamp metric).
+    - type: prometheus
+      metadata:
+        serverAddress: http://prometheus-operated.{{ .Release.Namespace }}.svc:9090
+        threshold: "1"
+        metricType: Value
+        query: |
+          clamp_min(
+            ceil(sum(rate(envoy_cluster_upstream_cx_tx_bytes_total{envoy_cluster_name=~"httproute/{{ .Release.Namespace }}/{{ .Release.Name }}-flash-http/rule/.*"}[2m])) / {{ .Values.flash.keda.threshold }})
+            + (count(kube_pod_deletion_timestamp{namespace="{{ .Release.Namespace }}", pod=~"{{ include "logiq-flash.name" . }}-[0-9]+"}) or vector(0))
+          , {{ .Values.flash.keda.minReplicas }})
+    # Trigger 3: memory pressure — resource triggers exclude Terminating pods (K8s 1.20+).
     - type: memory
       metricType: Utilization
       metadata:
         value: {{ .Values.flash.keda.targetMemoryUtilizationPercentage | quote }}
-    # CPU: guards against compute-bound spikes independent of ingestion throughput.
+    # Trigger 4: CPU spikes independent of ingestion throughput.
     - type: cpu
       metricType: Utilization
       metadata:
