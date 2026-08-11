@@ -207,6 +207,8 @@ flash-coffee:
         cpu: 100m
       limits:
         memory: 1000Mi
+    pdb:
+      minAvailable: 0
 thanos:
   createObjstoreSecret: true
   receive:
