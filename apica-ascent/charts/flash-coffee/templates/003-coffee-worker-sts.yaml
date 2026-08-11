@@ -11,7 +11,8 @@ spec:
   selector:
     matchLabels:
       app: coffee-worker
-  # Rolling update: 1 pod down at a time; readinessProbe gates traffic during rollout.
+  # Rolling update: 1 pod down at a time. No readiness/liveness probes on this
+  # worker — there's no component to check (no HTTP port, no health endpoint).
   updateStrategy:
     type: {{ .Values.coffee_worker.updateStrategy.type }}
     rollingUpdate:
