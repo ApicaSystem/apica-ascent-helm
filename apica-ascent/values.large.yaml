@@ -142,7 +142,7 @@ redis:
     create: true
     name: redis
 postgres:
-  enabled: true
+  enabled: false
   fullnameOverride: postgres
   postgresqlPostgresPassword: '##YOUR_POSTGRES_ROOT_PASSWORD##'
   postgresqlUsername: postgres
@@ -486,7 +486,7 @@ global:
     storageClass: openebs-hostpath
   chart:
     prometheus: true
-    postgres: true
+    postgres: false
     redis: true
     s3gateway: false
     grafana: false
