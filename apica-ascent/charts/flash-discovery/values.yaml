@@ -77,6 +77,15 @@ resources:
   #  cpu: 100m
   #  memory: 128Mi
 
+tls:
+  # Secret mounted into flash-discovery pods at /flash/tls-certs.
+  # Must be set whenever any cert path below is configured.
+  certSecretName: ""
+  postgres:
+    sslrootcert: ""                              # e.g. /flash/tls-certs/pg-ca.crt; omit for publicly-signed certs
+    sslcert: "/flash/tls-certs/pg-client.crt"   # mTLS client cert
+    sslkey: "/flash/tls-certs/pg-client.key"    # mTLS client key
+
 global:
   sharedSecretName: logiq-shared-secret
   nodeSelectors:
@@ -110,5 +119,9 @@ global:
     license: "license/license.jws"
     upload_dashboard: true
     cluster_id: demo
+    postgres_tls:
+      enabled: false
+      sslmode: "verify-full"
+      mtls: false     # set true to add POSTGRES_SSLCERT/KEY (requires pg-client.crt/pg-client.key in tls.certSecretName secret)
   persistence:
     storageClass: oci-bv

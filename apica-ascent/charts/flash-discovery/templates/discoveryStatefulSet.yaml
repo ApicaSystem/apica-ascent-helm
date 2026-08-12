@@ -129,6 +129,11 @@ spec:
             - >
               until pg_isready -h $(POSTGRES_HOST) -p {{ .Values.global.environment.postgres_port }}
               -d $(DATABASE_URL); do echo waiting for database; sleep 1; done;
+          {{- if .Values.tls.certSecretName }}
+          volumeMounts:
+            - mountPath: /flash/tls-certs
+              name: tls-certs
+          {{- end }}
 
       volumes:
         {{- if .Values.configurationFiles }}
@@ -145,6 +150,11 @@ spec:
         - name: license
           secret:
             secretName: {{ template "flash-discovery.fullname" . }}-license
+        {{- end }}
+        {{- if .Values.tls.certSecretName }}
+        - name: tls-certs
+          secret:
+            secretName: {{ .Values.tls.certSecretName }}
         {{- end }}
         {{- if .Values.global.sharedSecretName }}
         - name: sharedcert
@@ -211,6 +221,20 @@ spec:
             - name: MY_CLUSTER_ID
               value: {{ .Values.global.environment.cluster_id }}
             {{- end }}
+            {{- if .Values.global.environment.postgres_tls.enabled }}
+            - name: POSTGRES_SSLMODE
+              value: {{ .Values.global.environment.postgres_tls.sslmode }}
+            {{- if .Values.tls.postgres.sslrootcert }}
+            - name: POSTGRES_SSLROOTCERT
+              value: {{ .Values.tls.postgres.sslrootcert }}
+            {{- end }}
+            {{- if .Values.global.environment.postgres_tls.mtls }}
+            - name: POSTGRES_SSLCERT
+              value: {{ .Values.tls.postgres.sslcert }}
+            - name: POSTGRES_SSLKEY
+              value: {{ .Values.tls.postgres.sslkey }}
+            {{- end }}
+            {{- end }}
 
           volumeMounts:
             - mountPath: /flash/db
@@ -218,6 +242,10 @@ spec:
             {{- if .Values.secrets }}
             - mountPath: /flash/certs
               name: certs
+            {{- end }}
+            {{- if .Values.tls.certSecretName }}
+            - mountPath: /flash/tls-certs
+              name: tls-certs
             {{- end }}
             {{- if .Values.global.environment.license }}
             - mountPath: /flash/license
