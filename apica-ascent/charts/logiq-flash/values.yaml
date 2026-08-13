@@ -81,8 +81,13 @@ flash:
     maxReplicas: 20
     threshold: "298261"
     fallbackReplicas: 2
+    pollingInterval: 15            # seconds between KEDA metric polls
+    failureThreshold: 3            # consecutive failures before falling back to fallbackReplicas
     targetMemoryUtilizationPercentage: 75
     targetCPUUtilizationPercentage: 75
+    # Empty string auto-derives: http://prometheus-operated.<release-namespace>.svc:9090
+    # Override if Prometheus is in a different namespace or uses a non-operator setup.
+    prometheusAddress: ""
     scaleDown:
       stabilizationWindowSeconds: 300
       podsValue: 1
@@ -98,6 +103,7 @@ flash:
       namespace: monitoring
       serviceSelectorLabel: kube-state-metrics   # value of app.kubernetes.io/name on the service
       port: http                                  # named port on the kube-state-metrics service
+      scrapeInterval: 15s                         # how often Prometheus scrapes kube-state-metrics
 
 ml:
   topologySpreadConstraints:

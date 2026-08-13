@@ -61,11 +61,15 @@ logiq-flash:
   flash:
     keda:
       enabled: true
-      # Override if kube-state-metrics is in a different namespace, has different labels, or uses a different port.
+      # Override any of the following if your environment differs from the defaults:
+      # prometheusAddress: "http://prometheus-operated.<namespace>.svc:9090"  # auto-derived if empty
+      # pollingInterval: 15
+      # failureThreshold: 3
       # kubeStateMetrics:
       #   namespace: monitoring
       #   serviceSelectorLabel: kube-state-metrics
       #   port: http
+      #   scrapeInterval: 15s
   ml:
     hpa:
       enabled: true

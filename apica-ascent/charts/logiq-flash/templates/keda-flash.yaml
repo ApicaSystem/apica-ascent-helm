@@ -14,11 +14,11 @@ spec:
     apiVersion: apps/v1
     kind: StatefulSet
     name: {{ template "logiq-flash.name" . }}
-  pollingInterval: 15
+  pollingInterval: {{ .Values.flash.keda.pollingInterval }}
   minReplicaCount: {{ .Values.flash.keda.minReplicas }}
   maxReplicaCount: {{ .Values.flash.keda.maxReplicas }}
   fallback:
-    failureThreshold: 3
+    failureThreshold: {{ .Values.flash.keda.failureThreshold }}
     replicas: {{ .Values.flash.keda.fallbackReplicas }}
   advanced:
     horizontalPodAutoscalerConfig:
@@ -41,7 +41,7 @@ spec:
     # Trigger 1: primary scale signal — Envoy bytes/sec to flash pods.
     - type: prometheus
       metadata:
-        serverAddress: http://prometheus-operated.{{ .Release.Namespace }}.svc:9090
+        serverAddress: {{ .Values.flash.keda.prometheusAddress | default (printf "http://prometheus-operated.%s.svc:9090" .Release.Namespace) }}
         threshold: {{ .Values.flash.keda.threshold | quote }}
         query: |
           sum(rate(envoy_cluster_upstream_cx_tx_bytes_total{envoy_cluster_name=~"httproute/{{ .Release.Namespace }}/{{ .Release.Name }}-flash-http/rule/.*"}[2m]))
@@ -53,7 +53,7 @@ spec:
     # Requires kube-state-metrics (kube_pod_deletion_timestamp metric).
     - type: prometheus
       metadata:
-        serverAddress: http://prometheus-operated.{{ .Release.Namespace }}.svc:9090
+        serverAddress: {{ .Values.flash.keda.prometheusAddress | default (printf "http://prometheus-operated.%s.svc:9090" .Release.Namespace) }}
         threshold: "1"
         metricType: Value
         query: |

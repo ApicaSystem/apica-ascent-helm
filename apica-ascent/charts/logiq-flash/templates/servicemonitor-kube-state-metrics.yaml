@@ -26,7 +26,7 @@ spec:
   endpoints:
     - port: {{ .Values.flash.keda.kubeStateMetrics.port }}
       honorLabels: true
-      interval: 15s
+      interval: {{ .Values.flash.keda.kubeStateMetrics.scrapeInterval }}
       metricRelabelings:
         - sourceLabels: [__name__, namespace, pod]
           regex: 'kube_pod_deletion_timestamp;{{ .Release.Namespace }};{{ include "logiq-flash.name" . }}-[0-9]+'
