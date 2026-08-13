@@ -47,10 +47,11 @@ spec:
           sum(rate(envoy_cluster_upstream_cx_tx_bytes_total{envoy_cluster_name=~"httproute/{{ .Release.Namespace }}/{{ .Release.Name }}-flash-http/rule/.*"}[2m]))
     # Trigger 2: termination-aware scale signal.
     # K8s counts Terminating pods in currentReplicas for external metrics, so trigger 1 stalls
-    # when pods are terminating (desired == current → no new pods). This trigger breaks the stall
-    # by adding the terminating pod count to the desired: desired = ceil(bytes/threshold) + terminating.
-    # threshold:"1" + metricType:Value means desiredReplicas = query result directly.
-    # Requires kube-state-metrics (kube_pod_deletion_timestamp metric).
+    # when desired > running but desired ≤ running+terminating (HPA sees no need to scale up).
+    # This trigger adds terminating pods to desired, but ONLY when desired_from_load > ready_replicas —
+    # preventing unnecessary pod recreation during normal scale-down where running pods already satisfy load.
+    # Formula: ceil(bytes/threshold) + (desired > ready ? count(terminating) : 0)
+    # Requires kube-state-metrics: kube_pod_deletion_timestamp + kube_statefulset_status_replicas_ready.
     - type: prometheus
       metadata:
         serverAddress: {{ .Values.flash.keda.prometheusAddress | default (printf "http://prometheus-operated.%s.svc:9090" .Release.Namespace) }}
@@ -58,8 +59,12 @@ spec:
         metricType: Value
         query: |
           clamp_min(
-            ceil(sum(rate(envoy_cluster_upstream_cx_tx_bytes_total{envoy_cluster_name=~"httproute/{{ .Release.Namespace }}/{{ .Release.Name }}-flash-http/rule/.*"}[2m])) / {{ .Values.flash.keda.threshold }})
-            + (count(kube_pod_deletion_timestamp{namespace="{{ .Release.Namespace }}", pod=~"{{ include "logiq-flash.name" . }}-[0-9]+"}) or vector(0))
+            ceil((sum(rate(envoy_cluster_upstream_cx_tx_bytes_total{envoy_cluster_name=~"httproute/{{ .Release.Namespace }}/{{ .Release.Name }}-flash-http/rule/.*"}[2m])) or vector(0)) / {{ .Values.flash.keda.threshold }})
+            + (
+                (ceil((sum(rate(envoy_cluster_upstream_cx_tx_bytes_total{envoy_cluster_name=~"httproute/{{ .Release.Namespace }}/{{ .Release.Name }}-flash-http/rule/.*"}[2m])) or vector(0)) / {{ .Values.flash.keda.threshold }})
+                  > bool scalar(kube_statefulset_status_replicas_ready{namespace="{{ .Release.Namespace }}", statefulset="{{ include "logiq-flash.name" . }}"}))
+                * (count(kube_pod_deletion_timestamp{namespace="{{ .Release.Namespace }}", pod=~"{{ include "logiq-flash.name" . }}-[0-9]+"}) or vector(0))
+            )
           , {{ .Values.flash.keda.minReplicas }})
     # Trigger 3: memory pressure — resource triggers exclude Terminating pods (K8s 1.20+).
     - type: memory

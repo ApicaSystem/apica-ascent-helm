@@ -28,7 +28,18 @@ spec:
       honorLabels: true
       interval: {{ .Values.flash.keda.kubeStateMetrics.scrapeInterval }}
       metricRelabelings:
+        # Step 1: drop all metrics except the two needed by trigger 2.
+        - sourceLabels: [__name__]
+          regex: 'kube_pod_deletion_timestamp|kube_statefulset_status_replicas_ready'
+          action: keep
+        # Step 2: for kube_pod_deletion_timestamp keep only flash pods in this namespace;
+        #         pass kube_statefulset_status_replicas_ready through (pod label is absent on it).
         - sourceLabels: [__name__, namespace, pod]
-          regex: 'kube_pod_deletion_timestamp;{{ .Release.Namespace }};{{ include "logiq-flash.name" . }}-[0-9]+'
+          regex: 'kube_pod_deletion_timestamp;{{ .Release.Namespace }};{{ include "logiq-flash.name" . }}-[0-9]+|kube_statefulset_status_replicas_ready;.*'
+          action: keep
+        # Step 3: for kube_statefulset_status_replicas_ready keep only the flash StatefulSet in this namespace;
+        #         pass kube_pod_deletion_timestamp through (statefulset label is absent on it).
+        - sourceLabels: [__name__, namespace, statefulset]
+          regex: 'kube_pod_deletion_timestamp;.*|kube_statefulset_status_replicas_ready;{{ .Release.Namespace }};{{ include "logiq-flash.name" . }}'
           action: keep
 {{- end }}

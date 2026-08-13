@@ -63,11 +63,12 @@ flash:
   #
   # Four triggers (keda-flash.yaml), KEDA picks the highest desired across all:
   #   1. Envoy bytes/sec    — primary signal; 1 pod per 1 GB/hr (298261 bytes/sec).
-  #   2. Termination-aware  — desired = ceil(bytes/threshold) + count(terminating pods).
+  #   2. Termination-aware  — desired = ceil(bytes/threshold) + (desired > ready ? terminating : 0).
   #                           K8s counts Terminating pods in currentReplicas for external metrics,
-  #                           so trigger 1 stalls during scale-down (desired==current, no new pods).
-  #                           Trigger 2 breaks the stall: desired exceeds current → HPA acts.
-  #                           Uses kube_pod_deletion_timestamp from kube-state-metrics.
+  #                           so trigger 1 stalls when desired > running but ≤ running+terminating.
+  #                           Trigger 2 adds terminating count only when load exceeds ready replicas,
+  #                           preventing pod recreation during normal scale-down.
+  #                           Uses kube_pod_deletion_timestamp + kube_statefulset_status_replicas_ready.
   #   3. Memory (75%)       — fallback; resource triggers already exclude Terminating pods (K8s 1.20+).
   #   4. CPU (75%)          — same fallback for compute spikes.
   #
