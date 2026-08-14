@@ -65,11 +65,7 @@ logiq-flash:
       # prometheusAddress: "http://prometheus-operated.<namespace>.svc:9090"  # auto-derived if empty
       # pollingInterval: 15
       # failureThreshold: 3
-      # kubeStateMetrics:
-      #   namespace: monitoring
-      #   serviceSelectorLabel: kube-state-metrics
-      #   port: http
-      #   scrapeInterval: 15s
+      # rateWindow: 2m
   ml:
     hpa:
       enabled: true

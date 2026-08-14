@@ -59,30 +59,37 @@ flash:
   terminationGracePeriodSeconds: 1050
 
   # KEDA autoscaling for flash — scales on Envoy ingestion throughput.
-  # Requires: KEDA + kube-state-metrics in cluster. PodMonitor auto-enables when keda.enabled=true.
+  # Requires: KEDA in cluster. The Envoy PodMonitor auto-enables when keda.enabled=true.
   #
-  # Four triggers (keda-flash.yaml), KEDA picks the highest desired across all:
-  #   1. Envoy bytes/sec    — primary signal; 1 pod per 1 GB/hr (298261 bytes/sec).
-  #   2. Termination-aware  — desired = ceil(bytes/threshold) + (desired > ready ? terminating : 0).
-  #                           K8s counts Terminating pods in currentReplicas for external metrics,
-  #                           so trigger 1 stalls when desired > running but ≤ running+terminating.
-  #                           Trigger 2 adds terminating count only when load exceeds ready replicas,
-  #                           preventing pod recreation during normal scale-down.
-  #                           Uses kube_pod_deletion_timestamp + kube_statefulset_status_replicas_ready.
-  #   3. Memory (75%)       — fallback; resource triggers already exclude Terminating pods (K8s 1.20+).
-  #   4. CPU (75%)          — same fallback for compute spikes.
+  # Three triggers (keda-flash.yaml); HPA picks the highest desired across all of them
+  # (k8s horizontal.go: `if replicas == 0 || replicaCountProposal > replicas`):
+  #   1. Ingest bytes/sec — primary signal; 1 pod per 1 GB/hr (298261 bytes/sec).
+  #                         Envoy wire bytes multiplied by the 2xx share of upstream requests,
+  #                         because a client retry re-sends identical bytes that Envoy counts
+  #                         twice. See keda-flash.yaml for the measurements behind this.
+  #   2. Memory (75%)     — safety net; resource triggers exclude Terminating pods (K8s 1.20+),
+  #                         which external metrics do not.
+  #   3. CPU (75%)        — same safety net for compute spikes.
   #
   # threshold: 1 GB/hr per pod = 1073741824 / 3600 = 298261 bytes/sec.
   # scaleDown.stabilizationWindowSeconds=300: waits 5 min of sustained low load before scaling down.
-  # scaleDown.periodSeconds=150: removes at most 1 pod per 2.5 min; trigger 2 creates replacements
-  #   immediately if load returns while old pods are still terminating (terminationGracePeriod=1050s).
+  # scaleDown.periodSeconds=150: removes at most 1 pod per 2.5 min. Returning from maxReplicas to
+  #   steady state is therefore gradual by design (20 -> 7 takes roughly 35 min) so that a
+  #   partially-drained pod is never removed faster than its flush can finish.
   keda:
     enabled: false
     minReplicas: 2
     maxReplicas: 20
     threshold: "298261"
     fallbackReplicas: 2
-    pollingInterval: 15            # seconds between KEDA metric polls
+    # rate() window for the ingest query. Must span at least 2 Envoy scrapes
+    # (metrics.envoyPodMonitor.interval) or rate() returns no data and scaling stalls.
+    rateWindow: 2m
+    # Inert while minReplicas > 0 — KEDA warns "PollingInterval is configured but is not
+    # relevant". Metric freshness is driven by the HPA sync loop (15s default) querying the
+    # KEDA metrics adapter, not by this. Kept because it would apply if minReplicas ever
+    # became 0 (scale-to-zero).
+    pollingInterval: 15
     failureThreshold: 3            # consecutive failures before falling back to fallbackReplicas
     targetMemoryUtilizationPercentage: 75
     targetCPUUtilizationPercentage: 75
@@ -97,14 +104,6 @@ flash:
       stabilizationWindowSeconds: 0
       podsValue: 4
       podsPeriodSeconds: 60
-    # kube-state-metrics service location for the termination-aware trigger ServiceMonitor.
-    # Override in root values.yaml under logiq-flash.flash.keda.kubeStateMetrics if your
-    # kube-state-metrics is in a different namespace or has different labels/port.
-    kubeStateMetrics:
-      namespace: monitoring
-      serviceSelectorLabel: kube-state-metrics   # value of app.kubernetes.io/name on the service
-      port: http                                  # named port on the kube-state-metrics service
-      scrapeInterval: 15s                         # how often Prometheus scrapes kube-state-metrics
 
 ml:
   topologySpreadConstraints:

@@ -1,4 +1,5 @@
 {{- if .Values.flash.keda.enabled }}
+{{- $flashCluster := printf "httproute/%s/%s-flash-http/rule/.*" .Release.Namespace .Release.Name }}
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
@@ -38,40 +39,54 @@ spec:
               periodSeconds: {{ .Values.flash.keda.scaleUp.podsPeriodSeconds }}
           selectPolicy: Max
   triggers:
-    # Trigger 1: primary scale signal — Envoy bytes/sec to flash pods.
+    # Ingest throughput = Envoy wire bytes scaled by the 2xx share of upstream requests.
+    #
+    # Raw upstream_cx_tx_bytes_total cannot be used alone. When flash rejects a write the
+    # client re-POSTs the identical payload, and Envoy counts those bytes again — so the
+    # counter measures bytes *attempted*, not bytes ingested. Measured under load test:
+    # real ingest 6.25 GB/hr with Fluent Bit retrying at 1.83/s, raw counter read
+    # 20.07 GB/hr (3.24x) and pinned the StatefulSet at maxReplicaCount. It is also
+    # self-reinforcing: too few pods -> rejected writes -> client retries -> counter
+    # inflates -> scales up further.
+    #
+    # Envoy has no bytes-by-response-code counter, but upstream_rq_xx is split by
+    # envoy_response_code_class, and a retry is byte-identical to the request it repeats.
+    # So multiplying by the 2xx share removes the duplicated bytes. Validated against
+    # Fluent Bit's own output counter: within ~2% at every sample across the storm,
+    # including the backlog drain (10.28 actual vs 10.31 measured).
+    #
+    # Each byte is therefore counted exactly once, at the moment it is accepted: the
+    # rejected attempt is excluded and the retry that succeeds is counted as 2xx.
+    # Note the honest edge case — if flash rejects *everything*, this reads 0 and scaling
+    # falls to minReplicaCount plus the CPU/memory triggers below. That is a broken
+    # backend, not an overloaded one, and more replicas would not fix it.
+    #
+    # metricType AverageValue makes desired = ceil(total_bytes / threshold).
+    # Do NOT switch to Value: for External metrics Value computes ceil(ratio x readyPods)
+    # (k8s replica_calculator.go, GetExternalMetricReplicas), which against a per-pod
+    # threshold multiplies by the pod count each cycle and pins at maxReplicaCount.
     - type: prometheus
+      metricType: AverageValue
       metadata:
         serverAddress: {{ .Values.flash.keda.prometheusAddress | default (printf "http://prometheus-operated.%s.svc:9090" .Release.Namespace) }}
         threshold: {{ .Values.flash.keda.threshold | quote }}
         query: |
-          sum(rate(envoy_cluster_upstream_cx_tx_bytes_total{envoy_cluster_name=~"httproute/{{ .Release.Namespace }}/{{ .Release.Name }}-flash-http/rule/.*"}[2m]))
-    # Trigger 2: termination-aware scale signal.
-    # K8s counts Terminating pods in currentReplicas for external metrics, so trigger 1 stalls
-    # when desired > running but desired ≤ running+terminating (HPA sees no need to scale up).
-    # This trigger adds terminating pods to desired, but ONLY when desired_from_load > ready_replicas —
-    # preventing unnecessary pod recreation during normal scale-down where running pods already satisfy load.
-    # Formula: ceil(bytes/threshold) + (desired > ready ? count(terminating) : 0)
-    # Requires kube-state-metrics: kube_pod_deletion_timestamp + kube_statefulset_status_replicas_ready.
-    - type: prometheus
-      metadata:
-        serverAddress: {{ .Values.flash.keda.prometheusAddress | default (printf "http://prometheus-operated.%s.svc:9090" .Release.Namespace) }}
-        threshold: "1"
-        metricType: Value
-        query: |
-          clamp_min(
-            ceil((sum(rate(envoy_cluster_upstream_cx_tx_bytes_total{envoy_cluster_name=~"httproute/{{ .Release.Namespace }}/{{ .Release.Name }}-flash-http/rule/.*"}[2m])) or vector(0)) / {{ .Values.flash.keda.threshold }})
-            + (
-                (ceil((sum(rate(envoy_cluster_upstream_cx_tx_bytes_total{envoy_cluster_name=~"httproute/{{ .Release.Namespace }}/{{ .Release.Name }}-flash-http/rule/.*"}[2m])) or vector(0)) / {{ .Values.flash.keda.threshold }})
-                  > bool scalar(kube_statefulset_status_replicas_ready{namespace="{{ .Release.Namespace }}", statefulset="{{ include "logiq-flash.name" . }}"}))
-                * (count(kube_pod_deletion_timestamp{namespace="{{ .Release.Namespace }}", pod=~"{{ include "logiq-flash.name" . }}-[0-9]+"}) or vector(0))
+          (
+            sum(rate(envoy_cluster_upstream_cx_tx_bytes_total{envoy_cluster_name=~"{{ $flashCluster }}"}[{{ .Values.flash.keda.rateWindow }}]))
+            *
+            (
+              sum(rate(envoy_cluster_upstream_rq_xx{envoy_cluster_name=~"{{ $flashCluster }}", envoy_response_code_class="2"}[{{ .Values.flash.keda.rateWindow }}]))
+              /
+              clamp_min(sum(rate(envoy_cluster_upstream_rq_xx{envoy_cluster_name=~"{{ $flashCluster }}"}[{{ .Values.flash.keda.rateWindow }}])), 0.001)
             )
-          , {{ .Values.flash.keda.minReplicas }})
-    # Trigger 3: memory pressure — resource triggers exclude Terminating pods (K8s 1.20+).
+          ) or vector(0)
+    # Memory and CPU are the safety net, and the only triggers that see through a
+    # scale-down: resource metrics exclude Terminating pods, whereas external metrics
+    # count Terminating-but-Ready pods in status.replicas.
     - type: memory
       metricType: Utilization
       metadata:
         value: {{ .Values.flash.keda.targetMemoryUtilizationPercentage | quote }}
-    # Trigger 4: CPU spikes independent of ingestion throughput.
     - type: cpu
       metricType: Utilization
       metadata:
