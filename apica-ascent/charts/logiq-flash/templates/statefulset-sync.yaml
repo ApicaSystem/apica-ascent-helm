@@ -10,6 +10,8 @@ metadata:
     heritage: {{ .Release.Service }}
 spec:
   serviceName: {{ template "logiq-flash.name" . }}-sync
+  # Initial count only when sync.hpa.enabled — the HPA then owns spec.replicas and the Argo
+  # Application must ignore /spec/replicas. See statefulSet.yaml for the full reasoning.
   replicas: {{ .Values.replicaCountSync }}
   selector:
     matchLabels:

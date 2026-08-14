@@ -10,6 +10,12 @@ metadata:
     heritage: {{ .Release.Service }}
 spec:
   serviceName: {{ template "logiq-flash.name" . }}-headless
+  # Seeds the initial count only. Once flash.keda.enabled=true the HPA owns spec.replicas, so
+  # the Argo Application must ignore /spec/replicas here (ignoreDifferences plus
+  # RespectIgnoreDifferences=true — the latter is required, or Argo still sends the field).
+  # Otherwise every sync reapplies this value, bypassing the HPA scaleDown policy and deleting
+  # all surplus pods at once, each starting its own 1050s S3 flush. Observed 2026-08-14: a sync
+  # dropped 7 -> 2, killing 5 pods in one step despite a 1 pod / 150s policy.
   replicas: {{ .Values.replicaCount }}
   podManagementPolicy: Parallel
   persistentVolumeClaimRetentionPolicy:

@@ -58,24 +58,17 @@ flash:
   flushAppTimeoutSeconds: 600
   terminationGracePeriodSeconds: 1050
 
-  # KEDA autoscaling for flash — scales on Envoy ingestion throughput.
-  # Requires: KEDA in cluster. The Envoy PodMonitor auto-enables when keda.enabled=true.
+  # KEDA autoscaling for flash. Requires KEDA in cluster; the Envoy PodMonitor auto-enables
+  # when keda.enabled=true. Three triggers in keda-flash.yaml, where the ingest query and its
+  # constraints are documented; HPA takes the highest desired across all of them:
+  #   1. Ingest bytes/sec — primary signal, 1 pod per 1 GB/hr (1073741824 / 3600 = 298261).
+  #   2. Memory (75%)     — safety net, and unlike external metrics excludes Terminating pods.
+  #   3. CPU (75%)        — same, for compute spikes.
   #
-  # Three triggers (keda-flash.yaml); HPA picks the highest desired across all of them
-  # (k8s horizontal.go: `if replicas == 0 || replicaCountProposal > replicas`):
-  #   1. Ingest bytes/sec — primary signal; 1 pod per 1 GB/hr (298261 bytes/sec).
-  #                         Envoy wire bytes multiplied by the 2xx share of upstream requests,
-  #                         because a client retry re-sends identical bytes that Envoy counts
-  #                         twice. See keda-flash.yaml for the measurements behind this.
-  #   2. Memory (75%)     — safety net; resource triggers exclude Terminating pods (K8s 1.20+),
-  #                         which external metrics do not.
-  #   3. CPU (75%)        — same safety net for compute spikes.
-  #
-  # threshold: 1 GB/hr per pod = 1073741824 / 3600 = 298261 bytes/sec.
-  # scaleDown.stabilizationWindowSeconds=300: waits 5 min of sustained low load before scaling down.
-  # scaleDown.periodSeconds=150: removes at most 1 pod per 2.5 min. Returning from maxReplicas to
-  #   steady state is therefore gradual by design (20 -> 7 takes roughly 35 min) so that a
-  #   partially-drained pod is never removed faster than its flush can finish.
+  # scaleDown 1 pod / 150s after a 300s window: returning from maxReplicas is gradual by
+  # design (20 -> 7 takes ~35 min) so a partially-drained pod is never removed faster than
+  # its flush can finish. Note the HPA owns spec.replicas once enabled — the Argo Application
+  # must ignore /spec/replicas or every sync resets the count. See statefulSet.yaml.
   keda:
     enabled: false
     minReplicas: 2

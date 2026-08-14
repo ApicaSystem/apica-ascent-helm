@@ -39,32 +39,22 @@ spec:
               periodSeconds: {{ .Values.flash.keda.scaleUp.podsPeriodSeconds }}
           selectPolicy: Max
   triggers:
-    # Ingest throughput = Envoy wire bytes scaled by the 2xx share of upstream requests.
+    # Ingest throughput = Envoy wire bytes x the 2xx share of upstream requests.
     #
-    # Raw upstream_cx_tx_bytes_total cannot be used alone. When flash rejects a write the
-    # client re-POSTs the identical payload, and Envoy counts those bytes again — so the
-    # counter measures bytes *attempted*, not bytes ingested. Measured under load test:
-    # real ingest 6.25 GB/hr with Fluent Bit retrying at 1.83/s, raw counter read
-    # 20.07 GB/hr (3.24x) and pinned the StatefulSet at maxReplicaCount. It is also
-    # self-reinforcing: too few pods -> rejected writes -> client retries -> counter
-    # inflates -> scales up further.
+    # Raw upstream_cx_tx_bytes_total counts bytes attempted, not ingested: flash returns 429
+    # past its per-pod rate limit, the client re-POSTs the identical payload, and Envoy counts
+    # those bytes again. Measured 2026-08-14: 6.25 GB/hr of real ingest read as 20.07 GB/hr
+    # (3.24x) at 1.83 retries/s, pinning the StatefulSet at maxReplicaCount. Self-reinforcing,
+    # since too few pods cause the rejections that inflate the metric.
     #
-    # Envoy has no bytes-by-response-code counter, but upstream_rq_xx is split by
-    # envoy_response_code_class, and a retry is byte-identical to the request it repeats.
-    # So multiplying by the 2xx share removes the duplicated bytes. Validated against
-    # Fluent Bit's own output counter: within ~2% at every sample across the storm,
-    # including the backlog drain (10.28 actual vs 10.31 measured).
+    # Envoy has no bytes-by-response-code counter, so the 2xx share is the correction. A retry
+    # is byte-identical to the request it repeats, so each byte is counted once, when accepted.
+    # If flash rejects everything this reads 0 and scaling falls to minReplicaCount plus the
+    # CPU/memory triggers — a broken backend, not an overloaded one.
     #
-    # Each byte is therefore counted exactly once, at the moment it is accepted: the
-    # rejected attempt is excluded and the retry that succeeds is counted as 2xx.
-    # Note the honest edge case — if flash rejects *everything*, this reads 0 and scaling
-    # falls to minReplicaCount plus the CPU/memory triggers below. That is a broken
-    # backend, not an overloaded one, and more replicas would not fix it.
-    #
-    # metricType AverageValue makes desired = ceil(total_bytes / threshold).
-    # Do NOT switch to Value: for External metrics Value computes ceil(ratio x readyPods)
-    # (k8s replica_calculator.go, GetExternalMetricReplicas), which against a per-pod
-    # threshold multiplies by the pod count each cycle and pins at maxReplicaCount.
+    # metricType AverageValue gives desired = ceil(total_bytes / threshold). Do NOT use Value:
+    # for External metrics it computes ceil(ratio x readyPods) (k8s replica_calculator.go),
+    # which against a per-pod threshold pins at maxReplicaCount.
     - type: prometheus
       metricType: AverageValue
       metadata:
