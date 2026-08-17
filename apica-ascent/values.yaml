@@ -626,6 +626,8 @@ cnpg:
           release: kube-prometheus-stack
       prometheusRule:
         enabled: true
+        excludeRules:
+          - CNPGClusterHAWarning
 
   # -- Backup configuration. Disabled by default; configure provider credentials before enabling.
   backups:
