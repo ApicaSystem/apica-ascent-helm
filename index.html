@@ -461,7 +461,7 @@ Create a bucket in AWS s3 with a unique bucket name in the region where you plan
 </table>
 <h3 id="nodeportclusteriploadbalancer">3.11 NodePort/ClusterIP/LoadBalancer</h3>
 <p>The service type configurations are exposed in values.yaml as below</p>
-<div class="sourceCode" id="cb17"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true"></a><span class="ex">flash-coffee</span>:</span>
+<div class="sourceCode" id="cb17"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true"></a><span class="ex">coffee-server</span>:</span>
 <span id="cb17-2"><a href="#cb17-2" aria-hidden="true"></a>  <span class="ex">service</span>:</span>
 <span id="cb17-3"><a href="#cb17-3" aria-hidden="true"></a>    <span class="ex">type</span>: ClusterIP</span>
 <span id="cb17-4"><a href="#cb17-4" aria-hidden="true"></a><span class="ex">apica-flash</span>:</span>
@@ -473,7 +473,7 @@ Create a bucket in AWS s3 with a unique bucket name in the region where you plan
 <span id="cb17-10"><a href="#cb17-10" aria-hidden="true"></a>      <span class="ex">type</span>: LoadBalancer</span></code></pre></div>
 <p>For e.g. if you are running on bare-metal and want an external LB to front Apica Ascent, configure all services as <code>NodePort</code></p>
 <div class="sourceCode" id="cb18"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true"></a><span class="ex">helm</span> install apica-ascent -n apica-ascent -f values.yaml <span class="kw">\</span></span>
-<span id="cb18-2"><a href="#cb18-2" aria-hidden="true"></a><span class="ex">--set</span> flash-coffee.service.type=NodePort <span class="kw">\</span></span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true"></a><span class="ex">--set</span> coffee-server.service.type=NodePort <span class="kw">\</span></span>
 <span id="cb18-3"><a href="#cb18-3" aria-hidden="true"></a><span class="ex">--set</span> apica-flash.service.type=NodePort <span class="kw">\</span></span>
 <span id="cb18-4"><a href="#cb18-4" aria-hidden="true"></a><span class="ex">--set</span> kubernetes-ingress.controller.service.type=NodePort <span class="kw">\</span></span>
 <span id="cb18-5"><a href="#cb18-5" aria-hidden="true"></a><span class="ex">apica-repo/apica</span></span></code></pre></div>

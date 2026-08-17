@@ -96,8 +96,8 @@ foreach my $size (@tshirts) {
     $clone->{'logiq-flash'}{replicaCountMl}   = ($size eq 'single') ? 1 : $flash_ml_replicas;
     $clone->{'logiq-flash'}{replicaCountSync} = ($size eq 'single') ? 1 : $flash_sync_replicas;
     $clone->{'flash-discovery'}{replicaCountDiscovery}    = ($size eq 'single') ? 1 : $flash_disc_replicas;
-    $clone->{'flash-coffee'}{coffee}{replicaCount}        = ($size eq 'single') ? 1 : $coffee_server_replicas;
-    $clone->{'flash-coffee'}{coffee_worker}{replicaCount} = ($size eq 'single') ? 1 : $coffee_worker_replicas;
+    $clone->{'coffee-server'}{coffee}{replicaCount}        = ($size eq 'single') ? 1 : $coffee_server_replicas;
+    $clone->{'coffee-server'}{coffee_worker}{replicaCount} = ($size eq 'single') ? 1 : $coffee_worker_replicas;
     $clone->{prometheus}{prometheus}{replicaCount}        = ($size eq 'single') ? 1 : $prometheus_replicas;
     $clone->{envoyGateway}{envoyProxy}{provider}{deployment}{replicaCount} = ($size eq 'single') ? 1 : $envoy_replicas;
 

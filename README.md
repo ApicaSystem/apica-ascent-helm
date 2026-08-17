@@ -21,7 +21,7 @@ apica-ascent/
 | Subchart / alias | What it is | Toggle |
 |---|---|---|
 | `logiq-flash` | Core ingest, ML, sync | always on |
-| `flash-coffee` | Query / analytics engine | always on |
+| `coffee-server` | Query / analytics engine | always on |
 | `flash-discovery` | Service discovery | always on |
 | `logiqctl` | CLI init job | always on |
 | `postgres` (bitnami) | Metadata DB | `global.chart.postgres` |

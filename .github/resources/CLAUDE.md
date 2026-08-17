@@ -3,14 +3,14 @@
 Context for the automated Claude PR review. State only what the diff shows; when unsure, stay silent.
 
 ## What this is
-Umbrella Helm 3 chart (`apica-ascent`, Chart apiVersion v2, chart 3.1.5, appVersion v2.16.6, kubeVersion >=1.24.0) that deploys the Apica Ascent observability platform (logging, metrics, tracing) onto Kubernetes. Ingress is Gateway API via **Envoy Gateway v1.6.0**. First-party subcharts: `logiq-flash` (ingest), `flash-coffee` (UI/worker), `flash-discovery`, `logiqctl`. Vendored deps: `cluster` (cnpg/CloudNativePG), plus Bitnami `postgresql`, `redis`, `grafana`, `kube-prometheus`, `thanos`, `common`.
+Umbrella Helm 3 chart (`apica-ascent`, Chart apiVersion v2, chart 3.1.5, appVersion v2.16.6, kubeVersion >=1.24.0) that deploys the Apica Ascent observability platform (logging, metrics, tracing) onto Kubernetes. Ingress is Gateway API via **Envoy Gateway v1.6.0**. First-party subcharts: `logiq-flash` (ingest), `coffee-server` (UI/worker), `flash-discovery`, `logiqctl`. Vendored deps: `cluster` (cnpg/CloudNativePG), plus Bitnami `postgresql`, `redis`, `grafana`, `kube-prometheus`, `thanos`, `common`.
 
 ## Layout
 - `apica-ascent/` — the chart; everything below is relative to it.
 - `Chart.yaml` — deps + condition flags; `values.yaml` — default values (source of truth).
 - `values.{single,small,medium,large}.yaml` — t-shirt sizing presets, selected with `-f`; identical structure, differ only in `replicaCount`/`resources`.
 - `templates/` — mostly Envoy Gateway / Gateway API objects, `perfectscale-*` autoscaling automation, Secret templates (`shared-secret`, `vault-secrets`, `thanos-secret`, `cnpg-secrets`), thanos-ruler configmap, storageclass, metrics-server.
-- `charts/logiq-flash|flash-coffee|flash-discovery|logiqctl/` — first-party subcharts (full templates, legacy `logiq.*` helpers, `logiqai/*` images).
+- `charts/logiq-flash|coffee-server|flash-discovery|logiqctl/` — first-party subcharts (full templates, legacy `logiq.*` helpers, `logiqai/*` images).
 - `charts/cluster|postgresql|redis|grafana|kube-prometheus|thanos|common/` — vendored upstream subcharts.
 - `update-onprem-values.pl` — values-manipulation helper.
 

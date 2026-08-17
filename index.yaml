@@ -13,8 +13,8 @@ entries:
       name: cluster
       repository: https://cloudnative-pg.github.io/charts
       version: 0.6.1
-    - condition: global.chart.flash-coffee
-      name: flash-coffee
+    - condition: global.chart.coffee-server
+      name: coffee-server
       repository: ""
       version: 1.0.0
     - condition: global.chart.logiq-flash
@@ -97,8 +97,8 @@ entries:
     appVersion: v2.16.6
     created: "2026-07-20T16:09:08.623977+05:30"
     dependencies:
-    - condition: global.chart.flash-coffee
-      name: flash-coffee
+    - condition: global.chart.coffee-server
+      name: coffee-server
       repository: ""
       version: 1.0.0
     - condition: global.chart.logiq-flash

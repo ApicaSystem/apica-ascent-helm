@@ -21,7 +21,7 @@ spec:
       labels:
         app: coffee-worker
     spec:
-      serviceAccountName: flash-coffee
+      serviceAccountName: coffee-server
       # preStop(15s) fills the LB-drain gap before SIGTERM; 60s is the hard ceiling.
       terminationGracePeriodSeconds: {{ .Values.coffee_worker.terminationGracePeriodSeconds }}
 
@@ -101,17 +101,17 @@ spec:
             - name: POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ template "flash-coffee.fullname" . }}
+                  name: {{ template "coffee-server.fullname" . }}
                   key: postgres_password
             - name: POSTGRES_HOST
               valueFrom:
                 secretKeyRef:
-                  name: {{ template "flash-coffee.fullname" . }}
+                  name: {{ template "coffee-server.fullname" . }}
                   key: postgres_host
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
-                  name: {{ template "flash-coffee.fullname" . }}
+                  name: {{ template "coffee-server.fullname" . }}
                   key: database_url
           command:
             - sh
@@ -140,7 +140,7 @@ spec:
                 command: ["sh", "-c", "sleep {{ .Values.coffee_worker.preStopSleepSeconds }}"]
           env:
             - name: CONFIG_HASH
-              value: {{ include "flash-coffee.confighash" . | quote }}
+              value: {{ include "coffee-server.confighash" . | quote }}
             - name: PYTHONUNBUFFERED
               value: "0"
             - name: SSR_HOST
@@ -184,61 +184,61 @@ spec:
             - name: LOGIQ_FLASH_HOST
               valueFrom:
                 secretKeyRef:
-                  name: {{ template "flash-coffee.fullname" . }}
+                  name: {{ template "coffee-server.fullname" . }}
                   key: logiq_flash_host
             - name: LOGIQ_FLASH_PORT
               valueFrom:
                 secretKeyRef:
-                  name: {{ template "flash-coffee.fullname" . }}
+                  name: {{ template "coffee-server.fullname" . }}
                   key: logiq_flash_port
             - name: WORKERS_COUNT
               value: "{{ .Values.coffee_worker.replicaCount }}"
             - name: REDIS_HOST
               valueFrom:
                 secretKeyRef:
-                  name: {{ template "flash-coffee.fullname" . }}
+                  name: {{ template "coffee-server.fullname" . }}
                   key: redis_host
             - name: REDIS_URL
               value: redis://{{ .Values.global.environment.redis_host }}:{{ .Values.global.environment.redis_port }}/0
             - name: POSTGRES_USER
               valueFrom:
                 secretKeyRef:
-                  name: {{ template "flash-coffee.fullname" . }}
+                  name: {{ template "coffee-server.fullname" . }}
                   key: postgres_user
             - name: POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ template "flash-coffee.fullname" . }}
+                  name: {{ template "coffee-server.fullname" . }}
                   key: postgres_password
             - name: POSTGRES_HOST
               valueFrom:
                 secretKeyRef:
-                  name: {{ template "flash-coffee.fullname" . }}
+                  name: {{ template "coffee-server.fullname" . }}
                   key: postgres_host
             - name: POSTGRES_PORT
               valueFrom:
                 secretKeyRef:
-                  name: {{ template "flash-coffee.fullname" . }}
+                  name: {{ template "coffee-server.fullname" . }}
                   key: postgres_port
             - name: POSTGRES_DB
               valueFrom:
                 secretKeyRef:
-                  name: {{ template "flash-coffee.fullname" . }}
+                  name: {{ template "coffee-server.fullname" . }}
                   key: postgres_db
             - name: POSTGRES_COFFEE_DB
               valueFrom:
                 secretKeyRef:
-                  name: {{ template "flash-coffee.fullname" . }}
+                  name: {{ template "coffee-server.fullname" . }}
                   key: postgres_coffee_db
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
-                  name: {{ template "flash-coffee.fullname" . }}
+                  name: {{ template "coffee-server.fullname" . }}
                   key: coffee_database_url
             - name: S3_URL
               valueFrom:
                 secretKeyRef:
-                  name: {{ template "flash-coffee.fullname" . }}
+                  name: {{ template "coffee-server.fullname" . }}
                   key: s3_url
             - name: S3_ACCESS
               valueFrom:
@@ -259,63 +259,63 @@ spec:
             - name: ADMIN_NAME
               valueFrom:
                 secretKeyRef:
-                  name: {{ template "flash-coffee.fullname" . }}
+                  name: {{ template "coffee-server.fullname" . }}
                   key: admin_name
             {{- end }}
             {{- if .Values.global.environment.admin_password }}
             - name: ADMIN_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ template "flash-coffee.fullname" . }}
+                  name: {{ template "coffee-server.fullname" . }}
                   key: admin_password
             {{- end }}
             {{- if .Values.global.environment.admin_org }}
             - name: ADMIN_ORG
               valueFrom:
                 secretKeyRef:
-                  name: {{ template "flash-coffee.fullname" . }}
+                  name: {{ template "coffee-server.fullname" . }}
                   key: admin_org
             {{- end }}
             {{- if .Values.global.environment.admin_email }}
             - name: ADMIN_EMAIL
               valueFrom:
                 secretKeyRef:
-                  name: {{ template "flash-coffee.fullname" . }}
+                  name: {{ template "coffee-server.fullname" . }}
                   key: admin_email
             {{- end }}
             {{- if .Values.global.environment.mail_server }}
             - name: MAIL_SERVER
               valueFrom:
                 secretKeyRef:
-                  name: {{ template "flash-coffee.fullname" . }}
+                  name: {{ template "coffee-server.fullname" . }}
                   key: mail_server
             {{- end }}
             {{- if .Values.global.environment.mail_port }}
             - name: MAIL_PORT
               valueFrom:
                 secretKeyRef:
-                  name: {{ template "flash-coffee.fullname" . }}
+                  name: {{ template "coffee-server.fullname" . }}
                   key: mail_port
             {{- end }}
             {{- if .Values.global.environment.mail_username }}
             - name: MAIL_USERNAME
               valueFrom:
                 secretKeyRef:
-                  name: {{ template "flash-coffee.fullname" . }}
+                  name: {{ template "coffee-server.fullname" . }}
                   key: mail_username
             {{- end }}
             {{- if .Values.global.environment.mail_password }}
             - name: MAIL_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ template "flash-coffee.fullname" . }}
+                  name: {{ template "coffee-server.fullname" . }}
                   key: mail_password
             {{- end }}
             {{- if .Values.global.environment.mail_default_sender }}
             - name: MAIL_DEFAULT_SENDER
               valueFrom:
                 secretKeyRef:
-                  name: {{ template "flash-coffee.fullname" . }}
+                  name: {{ template "coffee-server.fullname" . }}
                   key: mail_default_sender
             {{- end }}
             {{- if .Values.global.chart.prometheus }}

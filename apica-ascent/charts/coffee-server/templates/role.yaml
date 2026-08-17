@@ -2,15 +2,15 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: flash-coffee
+  name: coffee-server
   namespace: {{ .Release.Namespace }}
   labels:
-    app: flash-coffee
+    app: coffee-server
 rules:
 - apiGroups:
   - policy
   resourceNames:
-  - flash-coffee
+  - coffee-server
   resources:
   - podsecuritypolicies
   verbs:
@@ -18,7 +18,7 @@ rules:
 - apiGroups:
   - extensions
   resourceNames:
-  - flash-coffee
+  - coffee-server
   resources:
   - podsecuritypolicies
   verbs:

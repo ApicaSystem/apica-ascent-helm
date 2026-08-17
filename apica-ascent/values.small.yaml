@@ -172,7 +172,7 @@ postgres:
   serviceAccount:
     enabled: true
     name: postgres
-flash-coffee:
+coffee-server:
   service:
     type: ClusterIP
   coffee:
