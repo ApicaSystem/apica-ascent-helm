@@ -493,6 +493,24 @@ global:
     s3_custom_ca:
       enabled: false
       map_name: "kube-root-ca.crt"
+    # Read S3 credentials from a Secret created and managed outside Helm
+    # (External Secrets Operator, sealed-secrets, kubectl). When name is set:
+    # - the chart stops rendering AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY
+    #   into the logiq-config ConfigMap and no longer requires them,
+    # - the named Secret is mounted into the flash, flash-ml and flash-sync
+    #   pods at mount_path, and config.yaml carries only file paths,
+    # - flash re-reads the files every few minutes, so rotating the Secret
+    #   does not need a pod restart.
+    # access_key_name / secret_key_name / session_token_name are the KEY NAMES
+    # inside the Secret, not credential values. session_token_name is optional
+    # (leave empty unless the credentials are STS temporary credentials).
+    # Requires a flash image with file-backed credential support.
+    s3_credentials_secret:
+      name: ""
+      access_key_name: access_key
+      secret_key_name: secret_key
+      session_token_name: ""
+      mount_path: /flash/s3creds
     AWS_ACCESS_KEY_ID: "s3_access"
     AWS_SECRET_ACCESS_KEY: "s3_secret"
     admin_name: "devops@apica.io"
@@ -508,6 +526,12 @@ global:
     internal_cert_crt: ""
     internal_cert_key: ""
     extraflag: "-hauler-node-affinity=false --tail_longpoll=true -persist=true -rl_type=tokenbucket"
+    # Extra CLI flags for the flash-sync StatefulSet only. Kept separate from
+    # extraflag because sync is not an ingest node: the ingest-oriented defaults
+    # above are not automatically applied to it. Set this explicitly when sync
+    # needs a flag (for example -use_aws_instance_profile for role-based or
+    # SDK-chain S3 credentials).
+    sync_extraflag: ""
     rate_limit_flags: "-max_bytes_per_sec=346729"
   persistence:
     storageClass: oci-bv

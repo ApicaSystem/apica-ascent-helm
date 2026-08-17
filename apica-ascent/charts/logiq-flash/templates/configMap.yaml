@@ -43,10 +43,22 @@ data:
     
             s3:
 
-{{ if .Values.global.chart.s3gateway }}
+{{ if (.Values.global.environment.s3_credentials_secret).name }}
+
+              secret_key_file: {{ required "s3_credentials_secret.mount_path is required when name is set" (.Values.global.environment.s3_credentials_secret).mount_path }}/{{ required "s3_credentials_secret.secret_key_name is required when name is set" (.Values.global.environment.s3_credentials_secret).secret_key_name }}
+
+              access_key_file: {{ (.Values.global.environment.s3_credentials_secret).mount_path }}/{{ required "s3_credentials_secret.access_key_name is required when name is set" (.Values.global.environment.s3_credentials_secret).access_key_name }}
+
+{{ if (.Values.global.environment.s3_credentials_secret).session_token_name }}
+
+              session_token_file: {{ (.Values.global.environment.s3_credentials_secret).mount_path }}/{{ (.Values.global.environment.s3_credentials_secret).session_token_name }}
+
+{{ end }}
+
+{{ else if .Values.global.chart.s3gateway }}
 
               secret_key: {{ .Values.global.environment.s3_secret }}
-    
+
               access_key: {{ .Values.global.environment.s3_access}}
 
 {{ else if eq .Values.global.cloudProvider "aws" }}

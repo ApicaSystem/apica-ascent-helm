@@ -143,6 +143,22 @@ spec:
         {{- end }}
         - name: data
           emptyDir: {}
+        {{- if (.Values.global.environment.s3_credentials_secret).name }}
+        - name: s3-credentials
+          secret:
+            secretName: {{ (.Values.global.environment.s3_credentials_secret).name }}
+            # Project only the configured keys, so unrelated keys in a shared or
+            # vault-synced Secret never land inside the container.
+            items:
+              - key: {{ (.Values.global.environment.s3_credentials_secret).access_key_name }}
+                path: {{ (.Values.global.environment.s3_credentials_secret).access_key_name }}
+              - key: {{ (.Values.global.environment.s3_credentials_secret).secret_key_name }}
+                path: {{ (.Values.global.environment.s3_credentials_secret).secret_key_name }}
+              {{- if (.Values.global.environment.s3_credentials_secret).session_token_name }}
+              - key: {{ (.Values.global.environment.s3_credentials_secret).session_token_name }}
+                path: {{ (.Values.global.environment.s3_credentials_secret).session_token_name }}
+              {{- end }}
+        {{- end }}
         - name: casdoor-conf
           secret:
             secretName: casdoor-conf
@@ -155,7 +171,7 @@ spec:
             - /bin/bash
           args:
             - -c
-            - /flash/bin/flash -config /flash/config/config.yaml -install_root /flash -runtime_folder /flash/db -is-kube=true -discovery_domain=$(DISCOVERY_DOMAIN) -pg_max_idle_conns 3 -pg_max_open_Conns 5 -postgres_timeout 40s -metadata-db-ttl 11m -metadata-text-upload-jobs 50 -sync-node
+            - /flash/bin/flash -config /flash/config/config.yaml -install_root /flash -runtime_folder /flash/db -is-kube=true -discovery_domain=$(DISCOVERY_DOMAIN) -pg_max_idle_conns 3 -pg_max_open_Conns 5 -postgres_timeout 40s -metadata-db-ttl 11m -metadata-text-upload-jobs 50 -sync-node{{ if .Values.global.environment.sync_extraflag }} {{ .Values.global.environment.sync_extraflag }}{{ end }}
           # Sleep before SIGTERM so the LB stops routing before the process exits.
           lifecycle:
             preStop:
@@ -278,6 +294,11 @@ spec:
             {{- if .Values.global.sharedSecretName }}
             - mountPath: /flash/sharedcerts
               name: sharedcert
+            {{- end }}
+            {{- if (.Values.global.environment.s3_credentials_secret).name }}
+            - mountPath: {{ (.Values.global.environment.s3_credentials_secret).mount_path }}
+              name: s3-credentials
+              readOnly: true
             {{- end }}
             - mountPath: /flash/conf/casdoor.conf
               name: casdoor-conf

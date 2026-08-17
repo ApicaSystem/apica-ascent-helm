@@ -288,10 +288,20 @@ global:
     s3_custom_ca:
       enabled: false
       map_name: "kube-root-ca.crt"
+    # See the parent chart's values.yaml for documentation. Key names inside
+    # the Secret, not credential values; name empty means the legacy inline
+    # credential rendering is used.
+    s3_credentials_secret:
+      name: ""
+      access_key_name: access_key
+      secret_key_name: secret_key
+      session_token_name: ""
+      mount_path: /flash/s3creds
     AWS_ACCESS_KEY_ID: "AWS_ACCESS"
     AWS_SECRET_ACCESS_KEY: "AWS_SECRET"
     awsServiceEndpoint: "https://s3.amazonaws.com"
     extraflag: ""
+    sync_extraflag: ""
     rate_limit_flags: ""
 
   persistence:
