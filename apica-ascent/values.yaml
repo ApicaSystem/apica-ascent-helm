@@ -616,9 +616,15 @@ cnpg:
         pg_stat_statements.track: all
         max_connections: "400"
         shared_buffers: "1024MB"
+    additionalLabels:
+      release: kube-prometheus-stack
     monitoring:
-      enabled: false
+      enabled: true
       podMonitor:
+        enabled: true
+        labels:
+          release: kube-prometheus-stack
+      prometheusRule:
         enabled: true
 
   # -- Backup configuration. Disabled by default; configure provider credentials before enabling.
