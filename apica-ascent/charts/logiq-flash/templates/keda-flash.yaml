@@ -1,5 +1,7 @@
 {{- if .Values.flash.keda.enabled }}
 {{- $flashCluster := printf "httproute/%s/%s-flash-http/rule/.*" .Release.Namespace .Release.Name }}
+{{- $window := .Values.flash.keda.rateWindow }}
+{{- $threshold := .Values.flash.keda.threshold }}
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
@@ -39,18 +41,38 @@ spec:
               periodSeconds: {{ .Values.flash.keda.scaleUp.podsPeriodSeconds }}
           selectPolicy: Max
   triggers:
-    # Ingest throughput = Envoy wire bytes x the 2xx share of upstream requests.
+    # Ingest demand = accepted bytes/sec, plus one pod's worth of headroom while flash is
+    # rejecting. Two terms, because neither alone is sufficient.
     #
+    # Term 1 — accepted bytes = wire bytes x the 2xx share of upstream requests.
     # Raw upstream_cx_tx_bytes_total counts bytes attempted, not ingested: flash returns 429
     # past its per-pod rate limit, the client re-POSTs the identical payload, and Envoy counts
-    # those bytes again. Measured 2026-08-14: 6.25 GB/hr of real ingest read as 20.07 GB/hr
-    # (3.24x) at 1.83 retries/s, pinning the StatefulSet at maxReplicaCount. Self-reinforcing,
-    # since too few pods cause the rejections that inflate the metric.
+    # those bytes again. Measured 2026-08-14: 7.0 GB/hr of real ingest read as 18.5 GB/hr
+    # (2.6x) at 1.7 retries/s, pinning the StatefulSet at maxReplicaCount. Self-reinforcing,
+    # since too few pods cause the rejections that inflate the metric. Envoy has no
+    # bytes-by-response-code counter, so the 2xx share is the correction: a retry is
+    # byte-identical to the request it repeats, so each byte is counted once, when accepted.
     #
-    # Envoy has no bytes-by-response-code counter, so the 2xx share is the correction. A retry
-    # is byte-identical to the request it repeats, so each byte is counted once, when accepted.
-    # If flash rejects everything this reads 0 and scaling falls to minReplicaCount plus the
-    # CPU/memory triggers — a broken backend, not an overloaded one.
+    # Term 2 — +1 pod while any 429 is seen. Term 1 measures *accepted* throughput, which is
+    # capped by current capacity, so a saturated cluster reads back only what it already
+    # serves and cannot see demand queued in the client. Escape then depends on measurement
+    # noise nudging ceil() over an integer boundary — observed taking ~6 min and 190 MB of
+    # client backlog to climb 6 -> 9 pods. This term makes the escape deterministic: capacity
+    # rises, accepted rises with it, and the loop ratchets up ~1 pod per HPA cycle until the
+    # rejections stop, at which point the term vanishes and it settles on term 1 alone.
+    #
+    # Boolean, not proportional to the reject share: with client retries the share counts
+    # attempts, not demand, so it overstates how much capacity is missing (35% 2xx at only
+    # 1.33x real overload) and scaling on it would overshoot. Measured over the 08-14 run,
+    # this term added +0 across 25 steady-state samples and exactly +1 throughout saturation,
+    # never compounding.
+    #
+    # 429 only, not the 4xx/5xx class: 429 is flash explicitly asking for less load. A 503 or
+    # a 401 means broken or misconfigured, where adding pods does not help.
+    #
+    # The inner "or vector(0)" is required, not defensive: before the first-ever 429 the series
+    # does not exist, and PromQL arithmetic against an empty vector yields empty — collapsing
+    # the whole metric to 0 and holding a fully loaded flash at minReplicaCount.
     #
     # metricType AverageValue gives desired = ceil(total_bytes / threshold). Do NOT use Value:
     # for External metrics it computes ceil(ratio x readyPods) (k8s replica_calculator.go),
@@ -59,20 +81,39 @@ spec:
       metricType: AverageValue
       metadata:
         serverAddress: {{ .Values.flash.keda.prometheusAddress | default (printf "http://prometheus-operated.%s.svc:9090" .Release.Namespace) }}
-        threshold: {{ .Values.flash.keda.threshold | quote }}
+        threshold: {{ $threshold | quote }}
         query: |
           (
-            sum(rate(envoy_cluster_upstream_cx_tx_bytes_total{envoy_cluster_name=~"{{ $flashCluster }}"}[{{ .Values.flash.keda.rateWindow }}]))
-            *
             (
-              sum(rate(envoy_cluster_upstream_rq_xx{envoy_cluster_name=~"{{ $flashCluster }}", envoy_response_code_class="2"}[{{ .Values.flash.keda.rateWindow }}]))
-              /
-              clamp_min(sum(rate(envoy_cluster_upstream_rq_xx{envoy_cluster_name=~"{{ $flashCluster }}"}[{{ .Values.flash.keda.rateWindow }}])), 0.001)
+              sum(rate(envoy_cluster_upstream_cx_tx_bytes_total{envoy_cluster_name=~"{{ $flashCluster }}"}[{{ $window }}]))
+              *
+              (
+                sum(rate(envoy_cluster_upstream_rq_xx{envoy_cluster_name=~"{{ $flashCluster }}", envoy_response_code_class="2"}[{{ $window }}]))
+                /
+                clamp_min(sum(rate(envoy_cluster_upstream_rq_xx{envoy_cluster_name=~"{{ $flashCluster }}"}[{{ $window }}])), 0.001)
+              )
+            )
+            +
+            (
+              {{ $threshold }}
+              *
+              (
+                (sum(rate(envoy_cluster_upstream_rq{envoy_cluster_name=~"{{ $flashCluster }}", envoy_response_code="429"}[{{ $window }}])) or vector(0))
+                > bool 0
+              )
             )
           ) or vector(0)
-    # Memory and CPU are the safety net, and the only triggers that see through a
-    # scale-down: resource metrics exclude Terminating pods, whereas external metrics
-    # count Terminating-but-Ready pods in status.replicas.
+    # Memory and CPU are the safety net, and the only triggers that see through a scale-down:
+    # resource metrics exclude Terminating pods, external metrics do not.
+    #
+    # The external metric depends on Terminating pods only inside the HPA's 10% tolerance
+    # band. GetExternalPerPodMetricReplicas computes usageRatio = usage / (threshold x
+    # status.replicas), and status.replicas counts pods still draining under the 1050s grace
+    # period. Outside the band it returns ceil(usage / threshold), independent of replica
+    # count; inside it returns status.replicas unchanged, so a scale-down pauses while
+    # Terminating pods linger. Measured 2026-08-14 at 11 replicas and 11.29 GB/hr:
+    # ratio 0.956, inside the band, so the HPA held at status.replicas. That is the intended
+    # deadband — a real scale-down drops load far enough to leave the band immediately.
     - type: memory
       metricType: Utilization
       metadata:

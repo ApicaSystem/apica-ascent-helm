@@ -62,6 +62,8 @@ flash:
   # when keda.enabled=true. Three triggers in keda-flash.yaml, where the ingest query and its
   # constraints are documented; HPA takes the highest desired across all of them:
   #   1. Ingest bytes/sec — primary signal, 1 pod per 1 GB/hr (1073741824 / 3600 = 298261).
+  #                         Counts accepted bytes only, plus 1 pod of headroom while flash
+  #                         returns 429, which is what lets it climb out of saturation.
   #   2. Memory (75%)     — safety net, and unlike external metrics excludes Terminating pods.
   #   3. CPU (75%)        — same, for compute spikes.
   #
@@ -73,6 +75,21 @@ flash:
     enabled: false
     minReplicas: 2
     maxReplicas: 20
+    # Bytes/sec of accepted ingest per pod. 298261 = 1 GB/hr (1073741824 / 3600).
+    #
+    # MUST stay <= flash's own per-pod cap, -max_bytes_per_sec in
+    # global.environment.rate_limit_flags (currently 346729 B/s = 1.25 GB/hr). The two are
+    # separate strings with nothing tying them together, so changing one alone breaks scaling.
+    #
+    # Why: a pod cannot accept more than its own cap, so at n pods accepted <= n x cap, and
+    # desired = ceil(accepted / threshold) + 1. Scale-up needs desired > n, which holds only
+    # while n < 1 / (1 - cap/threshold). With threshold <= cap that bound is infinite and
+    # scale-up always wins. With threshold > cap it is finite: flash pins there under a
+    # permanent 429 storm and a growing client backlog. At threshold = 2 x cap the bound is
+    # n < 2, i.e. stuck at minReplicas forever.
+    #
+    # Keeping threshold below cap (here 14% below) is the safe direction: it provisions a pod
+    # per 1 GB/hr against a 1.25 GB/hr capability, so pods scale before they hit their limit.
     threshold: "298261"
     fallbackReplicas: 2
     # rate() window for the ingest query. Must span at least 2 Envoy scrapes
