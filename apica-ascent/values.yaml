@@ -508,7 +508,7 @@ global:
     internal_cert_crt: ""
     internal_cert_key: ""
     extraflag: "-hauler-node-affinity=false --tail_longpoll=true -persist=true -rl_type=tokenbucket"
-    rate_limit_flags: "-max_bytes_per_sec=346729"
+    rate_limit_flags: "-max_bytes_per_sec=1388889"
   persistence:
     storageClass: oci-bv
   chart:
