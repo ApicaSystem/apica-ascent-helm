@@ -84,6 +84,10 @@ flash-discovery:
     requests:
       cpu: 10m
       memory: 16Mi
+  tls:
+    certSecretName: ""
+    postgres:
+      caCert: ""   # set to /flash/tls-certs/pg-ca.crt if needed; omit for publicly-signed certs
 
 redis:
   enabled: true

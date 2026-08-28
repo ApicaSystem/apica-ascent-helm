@@ -80,6 +80,10 @@ flash-discovery:
     requests:
       cpu: 10m
       memory: 16Mi
+  tls:
+    certSecretName: ''
+    postgres:
+      caCert: ''
 redis:
   enabled: true
   fullnameOverride: redis
