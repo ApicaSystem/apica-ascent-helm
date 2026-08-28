@@ -222,6 +222,8 @@ flash-coffee:
     certSecretName: ""
     postgres:
       caCert: ""   # set to /coffee/certs/pg-ca.crt if needed; omit for publicly-signed certs
+      #clientCert: "/flash/tls-certs/pg-client.crt"  # mTLS client cert
+      #clientKey: "/flash/tls-certs/pg-client.key"   # mTLS client key
     redis:
       caCert: "" # set to /coffee/certs/redis-ca.crt if needed; omit for publicly-signed certs
 

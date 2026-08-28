@@ -159,6 +159,8 @@ tls:
   # Must be set whenever any cert path below is configured.
   certSecretName: ""
   postgres:
-    caCert: ""    # e.g. /coffee/certs/pg-ca.crt; omit for publicly-signed certs
+    caCert: ""                                  # e.g. /coffee/certs/pg-ca.crt; omit for publicly-signed certs
+    clientCert: "/coffee/certs/pg-client.crt"  # mTLS client cert
+    clientKey: "/coffee/certs/pg-client.key"   # mTLS client key
   redis:
     caCert: ""    # e.g. /coffee/certs/redis-ca.crt; omit for publicly-signed certs
