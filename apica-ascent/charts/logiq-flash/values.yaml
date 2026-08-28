@@ -314,8 +314,8 @@ tls:
   # Must be set whenever any cert path below is configured.
   certSecretName: ""
   postgres:
-    sslrootcert: ""                              # e.g. /flash/tls-certs/pg-ca.crt; omit for publicly-signed certs
-    sslcert: "/flash/tls-certs/pg-client.crt"   # mTLS client cert
-    sslkey: "/flash/tls-certs/pg-client.key"    # mTLS client key
+    caCert: ""                                   # e.g. /flash/tls-certs/pg-ca.crt; omit for publicly-signed certs
+    clientCert: "/flash/tls-certs/pg-client.crt"   # mTLS client cert
+    clientKey: "/flash/tls-certs/pg-client.key"    # mTLS client key
   redis:
     caCert: ""        # e.g. /flash/tls-certs/redis-ca.crt; omit for publicly-signed certs

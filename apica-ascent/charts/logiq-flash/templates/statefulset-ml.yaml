@@ -290,15 +290,15 @@ spec:
             {{- if .Values.global.environment.postgres_tls.enabled }}
             - name: POSTGRES_SSLMODE
               value: {{ .Values.global.environment.postgres_tls.sslmode }}
-            {{- if .Values.tls.postgres.sslrootcert }}
+            {{- if .Values.tls.postgres.caCert }}
             - name: POSTGRES_SSLROOTCERT
-              value: {{ .Values.tls.postgres.sslrootcert }}
+              value: {{ .Values.tls.postgres.caCert }}
             {{- end }}
             {{- if .Values.global.environment.postgres_tls.mtls }}
             - name: POSTGRES_SSLCERT
-              value: {{ .Values.tls.postgres.sslcert }}
+              value: {{ .Values.tls.postgres.clientCert }}
             - name: POSTGRES_SSLKEY
-              value: {{ .Values.tls.postgres.sslkey }}
+              value: {{ .Values.tls.postgres.clientKey }}
             {{- end }}
             {{- end }}
             {{- if .Values.global.environment.redis_tls.enabled }}
