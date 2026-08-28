@@ -88,6 +88,8 @@ flash-discovery:
     certSecretName: ""
     postgres:
       caCert: ""   # set to /flash/tls-certs/pg-ca.crt if needed; omit for publicly-signed certs
+      #clientCert: "/flash/tls-certs/pg-client.crt"  # mTLS client cert
+      #clientKey: "/flash/tls-certs/pg-client.key"   # mTLS client key
 
 redis:
   enabled: true
