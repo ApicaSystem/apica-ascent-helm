@@ -115,7 +115,7 @@ spec:
               {{- end }}
               -h {{ .Values.global.environment.redis_host }} ping;
               do echo "waiting for {{ .Values.global.environment.redis_host }}"; sleep 1; done;
-          {{- if and .Values.global.environment.redis_tls.enabled .Values.tls.redis.caCert (not .Values.global.environment.redis_tls.skip_verify) }}
+          {{- if and .Values.global.environment.redis_tls.enabled .Values.tls.certSecretName (not .Values.global.environment.redis_tls.skip_verify) }}
           volumeMounts:
             - mountPath: /flash/tls-certs
               name: tls-certs
