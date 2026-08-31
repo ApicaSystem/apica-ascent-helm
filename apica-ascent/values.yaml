@@ -514,6 +514,8 @@ global:
     postgres_coffee_db: "coffee"
     postgres_tls:
       enabled: false  # set to true to enable TLS for postgres connections
+      sslmode: "verify-full"
+      mtls: false
     s3_url: "https://<bucket-namespace>.compat.objectstorage.<region>.oraclecloud.com"
     s3_access: "s3_access"
     s3_secret: "s3_secret"

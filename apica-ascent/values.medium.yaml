@@ -476,6 +476,8 @@ global:
     postgres_coffee_db: coffee
     postgres_tls:
       enabled: false
+      sslmode: verify-full
+      mtls: false
     s3_url: '##YOUR_S3_URL##'
     s3_access: '##YOUR_S3_ACCESS_KEY##'
     s3_secret: '##YOUR_S3_ACCESS_SECRET##'
