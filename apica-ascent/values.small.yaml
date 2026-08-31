@@ -61,6 +61,8 @@ logiq-flash:
     certSecretName: ''
     postgres:
       caCert: ''
+      clientCert: /flash/tls-certs/pg-client.crt
+      clientKey: /flash/tls-certs/pg-client.key
     redis:
       caCert: ''
   secrets_name: my-ascent-ingest
@@ -84,6 +86,8 @@ flash-discovery:
     certSecretName: ''
     postgres:
       caCert: ''
+      clientCert: /flash/tls-certs/pg-client.crt
+      clientKey: /flash/tls-certs/pg-client.key
 redis:
   enabled: true
   fullnameOverride: redis
@@ -213,6 +217,8 @@ flash-coffee:
     certSecretName: ''
     postgres:
       caCert: ''
+      clientCert: /coffee/certs/pg-client.crt
+      clientKey: /coffee/certs/pg-client.key
     redis:
       caCert: ''
 thanos:
