@@ -468,6 +468,7 @@ global:
     redis_port: '6379'
     redis_tls:
       enabled: false
+      skip_verify: false
     postgres_host: postgres
     postgres_port: '5432'
     postgres_user: postgres

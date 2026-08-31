@@ -505,6 +505,7 @@ global:
     redis_port: "6379"
     redis_tls:
       enabled: false  # set to true to enable TLS for redis connections
+      skip_verify: false
     # When migrating to CNPG, update these values to point to the new CNPG service.
     postgres_host: "postgres"
     postgres_port: "5432"
