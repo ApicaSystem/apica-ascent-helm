@@ -60,11 +60,20 @@ logiq-flash:
   kafka_client:
     enabled: true
     kafka_args: "-kafka_ca_cert_path=/flash/kafka/ca.crt -kafka_client_key_path=/flash/kafka/tls.key -kafka_client_cert_path=/flash/kafka/tls.crt"
+  tls:
+    certSecretName: ""
+    postgres:
+      caCert: ""   # set to /flash/tls-certs/pg-ca.crt if needed; omit for publicly-signed certs
+      # mTLS gated by global.environment.postgres_tls.mtls
+      clientCert: "/flash/tls-certs/pg-client.crt"  # mTLS client cert
+      clientKey: "/flash/tls-certs/pg-client.key"   # mTLS client key
+    redis:
+      caCert: "" # set to /flash/tls-certs/redis-ca.crt if needed; omit for publicly-signed certs
 flash-discovery:
   fullnameOverride: flash-discovery
   image:
     repository: logiqai/flash-discovery
-    tag: 2.0.3
+    tag: v2.0.5
     pullPolicy: IfNotPresent
   replicaCountDiscovery: 2
   persistence:
@@ -76,6 +85,13 @@ flash-discovery:
     requests:
       cpu: 10m
       memory: 16Mi
+  tls:
+    certSecretName: ""
+    postgres:
+      caCert: ""   # set to /flash/tls-certs/pg-ca.crt if needed; omit for publicly-signed certs
+      # mTLS gated by global.environment.postgres_tls.mtls
+      clientCert: "/flash/tls-certs/pg-client.crt"  # mTLS client cert
+      clientKey: "/flash/tls-certs/pg-client.key"   # mTLS client key
 
 redis:
   enabled: true
@@ -204,6 +220,15 @@ flash-coffee:
         cpu: 100m
       limits:
         memory: 2000Mi
+  tls:
+    certSecretName: ""
+    postgres:
+      caCert: ""   # set to /coffee/certs/pg-ca.crt if needed; omit for publicly-signed certs
+      # mTLS gated by global.environment.postgres_tls.mtls
+      clientCert: "/coffee/certs/pg-client.crt"  # mTLS client cert
+      clientKey: "/coffee/certs/pg-client.key"   # mTLS client key
+    redis:
+      caCert: "" # set to /coffee/certs/redis-ca.crt if needed; omit for publicly-signed certs
 
 thanos:
   createObjstoreSecret: true
@@ -471,13 +496,16 @@ global:
   toolbox:
     image:
       repository: logiqai/toolbox
-      tag: 2.0.1
+      tag: 2.1.0
   environment:
     logiq_flash_host: logiq-flash
     logiq_flash_port: 9999
     redis_opts: true
     redis_host: "redis-master"
     redis_port: "6379"
+    redis_tls:
+      enabled: false  # set to true to enable TLS for redis connections
+      skip_verify: false
     # When migrating to CNPG, update these values to point to the new CNPG service.
     postgres_host: "postgres"
     postgres_port: "5432"
@@ -485,6 +513,10 @@ global:
     postgres_password: "postgres"
     postgres_db: "postgres"
     postgres_coffee_db: "coffee"
+    postgres_tls:
+      enabled: false  # set to true to enable TLS for postgres connections
+      sslmode: "verify-full"
+      mtls: false
     s3_url: "https://<bucket-namespace>.compat.objectstorage.<region>.oraclecloud.com"
     s3_access: "s3_access"
     s3_secret: "s3_secret"

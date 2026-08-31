@@ -57,12 +57,20 @@ logiq-flash:
   kafka_client:
     enabled: false
     kafka_args: -kafka_ca_cert_path=/flash/kafka/ca.crt -kafka_client_key_path=/flash/kafka/tls.key -kafka_client_cert_path=/flash/kafka/tls.crt
+  tls:
+    certSecretName: ''
+    postgres:
+      caCert: ''
+      clientCert: /flash/tls-certs/pg-client.crt
+      clientKey: /flash/tls-certs/pg-client.key
+    redis:
+      caCert: ''
   secrets_name: my-ascent-ingest
 flash-discovery:
   fullnameOverride: flash-discovery
   image:
     repository: logiqai/flash-discovery
-    tag: 2.0.3
+    tag: v2.0.5
     pullPolicy: IfNotPresent
   replicaCountDiscovery: 1
   persistence:
@@ -74,6 +82,12 @@ flash-discovery:
     requests:
       cpu: 10m
       memory: 16Mi
+  tls:
+    certSecretName: ''
+    postgres:
+      caCert: ''
+      clientCert: /flash/tls-certs/pg-client.crt
+      clientKey: /flash/tls-certs/pg-client.key
 redis:
   enabled: true
   fullnameOverride: redis
@@ -199,6 +213,14 @@ flash-coffee:
         cpu: 100m
       limits:
         memory: 2000Mi
+  tls:
+    certSecretName: ''
+    postgres:
+      caCert: ''
+      clientCert: /coffee/certs/pg-client.crt
+      clientKey: /coffee/certs/pg-client.key
+    redis:
+      caCert: ''
 thanos:
   createObjstoreSecret: true
   receive:
@@ -437,19 +459,26 @@ global:
   toolbox:
     image:
       repository: logiqai/toolbox
-      tag: 2.0.1
+      tag: 2.1.0
   environment:
     logiq_flash_host: logiq-flash
     logiq_flash_port: 9999
     redis_opts: true
     redis_host: redis-master
     redis_port: '6379'
+    redis_tls:
+      enabled: false
+      skip_verify: false
     postgres_host: postgres
     postgres_port: '5432'
     postgres_user: postgres
     postgres_password: '##YOUR_POSTGRES_PASSWORD##'
     postgres_db: postgres
     postgres_coffee_db: coffee
+    postgres_tls:
+      enabled: false
+      sslmode: verify-full
+      mtls: false
     s3_url: '##YOUR_S3_URL##'
     s3_access: '##YOUR_S3_ACCESS_KEY##'
     s3_secret: '##YOUR_S3_ACCESS_SECRET##'
@@ -530,7 +559,7 @@ cnpg:
         memory: 20000Mi
     postgresql:
       parameters:
-        pg_stat_statements.max: "5000"
+        pg_stat_statements.max: '5000'
         pg_stat_statements.track: all
         max_connections: '400'
         shared_buffers: 1024MB

@@ -144,5 +144,23 @@ global:
     admin_email: "flash-admin@foo.com"
     cluster_id: demo
     gacode: ""
+    postgres_tls:
+      enabled: false
+      sslmode: "verify-full"
+      mtls: false     # set true to add client cert params (requires pg-client.crt/pg-client.key in cert secret)
+    redis_tls:
+      enabled: false
+      cert_reqs: "required"   # REDIS_SSL_CERT_REQS; none/optional to downgrade verification
   persistence:
     storageClass: oci-bv
+
+tls:
+  # Secret mounted into coffee pods at /coffee/certs.
+  # Must be set whenever any cert path below is configured.
+  certSecretName: ""
+  postgres:
+    caCert: ""                                  # e.g. /coffee/certs/pg-ca.crt; omit for publicly-signed certs
+    clientCert: "/coffee/certs/pg-client.crt"  # mTLS client cert
+    clientKey: "/coffee/certs/pg-client.key"   # mTLS client key
+  redis:
+    caCert: ""    # e.g. /coffee/certs/redis-ca.crt; omit for publicly-signed certs
