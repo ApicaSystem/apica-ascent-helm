@@ -97,7 +97,7 @@ spec:
               {{- end }}
               -h {{ .Values.global.environment.redis_host }} ping;
               do echo "waiting for {{ .Values.global.environment.redis_host }}"; sleep 1; done;
-          {{- if and .Values.global.environment.redis_tls.enabled .Values.tls.redis.caCert }}
+          {{- if and .Values.global.environment.redis_tls.enabled .Values.tls.certSecretName }}
           volumeMounts:
             - mountPath: /coffee/certs
               name: tls-certs
