@@ -64,8 +64,9 @@ logiq-flash:
     certSecretName: ""
     postgres:
       caCert: ""   # set to /flash/tls-certs/pg-ca.crt if needed; omit for publicly-signed certs
-      #clientCert: "/flash/tls-certs/pg-client.crt"  # mTLS client cert
-      #clientKey: "/flash/tls-certs/pg-client.key"   # mTLS client key
+      # mTLS gated by global.environment.postgres_tls.mtls
+      clientCert: "/flash/tls-certs/pg-client.crt"  # mTLS client cert
+      clientKey: "/flash/tls-certs/pg-client.key"   # mTLS client key
     redis:
       caCert: "" # set to /flash/tls-certs/redis-ca.crt if needed; omit for publicly-signed certs
 flash-discovery:
@@ -88,8 +89,9 @@ flash-discovery:
     certSecretName: ""
     postgres:
       caCert: ""   # set to /flash/tls-certs/pg-ca.crt if needed; omit for publicly-signed certs
-      #clientCert: "/flash/tls-certs/pg-client.crt"  # mTLS client cert
-      #clientKey: "/flash/tls-certs/pg-client.key"   # mTLS client key
+      # mTLS gated by global.environment.postgres_tls.mtls
+      clientCert: "/flash/tls-certs/pg-client.crt"  # mTLS client cert
+      clientKey: "/flash/tls-certs/pg-client.key"   # mTLS client key
 
 redis:
   enabled: true
@@ -222,8 +224,9 @@ flash-coffee:
     certSecretName: ""
     postgres:
       caCert: ""   # set to /coffee/certs/pg-ca.crt if needed; omit for publicly-signed certs
-      #clientCert: "/flash/tls-certs/pg-client.crt"  # mTLS client cert
-      #clientKey: "/flash/tls-certs/pg-client.key"   # mTLS client key
+      # mTLS gated by global.environment.postgres_tls.mtls
+      clientCert: "/coffee/certs/pg-client.crt"  # mTLS client cert
+      clientKey: "/coffee/certs/pg-client.key"   # mTLS client key
     redis:
       caCert: "" # set to /coffee/certs/redis-ca.crt if needed; omit for publicly-signed certs
 
