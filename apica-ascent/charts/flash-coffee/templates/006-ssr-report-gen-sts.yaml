@@ -1,0 +1,79 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app: ssr-report-gen-deployment
+  name: ssr-report-gen
+  namespace: {{ .Release.Namespace }}
+spec:
+  replicas: {{ .Values.ssr_report_gen.replicaCount }}
+  serviceName: ssr-report-gen
+  selector:
+    matchLabels:
+      app: ssr-report-gen
+  # Rolling update: 1 pod down at a time; readinessProbe gates traffic during rollout.
+  updateStrategy:
+    type: {{ .Values.ssr_report_gen.updateStrategy.type }}
+    {{- if eq .Values.ssr_report_gen.updateStrategy.type "RollingUpdate" }}
+    rollingUpdate:
+      maxUnavailable: {{ .Values.ssr_report_gen.updateStrategy.maxUnavailable }}
+    {{- end }}
+  template:
+    metadata:
+      labels:
+        app: ssr-report-gen
+    spec:
+      serviceAccountName: flash-coffee
+      # preStop(15s) fills the LB-drain gap before SIGTERM; 60s is the hard ceiling.
+      terminationGracePeriodSeconds: {{ .Values.ssr_report_gen.terminationGracePeriodSeconds }}
+
+      {{- include "flash-coffee.podScheduling" (dict "root" $ "app" "ssr-report-gen" "values" .Values.ssr_report_gen) | nindent 6 }}
+
+      {{- if .Values.useSecret }}
+      imagePullSecrets:
+        - name: {{ required "pullSecretName is required" .Values.pullSecretName }}
+      {{- end }}
+
+      containers:
+        - name: ssr-report-gen
+          image: {{ .Values.global.imageRegistry }}/logiqai/ssr-server:{{ .Values.ssr_report_gen.image.tag }}
+          imagePullPolicy: IfNotPresent
+          # Sleep before SIGTERM so the LB stops routing before the process exits.
+          lifecycle:
+            preStop:
+              exec:
+                command: ["sh", "-c", "sleep {{ .Values.ssr_report_gen.preStopSleepSeconds }}"]
+          env:
+            - name: SSR_HOST
+              value: 0.0.0.0
+            - name: __VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS
+              value: coffee
+          ports:
+            - containerPort: 5173
+              name: ssr
+              protocol: TCP
+
+          readinessProbe:
+            tcpSocket:
+              port: 5173
+            initialDelaySeconds: 15
+            periodSeconds: 15
+            timeoutSeconds: 5
+            successThreshold: 1
+            failureThreshold: 3
+
+          livenessProbe:
+            tcpSocket:
+              port: 5173
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 5
+            successThreshold: 1
+            failureThreshold: 3
+
+          {{- if .Values.ssr_report_gen.resources }}
+          resources:
+            {{- toYaml .Values.ssr_report_gen.resources | nindent 12 }}
+          {{- end }}
+
+      restartPolicy: Always

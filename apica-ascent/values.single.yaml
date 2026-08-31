@@ -142,7 +142,7 @@ redis:
     create: true
     name: redis
 postgres:
-  enabled: true
+  enabled: false
   fullnameOverride: postgres
   postgresqlPostgresPassword: '##YOUR_POSTGRES_ROOT_PASSWORD##'
   postgresqlUsername: postgres
@@ -199,6 +199,16 @@ flash-coffee:
         cpu: 100m
       limits:
         memory: 2000Mi
+  ssr_report_gen:
+    replicaCount: 1
+    resources:
+      requests:
+        memory: 300Mi
+        cpu: 100m
+      limits:
+        memory: 1000Mi
+    pdb:
+      minAvailable: 0
 thanos:
   createObjstoreSecret: true
   receive:
@@ -478,7 +488,7 @@ global:
     storageClass: openebs-hostpath
   chart:
     prometheus: true
-    postgres: true
+    postgres: false
     redis: true
     s3gateway: false
     grafana: false
@@ -491,24 +501,24 @@ cnpg:
     username: postgres
     password: postgres
   mode: standalone
-  recovery:
-    method: import
-    import:
-      type: monolith
-      databases:
-      - '*'
-      roles:
-      - '*'
-      source:
-        host: postgres
-        port: 5432
-        username: postgres
-        database: postgres
-        sslMode: disable
-        passwordSecret:
-          name: cnpg-import-source-password
-          key: password
-          value: postgres
+  # recovery:
+  #   method: import
+  #   import:
+  #     type: monolith
+  #     databases:
+  #     - '*'
+  #     roles:
+  #     - '*'
+  #     source:
+  #       host: postgres
+  #       port: 5432
+  #       username: postgres
+  #       database: postgres
+  #       sslMode: disable
+  #       passwordSecret:
+  #         name: cnpg-import-source-password
+  #         key: password
+  #         value: postgres
   cluster:
     instances: 2
     imageName: ghcr.io/cloudnative-pg/postgresql:18

@@ -81,6 +81,31 @@ ingress:
   # requests:
   #  cpu: 100m
   #  memory: 128Mi
+ssr_report_gen:
+  image:
+    tag: ssr-v4.0.1
+  # port == targetPort: the only port ever in play was the container's own
+  # 5173 (the old sidecar had no Service at all, just localhost:5173).
+  port: 5173
+  targetPort: 5173
+  replicaCount: 3
+  resources: {}
+
+  topologySpreadConstraints:
+    enabled: true
+    maxSkew: 1
+    whenUnsatisfiable: ScheduleAnyway   # soft — never blocks scheduling
+  podAntiAffinity:
+    enabled: true
+    weight: 100
+  updateStrategy:
+    type: RollingUpdate
+    maxUnavailable: 1
+  terminationGracePeriodSeconds: 60
+  preStopSleepSeconds: 15
+  pdb:
+    enabled: true
+    minAvailable: 1
 
 global:
   domain: null

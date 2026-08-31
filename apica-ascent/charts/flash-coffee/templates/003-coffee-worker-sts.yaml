@@ -11,7 +11,8 @@ spec:
   selector:
     matchLabels:
       app: coffee-worker
-  # Rolling update: 1 pod down at a time; readinessProbe gates traffic during rollout.
+  # Rolling update: 1 pod down at a time. No readiness/liveness probes on this
+  # worker — there's no component to check (no HTTP port, no health endpoint).
   updateStrategy:
     type: {{ .Values.coffee_worker.updateStrategy.type }}
     rollingUpdate:
@@ -25,58 +26,7 @@ spec:
       # preStop(15s) fills the LB-drain gap before SIGTERM; 60s is the hard ceiling.
       terminationGracePeriodSeconds: {{ .Values.coffee_worker.terminationGracePeriodSeconds }}
 
-      # Soft spread across nodes and zones — ScheduleAnyway never blocks scheduling.
-      {{- if .Values.coffee_worker.topologySpreadConstraints.enabled }}
-      topologySpreadConstraints:
-        - maxSkew: {{ .Values.coffee_worker.topologySpreadConstraints.maxSkew }}
-          topologyKey: kubernetes.io/hostname
-          whenUnsatisfiable: {{ .Values.coffee_worker.topologySpreadConstraints.whenUnsatisfiable }}
-          labelSelector:
-            matchLabels:
-              app: coffee-worker
-        - maxSkew: {{ .Values.coffee_worker.topologySpreadConstraints.maxSkew }}
-          topologyKey: topology.kubernetes.io/zone
-          whenUnsatisfiable: {{ .Values.coffee_worker.topologySpreadConstraints.whenUnsatisfiable }}
-          labelSelector:
-            matchLabels:
-              app: coffee-worker
-      {{- end }}
-
-      affinity:
-        {{- if .Values.global.nodeSelectors.enabled }}
-        nodeAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            nodeSelectorTerms:
-              - matchExpressions:
-                  - key: {{ .Values.global.nodeSelectors.label }}
-                    operator: In
-                    values:
-                      - {{ .Values.global.nodeSelectors.other }}
-        {{- end }}
-        # Preferred anti-affinity: adds scheduling pressure without ever blocking.
-        {{- if .Values.coffee_worker.podAntiAffinity.enabled }}
-        podAntiAffinity:
-          preferredDuringSchedulingIgnoredDuringExecution:
-            - weight: {{ .Values.coffee_worker.podAntiAffinity.weight }}
-              podAffinityTerm:
-                topologyKey: kubernetes.io/hostname
-                labelSelector:
-                  matchLabels:
-                    app: coffee-worker
-        {{- end }}
-
-      {{- if .Values.global.taints.enabled }}
-      tolerations:
-        - key: dedicated
-          operator: Equal
-          value: {{ .Values.global.taints.other }}
-          effect: NoSchedule
-      {{- end }}
-
-      securityContext:
-        fsGroup: 1000
-        runAsUser: 1000
-        runAsGroup: 1000
+      {{- include "flash-coffee.podScheduling" (dict "root" $ "app" "coffee-worker" "values" .Values.coffee_worker) | nindent 6 }}
 
       {{- if .Values.useSecret }}
       imagePullSecrets:
@@ -143,8 +93,11 @@ spec:
               value: {{ include "flash-coffee.confighash" . | quote }}
             - name: PYTHONUNBUFFERED
               value: "0"
+            # ssr-report-gen used to be a same-pod sidecar (SSR_HOST=0.0.0.0 was
+            # its own bind address); now it's a separate StatefulSet, so point
+            # this at its governing Service's DNS name instead.
             - name: SSR_HOST
-              value: 0.0.0.0
+              value: ssr-report-gen
             - name: COOKIE_SECRET
               value: d84c0edd-ab5e-4664-b0ee-2cd15a9ae5f0
             - name: QUEUES
@@ -333,42 +286,9 @@ spec:
               mountPath: /app/sharedcerts
             {{- end }}
 
-          # tcpSocket on port 5173 (ssr-report-gen sidecar) — no HTTP port on the worker itself.
-          readinessProbe:
-            tcpSocket:
-              port: 5173
-            initialDelaySeconds: 15
-            periodSeconds: 15
-            timeoutSeconds: 5
-            successThreshold: 1
-            failureThreshold: 3
-
-          livenessProbe:
-            tcpSocket:
-              port: 5173
-            initialDelaySeconds: 30
-            periodSeconds: 30
-            timeoutSeconds: 5
-            successThreshold: 1
-            failureThreshold: 3
-
           {{- if .Values.coffee_worker.resources }}
           resources:
             {{- toYaml .Values.coffee_worker.resources | nindent 12 }}
           {{- end }}
-
-        - name: ssr-report-gen
-          image: {{ .Values.global.imageRegistry }}/logiqai/ssr-server:ssr-v4.0.1
-          imagePullPolicy: IfNotPresent
-          env:
-            - name: SSR_HOST
-              value: 0.0.0.0
-            - name: __VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS
-              value: coffee
-          ports:
-            - containerPort: 5173
-              name: ssr
-              protocol: TCP
-          resources: {}
 
       restartPolicy: Always
