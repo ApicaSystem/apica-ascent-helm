@@ -149,6 +149,11 @@ spec:
           secret:
             secretName: {{ .Values.global.sharedSecretName }}
         {{- end }}
+        {{- if .Values.global.environment.s3_credentials_secret.name }}
+        - name: s3-creds
+          secret:
+            secretName: {{ .Values.global.environment.s3_credentials_secret.name }}
+        {{- end }}
         {{- if .Values.kafka_client.enabled }}
         - name: apica-kafka-secret
           secret:
@@ -314,6 +319,11 @@ spec:
             {{- if .Values.global.sharedSecretName }}
             - mountPath: /flash/sharedcerts
               name: sharedcert
+            {{- end }}
+            {{- if .Values.global.environment.s3_credentials_secret.name }}
+            - mountPath: {{ .Values.global.environment.s3_credentials_secret.mount_path }}
+              name: s3-creds
+              readOnly: true
             {{- end }}
             {{- if .Values.global.environment.s3_custom_ca.enabled }}
             - mountPath: /etc/ssl/certs/ca.crt
@@ -565,6 +575,11 @@ spec:
             {{- if .Values.global.sharedSecretName }}
             - mountPath: /flash/sharedcerts
               name: sharedcert
+            {{- end }}
+            {{- if .Values.global.environment.s3_credentials_secret.name }}
+            - mountPath: {{ .Values.global.environment.s3_credentials_secret.mount_path }}
+              name: s3-creds
+              readOnly: true
             {{- end }}
             {{- if .Values.global.environment.s3_custom_ca.enabled }}
             - mountPath: /etc/ssl/certs/ca.crt

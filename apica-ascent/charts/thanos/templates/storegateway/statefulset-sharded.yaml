@@ -185,8 +185,12 @@ spec:
             {{- $.Values.storegateway.extraFlags | toYaml | nindent 12 }}
             {{- end }}
             {{- end }}
+          {{- if or $.Values.storegateway.extraEnvVars $.Values.global.environment.s3_credentials_secret.name }}
+          env:
+          {{- include "thanos.s3CredentialsEnvVars" $ | nindent 12 }}
           {{- if $.Values.storegateway.extraEnvVars }}
-          env: {{- include "common.tplvalues.render" (dict "value" $.Values.storegateway.extraEnvVars "context" $) | nindent 12 }}
+          {{- include "common.tplvalues.render" (dict "value" $.Values.storegateway.extraEnvVars "context" $) | nindent 12 }}
+          {{- end }}
           {{- end }}
           {{- if or $.Values.storegateway.extraEnvVarsCM $.Values.storegateway.extraEnvVarsSecret }}
           envFrom:
