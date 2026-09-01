@@ -49,6 +49,17 @@ data:
     
               access_key: {{ .Values.global.environment.s3_access}}
 
+{{ else if .Values.global.environment.s3_credentials_secret.name }}
+
+              access_key_file: {{ .Values.global.environment.s3_credentials_secret.mount_path }}/{{ .Values.global.environment.s3_credentials_secret.access_key_name }}
+
+              secret_key_file: {{ .Values.global.environment.s3_credentials_secret.mount_path }}/{{ .Values.global.environment.s3_credentials_secret.secret_key_name }}
+{{ if .Values.global.environment.s3_credentials_secret.session_token_name }}
+
+              session_token_file: {{ .Values.global.environment.s3_credentials_secret.mount_path }}/{{ .Values.global.environment.s3_credentials_secret.session_token_name }}
+
+{{ end }}
+
 {{ else if eq .Values.global.cloudProvider "aws" }}
 
               secret_key: {{ required "AWS Secret access key" .Values.global.environment.AWS_SECRET_ACCESS_KEY }}
