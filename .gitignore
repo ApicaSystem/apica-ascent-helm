@@ -1,1 +1,5 @@
 rendered.yaml
+
+# installer config with real credentials
+installer/ascent.conf
+installer/ascent-secrets.conf
