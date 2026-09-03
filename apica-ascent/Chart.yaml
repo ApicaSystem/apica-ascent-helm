@@ -1,6 +1,6 @@
 apiVersion: v2
 version: 4.0.0
-appVersion: v2.16.7
+appVersion: v3.0.5
 description: Apica Ascent - Cloud-native observability platform
 keywords:
   - apica
@@ -24,6 +24,9 @@ dependencies:
   - name: flash-coffee
     version: 1.0.0
     condition: global.chart.flash-coffee
+  - name: kube-prometheus-stack
+    repository: https://prometheus-community.github.io/helm-charts
+    version: 88.6.3
   - name: logiq-flash
     version: 1.0.0
     condition: global.chart.logiq-flash
