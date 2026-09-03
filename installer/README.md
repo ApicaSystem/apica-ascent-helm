@@ -11,7 +11,7 @@ breaks self-managed Kubernetes.
 
 ## Requirements
 
-- Ubuntu 22.04+/Debian 11+ (RHEL family works with notes) x86_64 nodes, passwordless sudo
+- Ubuntu 22.04+, Debian 11+, Amazon Linux 2023 or a RHEL 8+ derivative, x86_64, passwordless sudo
 - Run the installer **on the controller node**
 - Per node: 4+ CPU (8 recommended), **16 GB RAM** (pod requests total ~13–17 GiB;
   below 14 GiB pods stay Pending), 50 GB free for images plus disk for data
@@ -236,6 +236,22 @@ bootstraps the admin account a few minutes after it starts).
   (never on a command line), are stored with mode 0600, invalidated on the controller after the
   join, and deleted from the worker once its kubelet client config exists.
 
+## Existing clusters (EKS, OpenShift, any managed Kubernetes)
+
+`CLUSTER_MODE="existing"` deploys onto the cluster of the current kubeconfig instead of
+installing k0s. The network, k0s, workers and addons phases are skipped; Envoy Gateway, the
+CNPG operator and the application are installed as usual. Requirements: an operator host with
+bash 5, curl, openssl, kubectl and helm 3 (Linux, or macOS with Homebrew bash), cluster-admin
+permissions, a storage class named in `STORAGE_CLASS`
+(for example `gp3`), and a LoadBalancer implementation (cloud controller, MetalLB, ...).
+Preflight checks these, sizes against the cluster's allocatable CPU and memory, and `verify`
+probes the gateway through the address the LoadBalancer assigns, IP or hostname.
+`CLOUD_PROVIDER="aws"` adds the NLB annotations to the Envoy service; `oci` keeps the chart's
+OCI annotations; `none` removes them. On a shared cluster that already runs Envoy Gateway or the
+CNPG operator under the same release names, use `app install` rather than `platform install`
+so those shared releases are not upgraded. OpenShift additionally needs SCC permissions for the
+chart's fixed-UID containers, which the installer does not manage.
+
 ## Database
 
 `DB_ENGINE=bitnami` (default) deploys the chart's single-instance Bitnami
@@ -253,21 +269,22 @@ sandboxes. For an S3 endpoint with a private CA set `S3_CA_FILE`: the installer
 creates the `ascent-s3-ca` configmap, enables `s3_custom_ca`, and mounts the CA
 into every Thanos component as the docs describe.
 
-## OCI (Oracle Cloud) notes
+## Cloud VMs (OCI, AWS EC2) with k0s
 
-OCI VCNs enforce source/destination checks that **silently drop packets with
+OCI VCNs and EC2 ENIs enforce source/destination checks that **silently drop packets with
 pod-IP sources**, breaking konnectivity tunnels, `kubectl logs/exec`, and
 cross-node pod traffic on self-managed clusters. With
-`APPLY_NETWORK_FIXES=auto` (default) the installer detects OCI and:
+`APPLY_NETWORK_FIXES=auto` (default) the installer detects Oracle Cloud or EC2 and:
 
 1. configures kube-router with `overlay-type=full` (IPIP) + `ipMasq`, and
 2. adds a `POSTROUTING` SNAT rule on every node for pod→node traffic
    (kube-router's own masquerade rule excludes node-IP destinations).
 
-The VCN security list must still allow: 22, 80, 443 (public as needed), and
-intra-subnet 6443/8132/9443/10250 **plus IPIP (protocol 4)**. Alternatively,
-disable "source/destination check" on every VNIC and set
-`APPLY_NETWORK_FIXES=false`. OCI Object Storage: the access key is the 40-hex
+The VCN security list or EC2 security group must still allow: 22, 80, 443 (public as needed),
+and intra-subnet 6443/8132/9443/10250 **plus IPIP (protocol 4)**. Alternatively, disable the
+source/destination check on every VNIC or ENI and set `APPLY_NETWORK_FIXES=false`. On Amazon
+Linux install `iptables-nft` (and `iptables-services` if the rules should survive reboots);
+`SSH_USER` is `ec2-user` there. OCI Object Storage: the access key is the 40-hex
 string and the secret the base64 string — preflight flags them when swapped.
 
 ## Upgrades / changing configuration
@@ -304,6 +321,12 @@ Found while testing chart 3.1.5 on the OCI reference host:
 - The first-install-failed state (`helm upgrade --install` → "has no deployed
   releases") is recovered by uninstalling revision 1 and reinstalling;
   persistent volumes are kept.
+- **Release name must equal the namespace.** The vendored kube-prometheus template
+  points the Thanos sidecar at `<namespace>-thanos-objstore-secret`, while the Thanos
+  subchart creates `<release>-thanos-objstore-secret`. With different names the
+  Prometheus pod stays in `CreateContainerConfigError`; preflight now rejects the
+  combination. Found on the SRE OKE cluster with `RELEASE_NAME=installer-test` in
+  namespace `ascent-installer-test`.
 
 ## Known limitations
 

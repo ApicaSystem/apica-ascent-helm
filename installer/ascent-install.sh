@@ -45,11 +45,11 @@
 # Every run writes a redacted log to ~/ascent-install/logs/. On failure the installer prints
 # diagnostics, the last successful phase and the exact command to resume.
 
-# The whole script lives in main() so bash parses the entire file before running anything:
-# replacing or editing this file while an install is in progress cannot break the running copy.
+# Everything lives in main(): bash parses the whole file before executing, so replacing the
+# file during a run cannot affect the running copy.
 main() {
 set -Eeuo pipefail
-# minimal trap until the full diagnostics trap is armed further down — nothing may ever die silently
+# provisional ERR trap until the diagnostics trap is installed below
 trap 'echo "[ascent-install] ERROR: command failed (exit $?) at line ${LINENO}: ${BASH_COMMAND}" >&2' ERR
 
 INSTALLER_VERSION="0.3.0"
@@ -109,7 +109,9 @@ NAMESPACE="apica-ascent"
 EXTRA_VALUES_FILE=""                # optional extra helm values file (applied last)
 IMAGE_REGISTRY=""                   # optional private registry mirror (global.imageRegistry)
 
-# --- cluster topology ---
+# --- cluster ---
+CLUSTER_MODE="k0s"                  # k0s: install/adopt k0s on this host | existing: use the current kubeconfig (EKS, OpenShift, ...)
+CLOUD_PROVIDER="none"               # LoadBalancer annotations for existing clusters: none | aws (NLB) | oci (chart defaults)
 PRIVATE_IP=""                       # auto-detected when empty
 PUBLIC_IP=""                        # optional; added to API SANs and used in verify
 WORKERS=""                          # "ip:pool ip:pool ..." pools: ingest | base | common
@@ -175,7 +177,7 @@ TLS_CERT_FILE TLS_KEY_FILE TLS_CA_FILE TLS_SELF_SIGNED S3_URL S3_BUCKET S3_REGIO
 S3_CA_FILE ADMIN_NAME ADMIN_PASSWORD ADMIN_ORG ADMIN_EMAIL PG_PASSWORD DB_ENGINE RATE_LIMIT_FLAGS
 STORAGE_CLASS UPLOAD_DASHBOARD INSTALL_DIR MIN_CPU REC_CPU MIN_RAM_MIB REC_RAM_MIB MIN_DISK_GB REC_DISK_GB
 ADOPT_EXISTING_CLUSTER SKIP_CHECKSUM_VERIFY K0S_SHA256 KUBECTL_SHA256 HELM_SHA256 SECRETS_FILE
-INGEST_GB_PER_DAY INGEST_MODE WORKLOAD_TIER INGEST_DESTINATIONS PEAK_MULTIPLIER"
+INGEST_GB_PER_DAY INGEST_MODE WORKLOAD_TIER INGEST_DESTINATIONS PEAK_MULTIPLIER CLUSTER_MODE CLOUD_PROVIDER"
 SECRET_VARS="ADMIN_PASSWORD PG_PASSWORD S3_ACCESS S3_SECRET"
 PATH_VARS="INSTALL_DIR TLS_CERT_FILE TLS_KEY_FILE TLS_CA_FILE S3_CA_FILE SSH_KEY EXTRA_VALUES_FILE CHART_PATH SECRETS_FILE"
 
@@ -297,10 +299,9 @@ exec > >(redact | tee -a "${LOG_FILE}") 2>&1
 TMP_DIR="$(mktemp -d "${INSTALL_DIR}/tmp.XXXXXX")"; chmod 700 "${TMP_DIR}"
 trap 'rm -rf "${TMP_DIR}"' EXIT
 
-# The pinned checksums belong to the pinned versions. If a version was overridden in the config but
-# its checksum still is the built-in pin, that pin cannot be right: clear it so verify_sha256 demands
-# a matching *_SHA256 (or an explicit SKIP_CHECKSUM_VERIFY=true) instead of failing on a stale value.
-# Default versions keep their pins; user-supplied checksums are always kept.
+# A pinned checksum is only valid for its pinned version. If the version was overridden while the
+# checksum still holds the built-in value, clear it so verify_sha256 requires a matching *_SHA256 (or
+# SKIP_CHECKSUM_VERIFY=true). Default versions and user-supplied checksums are left untouched.
 PIN_K0S_VERSION="v1.34.7+k0s.0";  PIN_K0S_SHA256="f9e1335e2c4cc6e1cea3970d38bd5282d6382f4aea5050924ff50c520194619f"
 PIN_KUBECTL_VERSION="v1.34.7";    PIN_KUBECTL_SHA256="b46ecf2b80f76d5a7d58c296c2e11e42c85eaa1eb866ddbc1e91625f71c21000"
 PIN_HELM_VERSION="v3.21.0";       PIN_HELM_SHA256="0093eb572e3d2380f094df162ddb525e219249de88957afe24cfbb19632acd36"
@@ -309,12 +310,18 @@ if [[ "${KUBECTL_VERSION}" != "${PIN_KUBECTL_VERSION}" && "${KUBECTL_SHA256}" ==
 if [[ "${HELM_VERSION}" != "${PIN_HELM_VERSION}" && "${HELM_SHA256}" == "${PIN_HELM_SHA256}" ]]; then HELM_SHA256=""; fi
 
 # derived defaults
-PRIMARY_IF="$(ip -o route get 1.1.1.1 2>/dev/null | grep -oP 'dev \K\S+' || echo eth0)"
+existing_cluster() { [[ "${CLUSTER_MODE}" == "existing" ]]; }
+# 'ip' may be missing on a non-Linux operator host (existing-cluster mode): never fail here
+PRIMARY_IF="$(ip -o route get 1.1.1.1 2>/dev/null | sed -n 's/.* dev \([^ ]*\).*/\1/p' || true)"; PRIMARY_IF="${PRIMARY_IF:-eth0}"
 if [[ -z "${PRIVATE_IP}" ]]; then
-  PRIVATE_IP="$(ip -o route get 1.1.1.1 2>/dev/null | grep -oP 'src \K\S+' || true)"
+  PRIVATE_IP="$(ip -o route get 1.1.1.1 2>/dev/null | sed -n 's/.* src \([^ ]*\).*/\1/p' || true)"
 fi
-[[ -n "${PRIVATE_IP}" ]] || die "could not auto-detect PRIVATE_IP (no default route?); set it in the config"
-LB_IP="${LB_IP:-${PRIVATE_IP}}"
+if existing_cluster; then
+  LB_IP="${LB_IP:-}"                 # the cluster's own LoadBalancer implementation assigns the address
+else
+  [[ -n "${PRIVATE_IP}" ]] || die "could not auto-detect PRIVATE_IP (no default route?); set it in the config"
+  LB_IP="${LB_IP:-${PRIVATE_IP}}"
+fi
 
 # ---------------------------------------------------------------------------
 # helpers
@@ -332,20 +339,29 @@ cidr_contains() { # cidr_contains <cidr> <ip>
 cidrs_overlap() { cidr_contains "$1" "${2%/*}" || cidr_contains "$2" "${1%/*}"; }
 
 # derive NODE_SUBNET from the interface that actually carries PRIVATE_IP
-if [[ -z "${NODE_SUBNET}" ]]; then
+if [[ -z "${NODE_SUBNET}" && -n "${PRIVATE_IP}" ]]; then
   _ifcidr="$(ip -o -4 addr show 2>/dev/null | awk -v ip="${PRIVATE_IP}" '$4 ~ "^"ip"/" {print $4; exit}')"
   if [[ -n "${_ifcidr}" ]]; then NODE_SUBNET="$(cidr_network "${_ifcidr}")"
   else NODE_SUBNET="$(cidr_network "${PRIVATE_IP}/24")"; fi
 fi
 
+file_mode() { stat -c %a "$1" 2>/dev/null || stat -f %Lp "$1" 2>/dev/null || echo 0; }   # GNU or BSD stat
+resolve4() { # IPv4 addresses of a name, one per line (getent on Linux, dig elsewhere)
+  if command -v getent >/dev/null 2>&1; then getent ahostsv4 "$1" 2>/dev/null | awk '{print $1}' | sort -u
+  elif command -v dig >/dev/null 2>&1; then dig +short A "$1" 2>/dev/null | grep -E '^[0-9.]+$' | sort -u; fi
+}
 yq_str() { # YAML double-quoted scalar, safe for any printable characters
   local s="$1"; s="${s//\\/\\\\}"; s="${s//\"/\\\"}"; printf '"%s"' "${s}"
 }
 b64_file() { base64 < "$1" | tr -d '\n'; }
 is_oci() { grep -qi "oraclecloud" /sys/class/dmi/id/chassis_asset_tag 2>/dev/null; }
+is_ec2() { grep -qiE "amazon" /sys/class/dmi/id/sys_vendor /sys/class/dmi/id/bios_vendor 2>/dev/null || grep -qE '^i-' /sys/class/dmi/id/board_asset_tag 2>/dev/null; }
+cloud_name() { if is_oci; then echo "Oracle Cloud"; elif is_ec2; then echo "AWS EC2"; fi; }
+# OCI VCNs and EC2 ENIs drop packets whose source is a pod IP (source/destination checks);
+# the fix is an IPIP overlay for pod traffic plus SNAT for pod->node traffic
 network_fixes_enabled() {
   case "${APPLY_NETWORK_FIXES}" in
-    true) return 0 ;; false) return 1 ;; auto) is_oci ;;
+    true) return 0 ;; false) return 1 ;; auto) is_oci || is_ec2 ;;
     *) return 1 ;;
   esac
 }
@@ -369,8 +385,7 @@ ssh_worker() { # ssh_worker <ip> <command...>
 elapsed() { local s=$(( $(date +%s) - START_TS )); printf '%dm%02ds' $((s/60)) $((s%60)); }
 
 # ---------------------------------------------------------------------------
-# state: one key=value file recording what THIS installer created or changed, so that
-# 'cleanup' removes only that. Keys ending in ".created"/"joined."/"applied." are ownership.
+# state: one key=value file recording what this installer created or changed; 'cleanup' acts only on it.
 # ---------------------------------------------------------------------------
 STATE_DIR="${INSTALL_DIR}/state"
 STATE_FILE="${STATE_DIR}/installer.state"
@@ -508,7 +523,8 @@ print_failure_context() {
   echo "Last successful phase:  ${last:-none}${last:+ (at $(state_get "phase.${last}.completed_at"))}"
   echo "Failed phase:           ${CURRENT_PHASE}"
   echo "Resume after fixing the cause (completed phases are re-verified in seconds, not repeated blindly):"
-  echo "    ${BASH_SOURCE[0]} ${ORIGINAL_ARGS:-${PHASE}} ${CONFIG_FILE:+--config ${CONFIG_FILE}}"
+  if [[ "${ORIGINAL_ARGS:-}" == *"--config"* ]]; then echo "    ${BASH_SOURCE[0]} ${ORIGINAL_ARGS}"
+  else echo "    ${BASH_SOURCE[0]} ${ORIGINAL_ARGS:-${PHASE}} ${CONFIG_FILE:+--config ${CONFIG_FILE}}"; fi
   case "${CURRENT_PHASE}" in
     network|k0s|workers|addons|envoy|cnpg|values|deploy|verify) echo "    ${BASH_SOURCE[0]} ${CURRENT_PHASE} ${CONFIG_FILE:+--config ${CONFIG_FILE}}      # retry only this phase" ;;
   esac
@@ -535,8 +551,8 @@ disarm_traps() { trap - ERR; }
 arm_traps
 
 # ---------------------------------------------------------------------------
-# confirmation prompts: written directly to the terminal, because everything on stdout/stderr
-# passes through the line-based redaction filter and a prompt has no trailing newline
+# confirmation prompts go straight to the terminal: stdout/stderr pass through the line-based
+# redaction filter, which would hold back a prompt that has no trailing newline
 # ---------------------------------------------------------------------------
 confirm() { # confirm <prompt> <accepted-answer-regex>
   [[ "${ASSUME_YES}" == "true" ]] && return 0
@@ -572,10 +588,10 @@ check_config_file() {
   [[ ${#CONFIG_UNKNOWN[@]} -eq 0 ]] && ok "all variable names recognised" || wrn "unrecognised variable(s) in config (typo?): ${CONFIG_UNKNOWN[*]}"
   if [[ -n "${SECRETS_FILE}" ]]; then
     ok "secrets loaded from ${SECRETS_FILE}"
-    [[ "$(stat -c %a "${SECRETS_FILE}")" =~ ^[4-7]00$ ]] || wrn "${SECRETS_FILE} is readable by others (mode $(stat -c %a "${SECRETS_FILE}")); chmod 600 it"
+    [[ "$(file_mode "${SECRETS_FILE}")" =~ ^[4-7]00$ ]] || wrn "${SECRETS_FILE} is readable by others (mode $(file_mode "${SECRETS_FILE}")); chmod 600 it"
   fi
   [[ ${#CONFIG_SECRETS_IN_MAIN[@]} -eq 0 ]] || wrn "secrets (${CONFIG_SECRETS_IN_MAIN[*]}) are in the main config — move them to ascent-secrets.conf (mode 600) or ASCENT_<VAR> environment variables"
-  [[ "$(stat -c %a "${CONFIG_FILE}")" =~ ^[4-7][0-4][0-4]$ ]] || { [[ ${#CONFIG_SECRETS_IN_MAIN[@]} -gt 0 ]] && wrn "${CONFIG_FILE} holds secrets but is mode $(stat -c %a "${CONFIG_FILE}")"; }
+  [[ "$(file_mode "${CONFIG_FILE}")" =~ ^[4-7][0-4][0-4]$ ]] || { [[ ${#CONFIG_SECRETS_IN_MAIN[@]} -gt 0 ]] && wrn "${CONFIG_FILE} holds secrets but is mode $(file_mode "${CONFIG_FILE}")"; }
   [[ "${ADOPT_EXISTING_CLUSTER}" =~ ^(true|false)$ ]] || fail "ADOPT_EXISTING_CLUSTER must be true|false"
   [[ "${SKIP_CHECKSUM_VERIFY}" =~ ^(true|false)$ ]] || fail "SKIP_CHECKSUM_VERIFY must be true|false"
   # placeholder values left from the example
@@ -601,6 +617,7 @@ check_host() {
   case "${os_id}" in
     ubuntu) [[ "${os_ver%%.*}" -ge 22 ]] && ok "OS: ${pretty}" || wrn "OS: ${pretty} — Ubuntu 22.04+ recommended" ;;
     debian) [[ "${os_ver%%.*}" -ge 11 ]] && ok "OS: ${pretty}" || wrn "OS: ${pretty} — Debian 11+ recommended" ;;
+    amzn)   [[ "${os_ver}" == 2023 ]] && ok "OS: ${pretty}" || wrn "OS: ${pretty} — Amazon Linux 2023 recommended (Amazon Linux 2 is end of life)" ;;
     rhel|rocky|almalinux|centos|ol) ok "OS: ${pretty} (RHEL family — firewall/SELinux notes below)" ;;
     *) wrn "OS: ${pretty:-unknown} — untested distribution" ;;
   esac
@@ -614,7 +631,9 @@ check_host() {
   for cmd in curl tar iptables awk ss openssl ip base64 getent; do
     command -v "${cmd}" >/dev/null 2>&1 || missing="${missing} ${cmd}"
   done
-  [[ -z "${missing}" ]] && ok "required commands present" || fail "missing commands:${missing} (apt/dnf install: curl tar iptables gawk iproute2 openssl)"
+  if [[ -z "${missing}" ]]; then ok "required commands present"
+  elif command -v dnf >/dev/null 2>&1; then fail "missing commands:${missing} — dnf install -y curl tar iptables-nft gawk iproute openssl"
+  else fail "missing commands:${missing} — apt install -y curl tar iptables gawk iproute2 openssl"; fi
   local cv; cv="$(curl --version 2>/dev/null | awk 'NR==1{print $2}')"
   if [[ -n "${cv}" ]]; then
     if [[ "$(printf '%s\n' "7.75.0" "${cv}" | sort -V | head -n1)" == "7.75.0" ]]; then ok "curl ${cv} (supports --aws-sigv4)"
@@ -660,8 +679,8 @@ check_host() {
   elif command -v ufw >/dev/null 2>&1 && sudo -n ufw status 2>/dev/null | grep -q "^Status: active"; then
     fail "ufw is active — disable it (sudo ufw disable) or allow the k8s ports and pod/service CIDRs"
   else ok "no host firewall manager active (firewalld/ufw)"; fi
-  if sudo -n iptables -S INPUT 2>/dev/null | grep -q "REJECT" && ! command -v netfilter-persistent >/dev/null 2>&1; then
-    wrn "iptables has REJECT rules but netfilter-persistent is missing — installer ACCEPT rules will not survive a reboot (apt install iptables-persistent)"
+  if ! command -v netfilter-persistent >/dev/null 2>&1 && ! systemctl list-unit-files iptables.service 2>/dev/null | grep -q iptables; then
+    wrn "no iptables persistence service (iptables-persistent on Debian/Ubuntu, iptables-services on RHEL/Amazon Linux) — the installer's chain is re-created on every run but not across reboots"
   fi
   if systemctl is-active --quiet docker 2>/dev/null; then
     wrn "docker is running — it sets the iptables FORWARD policy to DROP on restart, which breaks pod traffic"
@@ -730,12 +749,51 @@ check_host() {
   fi
 }
 
+# ---- existing cluster (CLUSTER_MODE=existing) ---------------------------------------
+CL_CPU_TOTAL=0; CL_MEM_GIB_TOTAL=0; CL_CPU_MAX=0; CL_MEM_GIB_MAX=0
+cluster_capacity() { # allocatable CPU (cores) and memory (GiB): totals and largest node
+  local cpu mem c m
+  CL_CPU_TOTAL=0; CL_MEM_GIB_TOTAL=0; CL_CPU_MAX=0; CL_MEM_GIB_MAX=0
+  while read -r cpu mem; do
+    [[ -n "${cpu}" ]] || continue
+    if [[ "${cpu}" == *m ]]; then c=$(( ${cpu%m} / 1000 )); else c=${cpu}; fi
+    case "${mem}" in *Ki) m=$(( ${mem%Ki} / 1024 / 1024 )) ;; *Mi) m=$(( ${mem%Mi} / 1024 )) ;; *Gi) m=${mem%Gi} ;; *) m=$(( mem / 1024 / 1024 / 1024 )) ;; esac
+    CL_CPU_TOTAL=$(( CL_CPU_TOTAL + c )); CL_MEM_GIB_TOTAL=$(( CL_MEM_GIB_TOTAL + m ))
+    (( c > CL_CPU_MAX )) && CL_CPU_MAX=${c}; (( m > CL_MEM_GIB_MAX )) && CL_MEM_GIB_MAX=${m}
+  done < <(kubectl get nodes -o jsonpath='{range .items[*]}{.status.allocatable.cpu} {.status.allocatable.memory}{"\n"}{end}' 2>/dev/null)
+}
+check_cluster() {
+  section "existing cluster"
+  local missing="" cmd
+  for cmd in curl kubectl helm openssl awk; do command -v "${cmd}" >/dev/null 2>&1 || missing="${missing} ${cmd}"; done
+  [[ -z "${missing}" ]] && ok "required commands present" || { fail "missing commands:${missing} (existing-cluster mode does not install kubectl/helm)"; return; }
+  local hv; hv="$(helm version --template '{{.Version}}' 2>/dev/null)"
+  [[ "${hv}" == v4* ]] && fail "helm ${hv}: Helm 4 is not supported by the chart" || ok "helm ${hv}"
+  local ctx; ctx="$(kubectl config current-context 2>/dev/null || true)"
+  if kubectl get --raw /readyz >/dev/null 2>&1; then ok "kubectl context '${ctx}' reachable ($(kubectl version 2>/dev/null | awk '/Server Version/{print $3}'))"
+  else fail "kubectl cannot reach a cluster (context '${ctx:-none}') — set KUBECONFIG"; return; fi
+  local total ready; total="$(kubectl get nodes --no-headers 2>/dev/null | wc -l | tr -d ' ')"; ready="$(kubectl get nodes --no-headers 2>/dev/null | grep -cw Ready || true)"
+  [[ "${total}" -gt 0 && "${ready}" == "${total}" ]] && ok "${ready}/${total} nodes Ready" || fail "${ready}/${total} nodes Ready"
+  cluster_capacity; ok "allocatable: ${CL_CPU_TOTAL} CPU, ${CL_MEM_GIB_TOTAL} GiB total; largest node ${CL_CPU_MAX} CPU / ${CL_MEM_GIB_MAX} GiB"
+  kubectl get sc "${STORAGE_CLASS}" >/dev/null 2>&1 && ok "storage class ${STORAGE_CLASS} exists" \
+    || fail "storage class ${STORAGE_CLASS} not found (available: $(kubectl get sc -o name 2>/dev/null | sed 's|storageclass.storage.k8s.io/||' | tr '\n' ' '))"
+  if kubectl get svc -A --no-headers 2>/dev/null | awk '$3=="LoadBalancer" && $5!="<pending>"' | grep -q . \
+     || kubectl get deploy -A --no-headers 2>/dev/null | grep -qE 'aws-load-balancer-controller|metallb-controller|cloud-controller-manager'; then
+    ok "a LoadBalancer implementation is present"
+  else wrn "no LoadBalancer implementation detected — the Envoy service will stay <pending> until one exists (cloud LB controller, MetalLB, ...)"; fi
+  kubectl get crd gateways.gateway.networking.k8s.io >/dev/null 2>&1 && ok "Gateway API CRDs present" || ok "Gateway API CRDs will be installed with Envoy Gateway"
+  kubectl auth can-i create namespace >/dev/null 2>&1 && ok "cluster-admin level permissions" || fail "the kubectl identity cannot create namespaces — cluster-admin is required for the install"
+  [[ "${CLOUD_PROVIDER}" =~ ^(none|aws|oci)$ ]] && ok "CLOUD_PROVIDER ${CLOUD_PROVIDER}" || fail "CLOUD_PROVIDER must be none|aws|oci"
+  [[ -z "${WORKERS}" ]] || fail "WORKERS is only used in CLUSTER_MODE=k0s"
+  [[ -z "${LB_IP}" ]] || ok "LB_IP ${LB_IP} will be used for probes"
+}
+
 # ---- network -----------------------------------------------------------------
 check_network() {
   section "network"
   if ip -o -4 addr show 2>/dev/null | grep -q " ${PRIVATE_IP}/"; then ok "PRIVATE_IP ${PRIVATE_IP} is on interface ${PRIMARY_IF}"
   else
-    local detected; detected="$(ip -o route get 1.1.1.1 2>/dev/null | grep -oP 'src \K\S+' || true)"
+    local detected; detected="$(ip -o route get 1.1.1.1 2>/dev/null | sed -n 's/.* src \([^ ]*\).*/\1/p' || true)"
     fail "PRIVATE_IP ${PRIVATE_IP} is not assigned to any interface on this host (its primary address is ${detected:-unknown}) — the config was written for another machine; remove or comment PRIVATE_IP, PUBLIC_IP and LB_IP so they are auto-detected"
   fi
   is_ipv4 "${PRIVATE_IP}" || fail "PRIVATE_IP '${PRIVATE_IP}' is not an IPv4 address"
@@ -765,10 +823,10 @@ check_network() {
   if [[ -z "${PUBLIC_IP}" ]]; then ok "PUBLIC_IP <unset>"
   elif is_ipv4 "${PUBLIC_IP}"; then ok "PUBLIC_IP ${PUBLIC_IP}"
   else fail "PUBLIC_IP '${PUBLIC_IP}' is not an IPv4 address"; fi
-  [[ "${APPLY_NETWORK_FIXES}" =~ ^(auto|true|false)$ ]] && ok "APPLY_NETWORK_FIXES=${APPLY_NETWORK_FIXES} → OCI fixes $(network_fixes_enabled && echo ENABLED || echo disabled)$(is_oci && echo ' (Oracle Cloud detected)')" \
+  [[ "${APPLY_NETWORK_FIXES}" =~ ^(auto|true|false)$ ]] && ok "APPLY_NETWORK_FIXES=${APPLY_NETWORK_FIXES} → cloud source/destination-check fixes $(network_fixes_enabled && echo ENABLED || echo disabled)$(cloud_name | sed 's/.\+/ (& detected)/')" \
     || fail "APPLY_NETWORK_FIXES must be auto|true|false"
 
-  if getent ahostsv4 github.com >/dev/null 2>&1; then ok "DNS resolution works"; else fail "DNS resolution failed (github.com) — check /etc/resolv.conf"; fi
+  if [[ -n "$(resolve4 github.com)" ]]; then ok "DNS resolution works"; else fail "DNS resolution failed (github.com) — check /etc/resolv.conf"; fi
   # downloads only needed when the binary is missing
   local c
   if ! command -v k0s >/dev/null 2>&1; then
@@ -822,9 +880,9 @@ check_app_config() {
   else
     ok "DOMAIN ${DOMAIN}"
     [[ "${DOMAIN}" == *.* ]] || wrn "DOMAIN has no dot — browsers and certificates expect a fully-qualified name"
-    local res; res="$(getent ahostsv4 "${DOMAIN}" 2>/dev/null | awk '{print $1}' | sort -u | tr '\n' ' ' | sed 's/ $//')"
-    if [[ -z "${res}" ]]; then wrn "DOMAIN does not resolve yet — create a DNS A record → ${PUBLIC_IP:-${DETECTED_PUBLIC_IP:-${LB_IP}}} before users log in"
-    elif grep -qw -e "${LB_IP}" -e "${PUBLIC_IP:-__}" -e "${DETECTED_PUBLIC_IP:-__}" <<<"${res}"; then ok "DOMAIN resolves to ${res}"
+    local res; res="$(resolve4 "${DOMAIN}" | tr '\n' ' ' | sed 's/ $//')"
+    if [[ -z "${res}" ]]; then wrn "DOMAIN does not resolve yet — create a DNS A record → ${PUBLIC_IP:-${DETECTED_PUBLIC_IP:-${LB_IP:-the gateway address reported after install}}} before users log in"
+    elif existing_cluster || grep -qw -e "${LB_IP:-__}" -e "${PUBLIC_IP:-__}" -e "${DETECTED_PUBLIC_IP:-__}" <<<"${res}"; then ok "DOMAIN resolves to ${res}"
     else wrn "DOMAIN resolves to ${res}— expected ${LB_IP}${PUBLIC_IP:+ or ${PUBLIC_IP}}${DETECTED_PUBLIC_IP:+ or ${DETECTED_PUBLIC_IP}} (fine if a NAT/LB sits in front)"; fi
   fi
 
@@ -853,6 +911,9 @@ check_app_config() {
   [[ "${UPLOAD_DASHBOARD}" =~ ^(true|false)$ ]] && ok "UPLOAD_DASHBOARD ${UPLOAD_DASHBOARD}" || fail "UPLOAD_DASHBOARD must be true|false"
   [[ "${TLS_SELF_SIGNED}" =~ ^(true|false)$ ]] || fail "TLS_SELF_SIGNED must be true|false"
   [[ "${RELEASE_NAME}" =~ ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$ && "${NAMESPACE}" =~ ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$ ]] && ok "release ${RELEASE_NAME} in namespace ${NAMESPACE}" || fail "RELEASE_NAME/NAMESPACE must be lowercase DNS labels"
+  # chart 3.1.x: the Thanos sidecar reads <namespace>-thanos-objstore-secret while the Thanos subchart creates
+  # <release>-thanos-objstore-secret; the names only coincide when release and namespace are equal
+  [[ "${RELEASE_NAME}" == "${NAMESPACE}" ]] || fail "RELEASE_NAME (${RELEASE_NAME}) must equal NAMESPACE (${NAMESPACE}) with chart 3.1.x: the Prometheus Thanos sidecar looks for <namespace>-thanos-objstore-secret but the chart creates <release>-thanos-objstore-secret"
   if [[ -n "${EXTRA_VALUES_FILE}" ]]; then [[ -f "${EXTRA_VALUES_FILE}" ]] && ok "extra values file ${EXTRA_VALUES_FILE}" || fail "EXTRA_VALUES_FILE not found: ${EXTRA_VALUES_FILE}"; fi
   if have_kubectl; then
     local st; st="$(helm status "${RELEASE_NAME}" -n "${NAMESPACE}" 2>/dev/null | awk '/^STATUS:/{print $2}')"
@@ -874,11 +935,18 @@ check_sizing() {
   [[ "${SZ_ENABLED}" == "true" ]] || { fail "sizing could not be computed"; return; }
   ok "sizing plan:"; sizing_summary | sed 's/^/        /'
   (( INGEST_GB_PER_DAY > 10000 )) && wrn "deployments above 10 TB/day require an architecture review with Apica engineering"
-  local cpus ram_gib; cpus="$(nproc)"; ram_gib=$(( $(awk '/MemTotal/{print $2}' /proc/meminfo) / 1024 / 1024 ))
-  if ! is_multi_node; then
+  local cpus=0 ram_gib=0
+  if ! existing_cluster; then cpus="$(nproc)"; ram_gib=$(( $(awk '/MemTotal/{print $2}' /proc/meminfo) / 1024 / 1024 )); fi
+  if existing_cluster; then
+    cluster_capacity
+    (( SZ_POD_CPU <= CL_CPU_MAX )) || fail "a flash pod needs ${SZ_POD_CPU} CPU but the largest node offers ${CL_CPU_MAX} allocatable"
+    (( SZ_POD_MEM_GI <= CL_MEM_GIB_MAX )) || fail "a flash pod needs ${SZ_POD_MEM_GI} GiB but the largest node offers ${CL_MEM_GIB_MAX} GiB allocatable"
+    (( SZ_TOTAL_VCPU <= CL_CPU_TOTAL )) || wrn "guide total ${SZ_TOTAL_VCPU} vCPU exceeds the cluster's ${CL_CPU_TOTAL} allocatable CPU"
+    (( SZ_TOTAL_RAM_GB <= CL_MEM_GIB_TOTAL )) || wrn "guide total ${SZ_TOTAL_RAM_GB} GB RAM exceeds the cluster's ${CL_MEM_GIB_TOTAL} GiB allocatable"
+  elif ! is_multi_node; then
     (( SZ_POD_CPU <= cpus - 2 )) || fail "a flash pod needs ${SZ_POD_CPU} CPU but this node has ${cpus} (2 reserved) — it would never schedule; max for this node ≈ $(( (cpus - 2) * 50 / PEAK_MULTIPLIER )) GB/day in lake mode"
     (( SZ_POD_MEM_GI <= ram_gib - 6 )) || fail "a flash pod needs ${SZ_POD_MEM_GI} GiB but this node has ${ram_gib} GiB (6 reserved for core services)"
-    (( SZ_TOTAL_VCPU <= cpus )) || wrn "guide total ${SZ_TOTAL_VCPU} vCPU (ingest + 10 core) exceeds this node's ${cpus} CPUs — fine for a sandbox, undersized for production"
+    (( SZ_TOTAL_VCPU <= cpus )) || wrn "guide total ${SZ_TOTAL_VCPU} vCPU (ingest + 10 core) exceeds this node's ${cpus} CPUs — acceptable for a sandbox, undersized for production"
     (( SZ_TOTAL_RAM_GB <= ram_gib )) || wrn "guide total ${SZ_TOTAL_RAM_GB} GB RAM exceeds this node's ${ram_gib} GiB"
     local free; free="$(fs_free_gb /var/openebs)"
     (( SZ_TOTAL_DISK_GB <= ${free:-0} )) || wrn "guide total ${SZ_TOTAL_DISK_GB} GB disk exceeds the ${free:-?} GB free under /var/openebs"
@@ -1036,7 +1104,7 @@ check_workers() {
   ok "topology: 1 controller + ${#entries[@]} worker(s)"
   if [[ -z "${SSH_KEY}" ]]; then fail "SSH_KEY is required for multi-node installs"; ssh_ok="false"
   elif [[ ! -f "${SSH_KEY}" ]]; then fail "SSH_KEY not found: ${SSH_KEY}"; ssh_ok="false"
-  elif [[ ! "$(stat -c %a "${SSH_KEY}")" =~ ^[4-7]00$ ]]; then wrn "SSH_KEY permissions are $(stat -c %a "${SSH_KEY}"); ssh requires 600"; fi
+  elif [[ ! "$(file_mode "${SSH_KEY}")" =~ ^[4-7]00$ ]]; then wrn "SSH_KEY permissions are $(file_mode "${SSH_KEY}"); ssh requires 600"; fi
   local have_ingest=0 have_base=0 have_common=0
   case "${CONTROLLER_POOL}" in
     "") ;; ingest) have_ingest=1 ;; base) have_base=1 ;; common) have_common=1 ;;
@@ -1098,16 +1166,16 @@ echo IPOK=\$(ip -o -4 addr show 2>/dev/null | grep -q ' ${ip}/' && echo yes || e
 
 phase_preflight() {
   CURRENT_PHASE="preflight"
-  log "preflight: installer v${INSTALLER_VERSION}, controller ${PRIVATE_IP} on ${PRIMARY_IF}, subnet ${NODE_SUBNET}"
+  if existing_cluster; then log "preflight: installer v${INSTALLER_VERSION}, existing cluster (context $(kubectl config current-context 2>/dev/null || echo none))"
+  else log "preflight: installer v${INSTALLER_VERSION}, controller ${PRIVATE_IP} on ${PRIMARY_IF}, subnet ${NODE_SUBNET}"; fi
   disarm_traps; set +e
   check_config_file
-  check_host
-  check_network
+  if existing_cluster; then check_cluster; else check_host; check_network; fi
   check_app_config
   check_sizing
   check_tls
   check_s3
-  check_workers
+  existing_cluster || check_workers
   set -e; arm_traps
   echo; hr
   echo "Preflight summary: ${PF_PASS} passed, ${#PF_WARNS[@]} warning(s), ${#PF_FAILS[@]} failure(s)"
@@ -1123,15 +1191,15 @@ phase_preflight() {
 # phase: network (host firewall + optional OCI fixes) — controller only;
 # workers get the same treatment during the 'workers' phase.
 # ---------------------------------------------------------------------------
-# Firewall rules live in dedicated chains (ASCENT-INSTALLER / ASCENT-INSTALLER-NAT) hooked at the
-# top of INPUT, FORWARD and nat POSTROUTING. Global policies and customer rules are never touched;
-# removal is "unhook + flush + delete chain". The same script runs locally and on workers.
+# Firewall rules live in dedicated chains (ASCENT-INSTALLER, ASCENT-INSTALLER-NAT) hooked at the top of
+# INPUT, FORWARD and nat POSTROUTING. Global policies and foreign rules are not modified; removal is
+# unhook, flush, delete. The same script runs on the controller and on workers.
 fw_script() { # fw_script <apply|remove> <tcp-ports> <oci-fixes:true|false> <remove-legacy-v0.2-rules:true|false>
   cat <<EOF
 set -euo pipefail
 ${REMOTE_PRELUDE}
 C=ASCENT-INSTALLER; N=ASCENT-INSTALLER-NAT
-IF=\$(ip -o route get 1.1.1.1 2>/dev/null | grep -oP 'dev \\K\\S+' || echo eth0)
+IF=\$(ip -o route get 1.1.1.1 2>/dev/null | sed -n 's/.* dev \\([^ ]*\\).*/\\1/p'); IF=\${IF:-eth0}
 ipt() { sudo -n iptables "\$@"; }
 unhook() { ipt -t "\$1" -D "\$2" -j "\$3" 2>/dev/null || true; ipt -t "\$1" -F "\$3" 2>/dev/null || true; ipt -t "\$1" -X "\$3" 2>/dev/null || true; }
 if [ "$4" = true ]; then   # rules the v0.2.0 installer inserted directly into INPUT/POSTROUTING
@@ -1166,7 +1234,8 @@ else
     unhook nat POSTROUTING "\$N"
   fi
 fi
-command -v netfilter-persistent >/dev/null 2>&1 && sudo -n netfilter-persistent save >/dev/null 2>&1 || true
+if command -v netfilter-persistent >/dev/null 2>&1; then sudo -n netfilter-persistent save >/dev/null 2>&1 || true
+elif systemctl is-enabled iptables.service >/dev/null 2>&1; then sudo -n sh -c 'iptables-save > /etc/sysconfig/iptables' 2>/dev/null || true; fi
 EOF
 }
 CONTROLLER_PORTS="80,443,6443,8132,9443,10250"
@@ -1174,13 +1243,16 @@ WORKER_PORTS="80,443,10250"
 
 phase_network() {
   CURRENT_PHASE="network"
+  if existing_cluster; then log "network: skipped (CLUSTER_MODE=existing)"; return 0; fi
   local fixes="false"; network_fixes_enabled && fixes="true"
   local legacy="false"; marked applied.iptables && ! marked firewall.chain.created && legacy="true"
-  log "network: owned iptables chain ASCENT-INSTALLER on the controller (subnet ${NODE_SUBNET}, OCI fixes: ${fixes})"
+  log "network: owned iptables chain ASCENT-INSTALLER on the controller (subnet ${NODE_SUBNET}, cloud fixes: ${fixes})"
   [[ -n "$(state_get firewall.forward_policy_before)" ]] || state_set firewall.forward_policy_before "$(sudo -n iptables -S FORWARD 2>/dev/null | awk '/^-P FORWARD/{print $3}')"
   bash -c "$(fw_script apply "${CONTROLLER_PORTS}" "${fixes}" "${legacy}")"
   mark firewall.chain.created; state_del applied.iptables
-  command -v netfilter-persistent >/dev/null 2>&1 || info "netfilter-persistent not installed — rules are not persisted across reboots (apt install iptables-persistent)"
+  if ! command -v netfilter-persistent >/dev/null 2>&1 && ! systemctl is-enabled iptables.service >/dev/null 2>&1; then
+    info "no iptables persistence service — rules are re-created by every run but not across reboots (iptables-persistent / iptables-services)"
+  fi
   log "network OK"
 }
 
@@ -1193,7 +1265,7 @@ write_k0s_config() {
     - ${PUBLIC_IP}"
 
   local kuberouter_extra=""
-  if network_fixes_enabled; then
+  if network_fixes_enabled; then   # IPIP overlay: inter-node pod traffic is encapsulated with node-IP sources
     kuberouter_extra="
       ipMasq: true
       extraArgs:
@@ -1287,6 +1359,12 @@ download_k0s() {
 
 phase_k0s() {
   CURRENT_PHASE="k0s"
+  if existing_cluster; then
+    have_kubectl || die "kubectl cannot reach the cluster (context '$(kubectl config current-context 2>/dev/null)')"
+    [[ -n "$(state_get cluster.uid)" ]] || { state_set cluster.uid "$(cluster_uid)"; state_set cluster.adopted true; }
+    log "k0s: skipped (CLUSTER_MODE=existing); using context '$(kubectl config current-context 2>/dev/null)', cluster $(cluster_uid | cut -c1-8)…"
+    return 0
+  fi
   download_k0s
 
   if k0s_running; then
@@ -1365,6 +1443,7 @@ phase_k0s() {
 FAILED_WORKER=""; WORKER_TOKEN_IDS=""
 phase_workers() {
   CURRENT_PHASE="workers"
+  if existing_cluster; then log "workers: skipped (CLUSTER_MODE=existing)"; return 0; fi
   if ! is_multi_node; then
     log "workers: single-node install, skipping"
     if [[ -n "${CONTROLLER_POOL}" ]]; then
@@ -1411,9 +1490,8 @@ EOF
       log "worker ${ip}: k0s already running, skipping join"
     else
       log "worker ${ip}: joining cluster"
-      # The join token is a short-lived credential: 15 minute expiry, sent over the ssh channel
-      # (never on a command line), stored 0600 on the worker, invalidated on the controller and
-      # removed from the worker once the join has produced the kubelet client config.
+      # join token: 15 min expiry, transferred on the ssh channel (not argv), stored 0600,
+      # invalidated on the controller and deleted from the worker after the join
       local token token_id
       token="$(sudo k0s token create --role=worker --expiry 15m)"
       token_id="$(printf '%s' "${token}" | base64 -d 2>/dev/null | gunzip -c 2>/dev/null | grep -oE 'token: [a-z0-9]+\.' | head -n1 | sed 's/token: //; s/\.$//' || true)"
@@ -1439,7 +1517,7 @@ sudo install -m 0600 -o root -g root \"\$t\" /etc/k0s/token; rm -f \"\$t\"; sudo
     local node; node="$(ssh_worker "${ip}" hostname | tr '[:upper:]' '[:lower:]')"
     log "labeling node ${node}: ${NODE_POOL_LABEL}=${pool}"
     kubectl label node "${node}" "${NODE_POOL_LABEL}=${pool}" --overwrite
-    # the token file is only read during the first bootstrap; once kubelet.conf exists it is dead weight
+    # the token file is read only during the first bootstrap; once kubelet.conf exists it is not needed
     if ssh_worker "${ip}" "${REMOTE_PRELUDE}; sudo test -s /var/lib/k0s/kubelet.conf" 2>/dev/null; then
       ssh_worker "${ip}" "${REMOTE_PRELUDE}; sudo rm -f /etc/k0s/token" && log "worker ${ip}: join token removed from disk"
     else
@@ -1460,6 +1538,7 @@ sudo install -m 0600 -o root -g root \"\$t\" /etc/k0s/token; rm -f \"\$t\"; sudo
 # ---------------------------------------------------------------------------
 phase_addons() {
   CURRENT_PHASE="addons"
+  if existing_cluster; then log "addons: skipped (CLUSTER_MODE=existing)"; return 0; fi
   log "waiting for openebs + metallb (k0s helm extensions, up to 10m)"
   local i
   for i in $(seq 1 120); do
@@ -1498,8 +1577,8 @@ EOF
 }
 
 # ---------------------------------------------------------------------------
-# helm release hygiene shared by the add-on phases: an interrupted run (Ctrl-C during helm --wait)
-# leaves a release in pending-* (locked) or failed state; roll back to the last good revision first.
+# An interrupted helm --wait leaves a release in pending-* (locked) or failed state;
+# roll back to the last good revision before upgrading.
 # ---------------------------------------------------------------------------
 unstick_release() { # unstick_release <release> <namespace>
   local st; st="$(helm status "$1" -n "$2" 2>/dev/null | awk '/^STATUS:/{print $2}' || true)"
@@ -1696,7 +1775,15 @@ phase_values() {
     echo "      deployment:"
     echo "        replicaCount: $(is_multi_node && echo 2 || echo 1)"
     echo "      service:"
-    echo "        annotations: null   # drop the OCI LoadBalancer annotations; MetalLB serves the LB"
+    case "${CLOUD_PROVIDER}" in
+      aws)
+        echo "        annotations:"
+        echo "          service.beta.kubernetes.io/aws-load-balancer-type: external"
+        echo "          service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: ip"
+        echo "          service.beta.kubernetes.io/aws-load-balancer-scheme: internet-facing" ;;
+      oci) echo "        {}   # OCI: chart default LoadBalancer annotations apply (an empty map keeps the defaults)" ;;
+      *)   echo "        annotations: null   # no cloud LoadBalancer annotations" ;;
+    esac
     echo
     echo "prometheus:"
     echo "  prometheus:"
@@ -1858,12 +1945,21 @@ phase_deploy() {
 # ---------------------------------------------------------------------------
 # phase: verify
 # ---------------------------------------------------------------------------
+PROBE_IP=""
+gateway_probe_ip() { # IP to reach the gateway: its reported address (IP or hostname), else LB_IP
+  local addr; addr="$(kubectl get gateway -n "${NAMESPACE}" -o jsonpath='{.items[0].status.addresses[0].value}' 2>/dev/null || true)"
+  if is_ipv4 "${addr}"; then PROBE_IP="${addr}"
+  elif [[ -n "${addr}" ]]; then PROBE_IP="$(resolve4 "${addr}" | head -n1)"
+  else PROBE_IP="${LB_IP}"; fi
+  GATEWAY_ADDR="${addr:-${LB_IP}}"
+}
+GATEWAY_ADDR=""
 verify_admin_login() { # coffee bootstraps the admin account 1-3 minutes after it starts; a successful login redirects away from /login and /setup
   local i code target
   for i in $(seq 1 30); do
-    # curl prints no trailing newline, and read returns 1 at EOF — never let that trip set -e
+    # read returns 1 at EOF without a trailing newline; keep that from triggering set -e
     read -r code target < <(curl -k -s -o /dev/null -w '%{http_code} %{redirect_url}\n' --connect-timeout 10 --max-time 20 \
-        --resolve "${DOMAIN}:443:${LB_IP}" -X POST "https://${DOMAIN}/login" \
+        --resolve "${DOMAIN}:443:${PROBE_IP}" -X POST "https://${DOMAIN}/login" \
         --data-urlencode "email=${ADMIN_EMAIL}" --data-urlencode "password=${ADMIN_PASSWORD}" 2>/dev/null || echo "000") || true
     code="${code:-000}"; target="${target:-}"
     if [[ "${code}" == 302 && "${target}" != *"/setup"* && "${target}" != *"/login"* ]]; then
@@ -1898,11 +1994,13 @@ phase_verify() {
   local gw_prog; gw_prog="$(kubectl get gateway -n "${NAMESPACE}" -o jsonpath='{.items[0].status.conditions[?(@.type=="Programmed")].status}' 2>/dev/null || true)"
   local gw_addr; gw_addr="$(kubectl get gateway -n "${NAMESPACE}" -o jsonpath='{.items[0].status.addresses[0].value}' 2>/dev/null || true)"
   [[ "${gw_prog}" == "True" ]] && log "gateway programmed, address ${gw_addr:-<none>}" || warn "gateway not programmed yet (status '${gw_prog:-unknown}')"
-  [[ -n "${gw_addr}" && "${gw_addr}" != "${LB_IP}" ]] && warn "gateway address ${gw_addr} differs from LB_IP ${LB_IP}"
+  [[ -z "${LB_IP}" || -z "${gw_addr}" || "${gw_addr}" == "${LB_IP}" ]] || warn "gateway address ${gw_addr} differs from LB_IP ${LB_IP}"
 
-  local probe_ip="${LB_IP}" code
-  code="$(curl -k -s -o /dev/null -w '%{http_code}' --connect-timeout 10 --max-time 20 --resolve "${DOMAIN}:443:${probe_ip}" "https://${DOMAIN}/" || echo 000)"
-  [[ "${code}" =~ ^(200|30[0-9])$ ]] && log "HTTPS probe via ${probe_ip} (SNI ${DOMAIN}): HTTP ${code}" || warn "HTTPS probe via ${probe_ip} returned HTTP ${code} — the UI may still be starting; retry in a minute"
+  local i; for i in 1 2 3 4 5 6; do gateway_probe_ip; [[ -n "${PROBE_IP}" ]] && break; sleep 10; done
+  [[ -n "${PROBE_IP}" ]] || die "the gateway has no address yet (LoadBalancer pending?) — check: kubectl get svc -n ${NAMESPACE}"
+  local code
+  code="$(curl -k -s -o /dev/null -w '%{http_code}' --connect-timeout 10 --max-time 20 --resolve "${DOMAIN}:443:${PROBE_IP}" "https://${DOMAIN}/" || echo 000)"
+  [[ "${code}" =~ ^(200|30[0-9])$ ]] && log "HTTPS probe via ${GATEWAY_ADDR} (SNI ${DOMAIN}): HTTP ${code}" || warn "HTTPS probe via ${GATEWAY_ADDR} returned HTTP ${code} — the UI may still be starting; retry in a minute"
   if [[ -n "${PUBLIC_IP}" ]]; then
     code="$(curl -k -s -o /dev/null -w '%{http_code}' --connect-timeout 10 --max-time 20 --resolve "${DOMAIN}:443:${PUBLIC_IP}" "https://${DOMAIN}/" || echo 000)"
     [[ "${code}" =~ ^(200|30[0-9])$ ]] && log "HTTPS probe via public IP ${PUBLIC_IP}: HTTP ${code}" || warn "HTTPS probe via public IP ${PUBLIC_IP} returned HTTP ${code} — check the cloud security list / NAT for 443"
@@ -1914,9 +2012,9 @@ phase_verify() {
 
 ============================================================
  Apica Ascent installed  ($(elapsed) total)
-   URL:        https://${DOMAIN}   (DNS A record → ${PUBLIC_IP:-${LB_IP}})
+   URL:        https://${DOMAIN}   (DNS: point ${DOMAIN} at ${PUBLIC_IP:-${GATEWAY_ADDR}})
    Login:      ${ADMIN_NAME} / (ADMIN_PASSWORD from your config)
-   Ingest:     ${LB_IP} ports 9999 (flash), 8081, 14250/14268 (jaeger), 20514 (syslog TLS)
+   Ingest:     ${GATEWAY_ADDR} ports 9999 (flash), 8081, 14250/14268 (jaeger), 20514 (syslog TLS)
    Namespace:  ${NAMESPACE}   release: ${RELEASE_NAME}   database: ${DB_ENGINE}
    Sizing:     $([[ "${SZ_ENABLED}" == true ]] && echo "${INGEST_GB_PER_DAY} GB/day ${INGEST_MODE} → ${SZ_PODS} flash pod(s) × ${SZ_POD_CPU} CPU/${SZ_POD_MEM_GI} GiB, limit ${SZ_BYTES_PER_SEC} B/s" || echo "chart defaults (set INGEST_GB_PER_DAY; the chart's default rate limit applies)")
    Values:     ${INSTALL_DIR}/values.yaml
@@ -1930,10 +2028,9 @@ EOF
 }
 
 # ---------------------------------------------------------------------------
-# Gateway API hygiene. The chart runs its own envoy-gateway controller INSIDE the
-# release namespace; helm deletes that Deployment before the Gateway/GatewayClass
-# custom resources, so their finalizers are never processed and the uninstall
-# hangs. Delete them first, while the controller is still alive.
+# Gateway API cleanup. The chart runs its envoy-gateway controller inside the release namespace and
+# helm deletes that Deployment before the Gateway/GatewayClass objects, leaving their finalizers
+# unprocessed. Delete those objects first, while the controller is still running.
 # ---------------------------------------------------------------------------
 release_gatewayclass() { echo "${RELEASE_NAME}-gateway-class-local"; }
 
@@ -2093,7 +2190,7 @@ require_platform() {
   have_kubectl || die "the platform is not installed or kubectl cannot reach it — ${hint}"
   local missing=""
   kubectl get sc "${STORAGE_CLASS}" >/dev/null 2>&1 || missing="${missing} storage-class:${STORAGE_CLASS}"
-  kubectl get ipaddresspool -n metallb >/dev/null 2>&1 || missing="${missing} metallb"
+  existing_cluster || kubectl get ipaddresspool -n metallb >/dev/null 2>&1 || missing="${missing} metallb"
   kubectl get crd gateways.gateway.networking.k8s.io >/dev/null 2>&1 || missing="${missing} envoy-gateway"
   [[ "${DB_ENGINE}" != "cnpg" ]] || kubectl get crd clusters.postgresql.cnpg.io >/dev/null 2>&1 || missing="${missing} cnpg-operator"
   [[ -z "${missing}" ]] || die "platform components missing:${missing} — ${hint}"
@@ -2121,7 +2218,8 @@ cmd_status() {
   echo "  platform installed: $(state_get platform.installed) | app installed: $(state_get app.installed) (chart $(state_get app.chart_version), db $(state_get app.db_engine))"
   echo "== host =="; echo "  $(hostname) ${PRIVATE_IP} $(. /etc/os-release 2>/dev/null; echo "${PRETTY_NAME:-}") | $(nproc) CPU, $(awk '/MemTotal/{printf "%d", $2/1024/1024}' /proc/meminfo) GiB"
   echo "== platform =="
-  if k0s_running; then echo "  k0s: running $(k0s version 2>/dev/null) ($(sudo -n k0s status 2>/dev/null | awk '/^Role:/{print $2}'))"
+  if existing_cluster; then echo "  mode: existing cluster, context $(kubectl config current-context 2>/dev/null || echo '?')"
+  elif k0s_running; then echo "  k0s: running $(k0s version 2>/dev/null) ($(sudo -n k0s status 2>/dev/null | awk '/^Role:/{print $2}'))"
   elif [[ -n "$(k0s_unit)" ]]; then echo "  k0s: service installed but STOPPED"; else echo "  k0s: not installed"; fi
   if have_kubectl; then
     kubectl get nodes -o wide --no-headers 2>/dev/null | awk '{print "  node: "$1" "$2" "$5" "$6}'
@@ -2134,8 +2232,9 @@ cmd_status() {
       echo "  pods: $(( total - $(grep -c . <<<"${bad}") ))/${total} healthy"; [[ -z "${bad}" ]] || echo "${bad}" | sed 's/^/    not healthy: /'
       echo "  gateway: programmed=$(kubectl get gateway -n "${NAMESPACE}" -o jsonpath='{.items[0].status.conditions[?(@.type=="Programmed")].status}' 2>/dev/null) address=$(kubectl get gateway -n "${NAMESPACE}" -o jsonpath='{.items[0].status.addresses[0].value}' 2>/dev/null)"
       [[ "${DB_ENGINE}" == "cnpg" ]] && echo "  cnpg: $(kubectl get cluster -n "${NAMESPACE}" -o jsonpath='{.items[0].status.phase} ({.items[0].status.readyInstances}/{.items[0].spec.instances} ready)' 2>/dev/null)"
-      echo "  https: HTTP $(curl -k -s -o /dev/null -w '%{http_code}' --max-time 10 --resolve "${DOMAIN}:443:${LB_IP}" "https://${DOMAIN}/" 2>/dev/null)"
-      local code target; read -r code target < <(curl -k -s -o /dev/null -w '%{http_code} %{redirect_url}\n' --max-time 15 --resolve "${DOMAIN}:443:${LB_IP}" -X POST "https://${DOMAIN}/login" --data-urlencode "email=${ADMIN_EMAIL}" --data-urlencode "password=${ADMIN_PASSWORD}" 2>/dev/null || echo 000) || true
+      gateway_probe_ip
+      echo "  https: HTTP $(curl -k -s -o /dev/null -w '%{http_code}' --max-time 10 --resolve "${DOMAIN}:443:${PROBE_IP:-127.0.0.1}" "https://${DOMAIN}/" 2>/dev/null) via ${GATEWAY_ADDR:-<no address>}"
+      local code target; read -r code target < <(curl -k -s -o /dev/null -w '%{http_code} %{redirect_url}\n' --max-time 15 --resolve "${DOMAIN}:443:${PROBE_IP:-127.0.0.1}" -X POST "https://${DOMAIN}/login" --data-urlencode "email=${ADMIN_EMAIL}" --data-urlencode "password=${ADMIN_PASSWORD}" 2>/dev/null || echo 000) || true
       if [[ "${code:-}" == 302 && "${target:-}" != *"/setup"* && "${target:-}" != *"/login"* ]]; then echo "  admin login: accepted"; else echo "  admin login: NOT accepted (HTTP ${code:-000} → ${target:-none})"; fi
     else echo "  release ${RELEASE_NAME}: not installed"; fi
   fi

@@ -56,13 +56,22 @@ INGEST_GB_PER_DAY="50"
 #UPLOAD_DASHBOARD="false"             # chart hook that uploads default dashboards; keeps helm waiting
                                       # up to 20m and fails with 401 on chart 3.1.x — leave off
 
-# --- topology ----------------------------------------------------------------
+# --- cluster -----------------------------------------------------------------
+# k0s:      install (or adopt) k0s on this host — the default on-prem path
+# existing: deploy onto the cluster of the current kubeconfig (EKS, OpenShift, ...).
+#           Platform phases are skipped; the cluster must provide STORAGE_CLASS and a
+#           LoadBalancer implementation. Run from a Linux host with kubectl + helm.
+#CLUSTER_MODE="k0s"
+#CLOUD_PROVIDER="none"                # existing clusters: aws adds NLB annotations, oci keeps
+                                      # the chart defaults, none removes them
+
+# --- topology (CLUSTER_MODE=k0s) ---------------------------------------------
 # Leave WORKERS empty for a single-node install (k0s --single).
 # For multi-node, list workers as "ip:pool" — pools map to the chart's
 # apica-node-pool labels and ALL THREE must be covered: ingest, base, common.
 #WORKERS="10.0.0.11:base 10.0.0.12:common 10.0.0.13:ingest"
 #CONTROLLER_POOL=""                   # optionally give the controller a pool too
-#SSH_USER="ubuntu"
+#SSH_USER="ubuntu"                    # ec2-user on Amazon Linux
 #SSH_KEY="/home/ubuntu/.ssh/id_rsa"
 
 # Controller IPs — auto-detected if unset. PUBLIC_IP is added to the k8s API
@@ -71,9 +80,9 @@ INGEST_GB_PER_DAY="50"
 #PUBLIC_IP="203.0.113.10"
 
 # --- networking --------------------------------------------------------------
-# OCI VCN source/destination checks silently drop pod-sourced traffic.
-# "auto" detects Oracle Cloud and applies kube-router IPIP overlay + SNAT
-# fixes automatically. Force with true/false.
+# OCI VCN and AWS EC2 source/destination checks silently drop pod-sourced traffic.
+# "auto" detects Oracle Cloud or EC2 and applies the kube-router IPIP overlay + SNAT
+# fixes. Force with true/false. Allow IP protocol 4 (IPIP) between nodes.
 #APPLY_NETWORK_FIXES="auto"
 #POD_CIDR="10.244.0.0/16"             # must not overlap your LAN
 #SERVICE_CIDR="10.96.0.0/12"          # must not overlap your LAN
