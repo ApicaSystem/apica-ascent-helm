@@ -24,18 +24,19 @@ dependencies:
   - name: flash-coffee
     version: 1.0.0
     condition: global.chart.flash-coffee
+  - name: flash-discovery
+    version: 1.0.0
+    condition: global.chart.flash-discovery
   - name: kube-prometheus-stack
     repository: https://prometheus-community.github.io/helm-charts
     version: 88.6.3
+    condition: global.chart.prometheus
   - name: logiq-flash
     version: 1.0.0
     condition: global.chart.logiq-flash
   - name: logiqctl
     version: 1.0.0
     condition: global.chart.logiqctl
-  - name: flash-discovery
-    version: 1.0.0
-    condition: global.chart.flash-discovery
   - name: valkey
     condition: global.chart.redis
     repository: https://valkey.io/valkey-helm
