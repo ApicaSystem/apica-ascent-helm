@@ -232,6 +232,10 @@ bootstraps the admin account a few minutes after it starts).
   | `base`   | prometheus, thanos, coffee, discovery  |
   | `common` | postgres, redis                        |
 
+  Join tokens are created with a 15-minute expiry, travel to the worker over the SSH channel
+  (never on a command line), are stored with mode 0600, invalidated on the controller after the
+  join, and deleted from the worker once its kubelet client config exists.
+
 ## Database
 
 `DB_ENGINE=bitnami` (default) deploys the chart's single-instance Bitnami

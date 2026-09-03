@@ -297,10 +297,16 @@ exec > >(redact | tee -a "${LOG_FILE}") 2>&1
 TMP_DIR="$(mktemp -d "${INSTALL_DIR}/tmp.XXXXXX")"; chmod 700 "${TMP_DIR}"
 trap 'rm -rf "${TMP_DIR}"' EXIT
 
-# pinned checksums belong to the pinned versions: a version override without a new checksum disables the pin
-[[ "${K0S_VERSION}" == "v1.34.7+k0s.0" ]] || [[ "${K0S_SHA256}" != "f9e1335e2c4cc6e1cea3970d38bd5282d6382f4aea5050924ff50c520194619f" ]] || K0S_SHA256=""
-[[ "${KUBECTL_VERSION}" == "v1.34.7" ]]  || [[ "${KUBECTL_SHA256}" != "b46ecf2b80f76d5a7d58c296c2e11e42c85eaa1eb866ddbc1e91625f71c21000" ]] || KUBECTL_SHA256=""
-[[ "${HELM_VERSION}" == "v3.21.0" ]]     || [[ "${HELM_SHA256}" != "0093eb572e3d2380f094df162ddb525e219249de88957afe24cfbb19632acd36" ]] || HELM_SHA256=""
+# The pinned checksums belong to the pinned versions. If a version was overridden in the config but
+# its checksum still is the built-in pin, that pin cannot be right: clear it so verify_sha256 demands
+# a matching *_SHA256 (or an explicit SKIP_CHECKSUM_VERIFY=true) instead of failing on a stale value.
+# Default versions keep their pins; user-supplied checksums are always kept.
+PIN_K0S_VERSION="v1.34.7+k0s.0";  PIN_K0S_SHA256="f9e1335e2c4cc6e1cea3970d38bd5282d6382f4aea5050924ff50c520194619f"
+PIN_KUBECTL_VERSION="v1.34.7";    PIN_KUBECTL_SHA256="b46ecf2b80f76d5a7d58c296c2e11e42c85eaa1eb866ddbc1e91625f71c21000"
+PIN_HELM_VERSION="v3.21.0";       PIN_HELM_SHA256="0093eb572e3d2380f094df162ddb525e219249de88957afe24cfbb19632acd36"
+if [[ "${K0S_VERSION}" != "${PIN_K0S_VERSION}" && "${K0S_SHA256}" == "${PIN_K0S_SHA256}" ]]; then K0S_SHA256=""; fi
+if [[ "${KUBECTL_VERSION}" != "${PIN_KUBECTL_VERSION}" && "${KUBECTL_SHA256}" == "${PIN_KUBECTL_SHA256}" ]]; then KUBECTL_SHA256=""; fi
+if [[ "${HELM_VERSION}" != "${PIN_HELM_VERSION}" && "${HELM_SHA256}" == "${PIN_HELM_SHA256}" ]]; then HELM_SHA256=""; fi
 
 # derived defaults
 PRIMARY_IF="$(ip -o route get 1.1.1.1 2>/dev/null | grep -oP 'dev \K\S+' || echo eth0)"
@@ -728,7 +734,10 @@ check_host() {
 check_network() {
   section "network"
   if ip -o -4 addr show 2>/dev/null | grep -q " ${PRIVATE_IP}/"; then ok "PRIVATE_IP ${PRIVATE_IP} is on interface ${PRIMARY_IF}"
-  else fail "PRIVATE_IP ${PRIVATE_IP} is not assigned to any interface on this host"; fi
+  else
+    local detected; detected="$(ip -o route get 1.1.1.1 2>/dev/null | grep -oP 'src \K\S+' || true)"
+    fail "PRIVATE_IP ${PRIVATE_IP} is not assigned to any interface on this host (its primary address is ${detected:-unknown}) — the config was written for another machine; remove or comment PRIVATE_IP, PUBLIC_IP and LB_IP so they are auto-detected"
+  fi
   is_ipv4 "${PRIVATE_IP}" || fail "PRIVATE_IP '${PRIVATE_IP}' is not an IPv4 address"
   is_cidr "${NODE_SUBNET}" && ok "node subnet ${NODE_SUBNET}" || fail "NODE_SUBNET '${NODE_SUBNET}' is not a valid CIDR"
   is_cidr "${POD_CIDR}"     && ok "pod CIDR ${POD_CIDR}"        || fail "POD_CIDR '${POD_CIDR}' is not a valid CIDR"
@@ -753,7 +762,9 @@ check_network() {
       if ping -c1 -W1 "${LB_IP}" >/dev/null 2>&1 && ! have_kubectl; then fail "LB_IP ${LB_IP} already answers to ping — it must be an unused address"; else ok "LB_IP ${LB_IP} not in use"; fi
     fi
   else fail "LB_IP '${LB_IP}' is not an IPv4 address"; fi
-  [[ -z "${PUBLIC_IP}" ]] || is_ipv4 "${PUBLIC_IP}" && ok "PUBLIC_IP ${PUBLIC_IP:-<unset>}" || fail "PUBLIC_IP '${PUBLIC_IP}' is not an IPv4 address"
+  if [[ -z "${PUBLIC_IP}" ]]; then ok "PUBLIC_IP <unset>"
+  elif is_ipv4 "${PUBLIC_IP}"; then ok "PUBLIC_IP ${PUBLIC_IP}"
+  else fail "PUBLIC_IP '${PUBLIC_IP}' is not an IPv4 address"; fi
   [[ "${APPLY_NETWORK_FIXES}" =~ ^(auto|true|false)$ ]] && ok "APPLY_NETWORK_FIXES=${APPLY_NETWORK_FIXES} → OCI fixes $(network_fixes_enabled && echo ENABLED || echo disabled)$(is_oci && echo ' (Oracle Cloud detected)')" \
     || fail "APPLY_NETWORK_FIXES must be auto|true|false"
 
@@ -1006,7 +1017,7 @@ PYEOF
     *)   fail "unexpected HTTP ${S3_HTTP} from ListObjects: $(s3_code) $(s3_msg)" ;;
   esac
   [[ "${S3_HTTP}" == 200 ]] || return
-  local key tmp; key="ascent-preflight-probe-$(date +%s).txt"; tmp="$(mktemp)"; echo "ascent preflight $(date -u +%FT%TZ)" > "${tmp}"
+  local key tmp; key="ascent-preflight-probe-$(hostname)-$(date +%s)-${RANDOM}${RANDOM}.txt"; tmp="$(mktemp)"; echo "ascent preflight $(date -u +%FT%TZ)" > "${tmp}"
   s3_req PUT "/${key}" -T "${tmp}" -H "Content-Type: text/plain"
   rm -f "${tmp}"
   if [[ "${S3_HTTP}" == 200 ]]; then
@@ -1351,7 +1362,7 @@ phase_k0s() {
 # ---------------------------------------------------------------------------
 # phase: workers (multi-node only)
 # ---------------------------------------------------------------------------
-FAILED_WORKER=""
+FAILED_WORKER=""; WORKER_TOKEN_IDS=""
 phase_workers() {
   CURRENT_PHASE="workers"
   if ! is_multi_node; then
@@ -1400,8 +1411,16 @@ EOF
       log "worker ${ip}: k0s already running, skipping join"
     else
       log "worker ${ip}: joining cluster"
-      sudo k0s token create --role=worker --expiry 1h \
-        | ssh_worker "${ip}" "${REMOTE_PRELUDE}; sudo tee /etc/k0s/token > /dev/null && sudo k0s install worker --token-file /etc/k0s/token && sudo k0s start"
+      # The join token is a short-lived credential: 15 minute expiry, sent over the ssh channel
+      # (never on a command line), stored 0600 on the worker, invalidated on the controller and
+      # removed from the worker once the join has produced the kubelet client config.
+      local token token_id
+      token="$(sudo k0s token create --role=worker --expiry 15m)"
+      token_id="$(printf '%s' "${token}" | base64 -d 2>/dev/null | gunzip -c 2>/dev/null | grep -oE 'token: [a-z0-9]+\.' | head -n1 | sed 's/token: //; s/\.$//' || true)"
+      printf '%s' "${token}" | ssh_worker "${ip}" "${REMOTE_PRELUDE}; set -e; umask 077; t=\$(mktemp); cat > \"\$t\"; [ -s \"\$t\" ] || { echo 'empty join token received'; exit 5; }
+sudo install -m 0600 -o root -g root \"\$t\" /etc/k0s/token; rm -f \"\$t\"; sudo k0s install worker --token-file /etc/k0s/token && sudo k0s start"
+      unset token
+      [[ -n "${token_id}" ]] && WORKER_TOKEN_IDS="${WORKER_TOKEN_IDS:-} ${token_id}"
       mark "joined.worker.${ip}"
     fi
   done
@@ -1420,7 +1439,16 @@ EOF
     local node; node="$(ssh_worker "${ip}" hostname | tr '[:upper:]' '[:lower:]')"
     log "labeling node ${node}: ${NODE_POOL_LABEL}=${pool}"
     kubectl label node "${node}" "${NODE_POOL_LABEL}=${pool}" --overwrite
+    # the token file is only read during the first bootstrap; once kubelet.conf exists it is dead weight
+    if ssh_worker "${ip}" "${REMOTE_PRELUDE}; sudo test -s /var/lib/k0s/kubelet.conf" 2>/dev/null; then
+      ssh_worker "${ip}" "${REMOTE_PRELUDE}; sudo rm -f /etc/k0s/token" && log "worker ${ip}: join token removed from disk"
+    else
+      warn "worker ${ip}: kubelet config not found yet — leaving /etc/k0s/token in place (remove it once the node is Ready)"
+    fi
   done
+  local tid
+  for tid in ${WORKER_TOKEN_IDS:-}; do sudo k0s token invalidate "${tid}" >/dev/null 2>&1 && log "join token ${tid} invalidated on the controller" || true; done
+  WORKER_TOKEN_IDS=""
   if [[ -n "${CONTROLLER_POOL}" ]]; then
     kubectl label node "$(hostname | tr '[:upper:]' '[:lower:]')" "${NODE_POOL_LABEL}=${CONTROLLER_POOL}" --overwrite
   fi
@@ -1527,11 +1555,12 @@ require_config_complete() { # the application phases must never run on empty set
 # ---------------------------------------------------------------------------
 ensure_tls_material() { # generates a self-signed cert when requested and nothing is configured
   if [[ -z "${TLS_CERT_FILE}" && "${TLS_SELF_SIGNED}" == "true" ]]; then
-    local dir="${INSTALL_DIR}/tls"; mkdir -p "${dir}"
+    local dir="${INSTALL_DIR}/tls"; mkdir -p "${dir}"; chmod 700 "${dir}"
     TLS_CERT_FILE="${dir}/tls.crt"; TLS_KEY_FILE="${dir}/tls.key"
     if [[ ! -s "${TLS_CERT_FILE}" ]] || ! openssl x509 -in "${TLS_CERT_FILE}" -noout -checkhost "${DOMAIN}" 2>/dev/null | grep -q "does match"; then
-      log "generating a self-signed certificate for ${DOMAIN} (825 days) in ${dir}"
-      openssl req -x509 -newkey rsa:2048 -nodes -days 825 -keyout "${TLS_KEY_FILE}" -out "${TLS_CERT_FILE}" \
+      # 397 days: the maximum browsers accept; RSA 2048 kept for compatibility with older syslog/agent TLS stacks
+      log "generating a self-signed certificate for ${DOMAIN} (397 days) in ${dir}"
+      openssl req -x509 -newkey rsa:2048 -nodes -days 397 -keyout "${TLS_KEY_FILE}" -out "${TLS_CERT_FILE}" \
         -subj "/CN=${DOMAIN}/O=${ADMIN_ORG}" -addext "subjectAltName=DNS:${DOMAIN}" >/dev/null 2>&1
       chmod 600 "${TLS_KEY_FILE}"
     fi
