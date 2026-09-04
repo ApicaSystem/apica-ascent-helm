@@ -289,6 +289,46 @@ prometheus:
         limits:
           memory: 200Mi
 
+kube-prometheus-stack:
+  # Disable built-in Prometheus/Alertmanager CRs — managed by prometheus-cr.yaml / alertmanager-cr.yaml
+  prometheus:
+    enabled: false
+  alertmanager:
+    enabled: false
+  grafana:
+    enabled: false
+  prometheusOperator:
+    enabled: true
+    replicaCount: 1
+    kubeletService:
+      enabled: false
+  kube-state-metrics:
+    serviceMonitor:
+      enabled: false
+  nodeExporter:
+    serviceMonitor:
+      enabled: false
+  kubeApiServer:
+    enabled: false
+  kubeControllerManager:
+    enabled: false
+    service:
+      enabled: false
+  kubeScheduler:
+    enabled: false
+    service:
+      enabled: false
+  kubelet:
+    enabled: false
+  coreDns:
+    enabled: false
+    service:
+      enabled: false
+  kubeProxy:
+    enabled: false
+    service:
+      enabled: false
+
 logiqctl:
   image:
     repository: logiqai/logiqctl
