@@ -7,6 +7,8 @@ metadata:
   labels:
     release: prometheus
 spec:
+  scrapeInterval: {{ .Values.prometheus.prometheus.scrapeInterval | default "30s" }}
+  evaluationInterval: {{ .Values.prometheus.prometheus.evaluationInterval | default "30s" }}
   replicas: {{ .Values.prometheus.prometheus.replicaCount }}
   resources:
     {{- toYaml .Values.prometheus.prometheus.resources | nindent 4 }}
