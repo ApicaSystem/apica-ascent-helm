@@ -379,7 +379,7 @@ logiqctl:
     pullPolicy: IfNotPresent
 global:
   domain: '##YOUR_DOMAIN##'
-  imageRegistry: docker.io
+  imageRegistry: ""
   kubeDistributor:
     enabled: false
   cloudProvider: aws

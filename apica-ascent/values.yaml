@@ -327,12 +327,13 @@ kube-prometheus-stack:
     replicaCount: 1
     kubeletService:
       enabled: false
+  kubeStateMetrics:
+    enabled: false
   kube-state-metrics:
     serviceMonitor:
       enabled: false
   nodeExporter:
-    serviceMonitor:
-      enabled: false
+    enabled: false
   kubeApiServer:
     enabled: false
   kubeControllerManager:
@@ -363,7 +364,7 @@ logiqctl:
 global:
   domain: null
   # Set this to the hostname of a private registry for air-gapped environments
-  imageRegistry: "docker.io"
+  imageRegistry: ""
   kubeDistributor:
     enabled: false
   cloudProvider: aws
