@@ -50,10 +50,9 @@ TLS_KEY_FILE="/path/to/tls.key"        # unencrypted private key
 # about 30 GB/day, in chart 3.1.5; 745654 bytes/s, about 64 GB/day, in newer charts).
 INGEST_GB_PER_DAY="50"
 #INGEST_MODE="lake"                   # lake = Flow + Lake (indexed, searchable) | flow = pipeline only
-#WORKLOAD_TIER="2"                    # 1 routing only … 2 standard (filter/tag/PII, 2 outputs) … 5 AI/LLM
-#INGEST_DESTINATIONS="1"              # extra output destinations cost ~15% throughput each
-#PEAK_MULTIPLIER="2"                  # headroom for traffic spikes
-#RATE_LIMIT_FLAGS=""                  # override the derived limit, e.g. "-max_bytes_per_sec=346729"
+# Advanced (rarely needed, the guide's defaults are used otherwise): WORKLOAD_TIER 1-5 (default 2,
+# standard production), INGEST_DESTINATIONS (default 1), PEAK_MULTIPLIER (default 2),
+# RATE_LIMIT_FLAGS to override the derived ingest rate limit.
 #UPLOAD_DASHBOARD="false"             # chart hook that uploads default dashboards; keeps helm waiting
                                       # up to 20m and fails with 401 on chart 3.1.x — leave off
 

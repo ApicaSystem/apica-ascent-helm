@@ -137,8 +137,7 @@ adopted cluster is never reset.
 
 ## Sizing
 
-Set `INGEST_GB_PER_DAY` (plus `INGEST_MODE`, `WORKLOAD_TIER`, `INGEST_DESTINATIONS`,
-`PEAK_MULTIPLIER`) and the installer applies the
+Set `INGEST_GB_PER_DAY` and `INGEST_MODE` (`lake` or `flow`) and the installer applies the
 [capacity planning guide](https://docs.apica.io/getting-started/paas-deployment/paas-architecture):
 
 ```text
@@ -149,7 +148,9 @@ core tier   = +10 vCPU, +28 GB RAM, +150 GB disk (static)
 ```
 
 Preflight prints the plan, fails when a single flash pod cannot fit the node, and warns when the
-guide's totals exceed the host. Without `INGEST_GB_PER_DAY` the chart's default rate limit applies
+guide's totals exceed the host. Advanced inputs exist for the rare case where the numbers are known:
+`WORKLOAD_TIER` (1 to 5, default 2 "standard production"), `INGEST_DESTINATIONS` (default 1, −15 %
+throughput per extra output) and `PEAK_MULTIPLIER` (default 2). Without `INGEST_GB_PER_DAY` the chart's default rate limit applies
 (`-max_bytes_per_sec=346729`, about **30 GB/day**, in chart 3.1.5; 745654, about 64 GB/day, in
 newer charts), so production installs must set it.
 `INGEST_MODE=flow` enables the chart's `logflow_only` mode. S3 capacity is not derived: size it as
