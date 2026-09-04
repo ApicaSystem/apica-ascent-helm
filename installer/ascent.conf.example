@@ -1,0 +1,114 @@
+# =============================================================================
+# Apica Ascent installer configuration
+# You do not have to write this file by hand: running ./ascent-install.sh without a config asks
+# for every setting and writes ascent.conf + ascent-secrets.conf. Copy and edit it only if you prefer:
+#   ./ascent-install.sh preflight --config ascent.conf   # full report of every problem
+#   ./ascent-install.sh all       --config ascent.conf
+#
+# Plain KEY=value lines, parsed by the installer (never sourced: no shell expansion).
+# Quote with " or '; a value containing one quote style must use the other.
+# Secrets belong in ascent-secrets.conf next to this file (see ascent-secrets.conf.example)
+# or in ASCENT_<VAR> environment variables — not here.
+# No Windows line endings (the installer refuses CRLF files).
+# =============================================================================
+
+# --- application (required) --------------------------------------------------
+DOMAIN="ascent.example.com"            # lowercase FQDN; must match the TLS cert CN/SAN
+ADMIN_NAME="admin"
+ADMIN_ORG="my-org"
+ADMIN_EMAIL="ops@example.com"
+# ADMIN_PASSWORD and PG_PASSWORD -> ascent-secrets.conf
+
+# S3-compatible object storage (required). The bare endpoint, no bucket, no path.
+#   AWS:   https://s3.us-east-1.amazonaws.com
+#   OCI:   https://<namespace>.compat.objectstorage.<region>.oraclecloud.com
+#          (access key = 40 hex chars, secret = base64 string; the identity domain
+#           of the customer secret key must be replicated to that region)
+#   MinIO: https://minio.example.internal:9000   (+ S3_CA_FILE for a private CA)
+# Preflight verifies the credentials with a real list/put/get/delete round-trip.
+S3_URL="https://s3.us-east-1.amazonaws.com"
+S3_BUCKET="my-ascent-bucket"
+S3_REGION="us-east-1"                  # must match the region in the endpoint hostname
+# S3_ACCESS and S3_SECRET -> ascent-secrets.conf
+#S3_CA_FILE="/path/to/s3-ca.pem"      # private CA of the S3 endpoint (configures s3_custom_ca)
+
+# TLS certificate for the ingress gateway (PEM). Required unless TLS_SELF_SIGNED=true.
+TLS_CERT_FILE="/path/to/tls.crt"       # leaf cert, ideally followed by the intermediates
+TLS_KEY_FILE="/path/to/tls.key"        # unencrypted private key
+#TLS_CA_FILE="/path/to/chain.crt"     # intermediates/CA (used for the ingest secret's ca.crt)
+#TLS_SELF_SIGNED="true"               # test installs only: generate a self-signed cert for DOMAIN
+
+# Database engine:
+#   bitnami  single-instance Bitnami Postgres (default, simplest)
+#   cnpg     CloudNativePG cluster (installer also deploys the operator; 1 instance on
+#            single-node, 2 on multi-node)
+#DB_ENGINE="bitnami"
+
+# --- sizing (https://docs.apica.io/getting-started/paas-deployment/paas-architecture) ---
+# Expected daily ingest volume. Drives the number of flash pods, their CPU/RAM/disk and the
+# ingest rate limit. Leave empty and the chart's default rate limit applies (346729 bytes/s,
+# about 30 GB/day, in chart 3.1.5; 745654 bytes/s, about 64 GB/day, in newer charts).
+INGEST_GB_PER_DAY="50"
+#INGEST_MODE="lake"                   # lake = Flow + Lake (indexed, searchable) | flow = pipeline only
+#WORKLOAD_TIER="2"                    # 1 routing only … 2 standard (filter/tag/PII, 2 outputs) … 5 AI/LLM
+#INGEST_DESTINATIONS="1"              # extra output destinations cost ~15% throughput each
+#PEAK_MULTIPLIER="2"                  # headroom for traffic spikes
+#RATE_LIMIT_FLAGS=""                  # override the derived limit, e.g. "-max_bytes_per_sec=346729"
+#UPLOAD_DASHBOARD="false"             # chart hook that uploads default dashboards; keeps helm waiting
+                                      # up to 20m and fails with 401 on chart 3.1.x — leave off
+
+# --- cluster -----------------------------------------------------------------
+# k0s:      install (or adopt) k0s on this host — the default on-prem path
+# existing: deploy onto the cluster of the current kubeconfig (EKS, OpenShift, ...).
+#           Platform phases are skipped; the cluster must provide STORAGE_CLASS and a
+#           LoadBalancer implementation. Run from a Linux host with kubectl + helm.
+#CLUSTER_MODE="k0s"
+#CLOUD_PROVIDER="none"                # existing clusters: aws adds NLB annotations, oci keeps
+                                      # the chart defaults, none removes them
+
+# --- topology (CLUSTER_MODE=k0s) ---------------------------------------------
+# Leave WORKERS empty for a single-node install (k0s --single).
+# For multi-node, list workers as "ip:pool" — pools map to the chart's
+# apica-node-pool labels and ALL THREE must be covered: ingest, base, common.
+#WORKERS="10.0.0.11:base 10.0.0.12:common 10.0.0.13:ingest"
+#CONTROLLER_POOL=""                   # optionally give the controller a pool too
+#SSH_USER="ubuntu"                    # ec2-user on Amazon Linux
+#SSH_KEY="/home/ubuntu/.ssh/id_rsa"
+
+# Controller IPs — auto-detected if unset. PUBLIC_IP is added to the k8s API
+# SANs and used for the final HTTPS probe.
+#PRIVATE_IP="10.0.0.10"
+#PUBLIC_IP="203.0.113.10"
+
+# --- networking --------------------------------------------------------------
+# OCI VCN and AWS EC2 source/destination checks silently drop pod-sourced traffic.
+# "auto" detects Oracle Cloud or EC2 and applies the kube-router IPIP overlay + SNAT
+# fixes. Force with true/false. Allow IP protocol 4 (IPIP) between nodes.
+#APPLY_NETWORK_FIXES="auto"
+#POD_CIDR="10.244.0.0/16"             # must not overlap your LAN
+#SERVICE_CIDR="10.96.0.0/12"          # must not overlap your LAN
+#LB_IP=""                             # metallb pool IP; defaults to the controller's private IP
+#NODE_SUBNET=""                       # defaults to the primary interface's subnet
+
+# --- chart -------------------------------------------------------------------
+#CHART_VERSION="3.1.5"
+#CHART_REPO_URL="https://apicasystem.github.io/apica-ascent-helm"
+#IMAGE_REGISTRY=""                    # private registry mirror (global.imageRegistry)
+#EXTRA_VALUES_FILE=""                 # extra helm values applied last (escape hatch)
+# To deploy from a source checkout instead of the packaged repo:
+#CHART_SOURCE="path"
+#CHART_PATH="/home/ubuntu/apica-ascent-helm/apica-ascent"
+
+# --- safety ------------------------------------------------------------------
+# A k0s cluster this installer did not create is never touched unless you say so.
+# With true it is used (and never reset by 'cleanup'); with false preflight fails.
+#ADOPT_EXISTING_CLUSTER="false"
+#SECRETS_FILE=""                      # defaults to ascent-secrets.conf next to this file
+#SKIP_CHECKSUM_VERIFY="false"         # downloads are checked against pinned SHA-256 values;
+                                      # when you change K0S/KUBECTL/HELM_VERSION also set
+                                      # K0S_SHA256 / KUBECTL_SHA256 / HELM_SHA256
+
+# --- misc --------------------------------------------------------------------
+#NAMESPACE="apica-ascent"
+#RELEASE_NAME="apica-ascent"
+#INSTALL_DIR="$HOME/ascent-install"   # values.yaml, logs/, state/ (used by 'cleanup')
