@@ -85,7 +85,7 @@ spec:
 
       initContainers:
         - name: check-redis
-          image: {{ .Values.global.imageRegistry }}/{{ .Values.global.toolbox.image.repository }}:{{ .Values.global.toolbox.image.tag }}
+          image: {{ .Values.global.imageRegistry | default "docker.io" }}/{{ .Values.global.toolbox.image.repository }}:{{ .Values.global.toolbox.image.tag }}
           imagePullPolicy: IfNotPresent
           command:
             - sh
@@ -95,7 +95,7 @@ spec:
               do echo "waiting for {{ .Values.global.environment.redis_host }}"; sleep 1; done;
 
         - name: check-postgres
-          image: {{ .Values.global.imageRegistry }}/{{ .Values.global.toolbox.image.repository }}:{{ .Values.global.toolbox.image.tag }}
+          image: {{ .Values.global.imageRegistry | default "docker.io" }}/{{ .Values.global.toolbox.image.repository }}:{{ .Values.global.toolbox.image.tag }}
           imagePullPolicy: IfNotPresent
           env:
             - name: POSTGRES_PASSWORD
@@ -129,7 +129,7 @@ spec:
 
       containers:
         - name: coffee
-          image: "{{ .Values.global.imageRegistry }}/{{ .Values.coffee.image.repository }}:{{ .Values.coffee.image.tag }}"
+          image: "{{ .Values.global.imageRegistry | default "docker.io" }}/{{ .Values.coffee.image.repository }}:{{ .Values.coffee.image.tag }}"
           imagePullPolicy: {{ .Values.coffee.image.pullPolicy }}
           command: ["/app/flash-brew/setup_coffee.sh"]
           # Sleep before SIGTERM so the LB stops routing before the process exits.

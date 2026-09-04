@@ -102,7 +102,7 @@ spec:
 
       initContainers:
         - name: check-redis
-          image: {{ .Values.global.imageRegistry }}/{{ .Values.global.toolbox.image.repository }}:{{ .Values.global.toolbox.image.tag }}
+          image: {{ .Values.global.imageRegistry | default "docker.io" }}/{{ .Values.global.toolbox.image.repository }}:{{ .Values.global.toolbox.image.tag }}
           imagePullPolicy: IfNotPresent
           command:
             - sh
@@ -113,7 +113,7 @@ spec:
 
         {{- if .Values.global.chart.s3gateway }}
         - name: check-s3-gateway
-          image: {{ .Values.global.imageRegistry }}/{{ .Values.global.toolbox.image.repository }}:{{ .Values.global.toolbox.image.tag }}
+          image: {{ .Values.global.imageRegistry | default "docker.io" }}/{{ .Values.global.toolbox.image.repository }}:{{ .Values.global.toolbox.image.tag }}
           imagePullPolicy: IfNotPresent
           command:
             - sh
@@ -124,7 +124,7 @@ spec:
         {{- end }}
 
         - name: check-flash
-          image: {{ .Values.global.imageRegistry }}/{{ .Values.global.toolbox.image.repository }}:{{ .Values.global.toolbox.image.tag }}
+          image: {{ .Values.global.imageRegistry | default "docker.io" }}/{{ .Values.global.toolbox.image.repository }}:{{ .Values.global.toolbox.image.tag }}
           imagePullPolicy: IfNotPresent
           command:
             - sh
@@ -159,7 +159,7 @@ spec:
 
       containers:
         - name: {{ .Chart.Name }}-ml
-          image: "{{ .Values.global.imageRegistry }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          image: "{{ .Values.global.imageRegistry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           command:
             - /bin/bash
@@ -333,7 +333,7 @@ spec:
             {{- toYaml .Values.resources.ml | nindent 12 }}
 
         - name: {{ .Chart.Name }}-tracing
-          image: "{{ .Values.global.imageRegistry }}/{{ .Values.sidecarTracingMl.image }}:{{ .Values.sidecarTracingMl.tag }}"
+          image: "{{ .Values.global.imageRegistry | default "docker.io" }}/{{ .Values.sidecarTracingMl.image }}:{{ .Values.sidecarTracingMl.tag }}"
           imagePullPolicy: {{ .Values.sidecarTracingMl.pullPolicy }}
           command:
             - /bin/sh

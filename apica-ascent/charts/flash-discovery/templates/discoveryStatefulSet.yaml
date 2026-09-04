@@ -105,7 +105,7 @@ spec:
 
       initContainers:
         - name: check-postgres
-          image: {{ .Values.global.imageRegistry }}/{{ .Values.global.toolbox.image.repository }}:{{ .Values.global.toolbox.image.tag }}
+          image: {{ .Values.global.imageRegistry | default "docker.io" }}/{{ .Values.global.toolbox.image.repository }}:{{ .Values.global.toolbox.image.tag }}
           imagePullPolicy: IfNotPresent
           env:
             - name: POSTGRES_PASSWORD
@@ -154,7 +154,7 @@ spec:
 
       containers:
         - name: {{ .Chart.Name }}
-          image: "{{ .Values.global.imageRegistry }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          image: "{{ .Values.global.imageRegistry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           # Sleep before SIGTERM so the LB stops routing before the process exits.
           lifecycle:

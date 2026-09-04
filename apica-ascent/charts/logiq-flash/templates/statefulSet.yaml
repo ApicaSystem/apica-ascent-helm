@@ -98,7 +98,7 @@ spec:
 
       initContainers:
         - name: check-discovery
-          image: {{ .Values.global.imageRegistry }}/{{ .Values.global.toolbox.image.repository }}:{{ .Values.global.toolbox.image.tag }}
+          image: {{ .Values.global.imageRegistry | default "docker.io" }}/{{ .Values.global.toolbox.image.repository }}:{{ .Values.global.toolbox.image.tag }}
           imagePullPolicy: IfNotPresent
           command:
             - sh
@@ -108,7 +108,7 @@ spec:
               do echo "waiting for discovery"; sleep 1; done;
 
         - name: check-redis
-          image: {{ .Values.global.imageRegistry }}/{{ .Values.global.toolbox.image.repository }}:{{ .Values.global.toolbox.image.tag }}
+          image: {{ .Values.global.imageRegistry | default "docker.io" }}/{{ .Values.global.toolbox.image.repository }}:{{ .Values.global.toolbox.image.tag }}
           imagePullPolicy: IfNotPresent
           command:
             - sh
@@ -119,7 +119,7 @@ spec:
 
         {{- if .Values.global.chart.s3gateway }}
         - name: check-s3-gateway
-          image: {{ .Values.global.imageRegistry }}/{{ .Values.global.toolbox.image.repository }}:{{ .Values.global.toolbox.image.tag }}
+          image: {{ .Values.global.imageRegistry | default "docker.io" }}/{{ .Values.global.toolbox.image.repository }}:{{ .Values.global.toolbox.image.tag }}
           imagePullPolicy: IfNotPresent
           command:
             - sh
@@ -174,7 +174,7 @@ spec:
       containers:
         # Primary ingest container — receives logs via syslog/CEF/relp/fluentd/filebeat/gRPC.
         - name: {{ .Chart.Name }}
-          image: "{{ .Values.global.imageRegistry }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          image: "{{ .Values.global.imageRegistry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           command:
             - /bin/bash
@@ -401,7 +401,7 @@ spec:
 
         # Query sidecar — same binary as primary, --sidecar-node flag, separate ports.
         - name: logiq-flash-query
-          image: "{{ .Values.global.imageRegistry }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          image: "{{ .Values.global.imageRegistry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           command:
             - /bin/bash
@@ -580,7 +580,7 @@ spec:
 
         # Jaeger collector sidecar — receives traces via gRPC, stores via localhost:50054.
         - name: {{ .Chart.Name }}-tracing
-          image: "{{ .Values.global.imageRegistry }}/{{ .Values.sidecarTracing.image }}:{{ .Values.sidecarTracing.tag }}"
+          image: "{{ .Values.global.imageRegistry | default "docker.io" }}/{{ .Values.sidecarTracing.image }}:{{ .Values.sidecarTracing.tag }}"
           imagePullPolicy: {{ .Values.sidecarTracing.pullPolicy }}
           command:
             - /bin/sh
