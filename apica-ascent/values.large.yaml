@@ -393,7 +393,7 @@ global:
   security:
     allowInsecureImages: true
   domain: '##YOUR_DOMAIN##'
-  imageRegistry: docker.io
+  imageRegistry: ""
   kubeDistributor:
     enabled: false
   cloudProvider: aws
