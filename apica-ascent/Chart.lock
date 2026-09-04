@@ -5,6 +5,9 @@ dependencies:
 - name: flash-coffee
   repository: ""
   version: 1.0.0
+- name: flash-discovery
+  repository: ""
+  version: 1.0.0
 - name: kube-prometheus-stack
   repository: https://prometheus-community.github.io/helm-charts
   version: 88.6.3
@@ -14,14 +17,11 @@ dependencies:
 - name: logiqctl
   repository: ""
   version: 1.0.0
-- name: flash-discovery
-  repository: ""
-  version: 1.0.0
 - name: valkey
   repository: https://valkey.io/valkey-helm
   version: 0.9.0
 - name: thanos
   repository: oci://ghcr.io/thanos-community/helm-charts
   version: 0.18.0
-digest: sha256:942ec6fcbd967ff76635b8bbe5c48820bde2ddbe7e09fd3bc53f808770fb20cd
-generated: "2026-09-03T20:22:16.433552256Z"
+digest: sha256:68cfc46b1eb4ccffc522eb5a1e2670478bb72b09f697bcac0a8b4e2a620f7bd7
+generated: "2026-09-04T16:01:55.68276-04:00"
