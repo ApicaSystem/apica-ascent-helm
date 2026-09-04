@@ -48,8 +48,24 @@ up front as an option named after its config key, and only the rest is asked for
 Whatever was entered or passed is written to `ascent.conf` and `ascent-secrets.conf` (mode 600),
 so `app upgrade`, `status` and `uninstall` later need no retyping. Without a terminal (CI, cron)
 the installer never prompts: it stops and lists the missing settings; supply them as options,
-`ASCENT_<VAR>` variables or the files. Secrets given as options work but are visible in shell
-history and process lists, so the installer warns; prefer the prompt, the environment or the file.
+`ASCENT_<VAR>` variables or the files.
+
+### Secrets on the command line
+
+`--admin-password`, `--pg-password`, `--s3-access` and `--s3-secret` are accepted like any other
+option, for one-line installs:
+
+```bash
+./ascent-install.sh --domain ascent.example.com --admin-email ops@example.com --admin-password 'S3cure-Pass-2026!' \
+  --s3-url https://s3.us-east-1.amazonaws.com --s3-bucket ascent --s3-region us-east-1 \
+  --s3-access AKIA... --s3-secret '...' --pg-password 'Ascent-Db-2026' --tls-self-signed true
+```
+
+This is the **less preferred** way: the values end up in the shell history and are visible in
+the process list while the command runs, so the installer prints a warning. Prefer the
+interactive prompt (hidden input), `ASCENT_<VAR>` environment variables, or `ascent-secrets.conf`.
+If you do use secret options, clear the line from your history afterwards
+(`history -d <n>` or `HISTCONTROL=ignorespace` with a leading space).
 
 ## Quick start (config files)
 
