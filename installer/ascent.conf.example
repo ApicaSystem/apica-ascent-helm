@@ -1,6 +1,7 @@
 # =============================================================================
 # Apica Ascent installer configuration
-# Copy to ascent.conf, edit, then:
+# You do not have to write this file by hand: running ./ascent-install.sh without a config asks
+# for every setting and writes ascent.conf + ascent-secrets.conf. Copy and edit it only if you prefer:
 #   ./ascent-install.sh preflight --config ascent.conf   # full report of every problem
 #   ./ascent-install.sh all       --config ascent.conf
 #

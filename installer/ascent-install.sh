@@ -7,7 +7,16 @@
 # Ascent helm chart (the APPLICATION). Run it ON the controller node as a user with
 # passwordless sudo. Multi-node installs need SSH access from the controller to each worker.
 #
-# Usage: ./ascent-install.sh <command> [--config ascent.conf] [--yes]
+# Usage: ./ascent-install.sh [<command>] [--config ascent.conf] [--<option> <value> ...] [--yes]
+#        ./ascent-install.sh                      # interactive: asks the settings, then runs 'all'
+#
+# Without a config file the installer asks for every required setting (passwords are typed
+# hidden) and writes ascent.conf + ascent-secrets.conf (mode 600) before it starts; later runs
+# reuse them. Any config key can also be given as an option: --domain x.example.com,
+# --s3-url https://..., --ingest-gb-per-day 100 (option name = lowercase key with dashes).
+# Settings still missing are asked for interactively; without a terminal the run stops and
+# lists them. Secrets on the command line work but are visible in shell history — prefer the
+# prompt, ASCENT_<VAR> environment variables or ascent-secrets.conf.
 #
 # Commands
 #   preflight             Check host, network, config, TLS, S3 credentials and sizing; prints ONE
@@ -39,6 +48,8 @@
 # Options
 #   --config <file>       Configuration file (default: ./ascent.conf, then next to the script).
 #                         Secrets go in ascent-secrets.conf beside it, or ASCENT_<VAR> env vars.
+#   --<key> <value>       Any config key, e.g. --domain, --admin-email, --s3-bucket, --db-engine.
+#   --interactive, -i     Re-ask every setting (current values as defaults) and rewrite the files.
 #   --yes                 Skip confirmation prompts (required when stdin is not a terminal).
 #   --help                This text.
 #
@@ -185,16 +196,28 @@ PATH_VARS="INSTALL_DIR TLS_CERT_FILE TLS_KEY_FILE TLS_CA_FILE S3_CA_FILE SSH_KEY
 # config + arg parsing
 # ---------------------------------------------------------------------------
 CONFIG_FILE=""
-ASSUME_YES="false"
+ASSUME_YES="false"; INTERACTIVE="false"
 PHASE=""; WORKER_JOIN_ARG=""
 ORIGINAL_ARGS="$*"
+declare -A CLI_VARS=()
+cli_option_to_var() { local k="${1#--}"; k="${k#-}"; k="${k//-/_}"; printf '%s' "${k^^}"; }
+set_cli_var() { # set_cli_var <--option> <value>
+  local var; var="$(cli_option_to_var "$1")"
+  if ! grep -qw "${var}" <<<"${KNOWN_VARS} ${SECRET_VARS}"; then
+    echo "unknown option $1 (options are config keys in lowercase with dashes, e.g. --domain, --s3-url, --admin-email; see --help)" >&2; return 1
+  fi
+  CLI_VARS["${var}"]="$2"
+}
 POS=()
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --config) CONFIG_FILE="${2:-}"; shift 2 ;;
+    --config=*) CONFIG_FILE="${1#*=}"; shift ;;
     --yes|-y) ASSUME_YES="true"; shift ;;
+    --interactive|-i) INTERACTIVE="true"; shift ;;
     --help|-h|help) PHASE="help"; shift ;;
-    -*) echo "unknown argument: $1" >&2; exit 2 ;;
+    --*=*|-[a-zA-Z]*=*) set_cli_var "${1%%=*}" "${1#*=}" || exit 2; shift ;;
+    -*) [[ $# -ge 2 ]] || { echo "option $1 needs a value" >&2; exit 2; }; set_cli_var "$1" "$2" || exit 2; shift 2 ;;
     *) POS+=("$1"); shift ;;
   esac
 done
@@ -211,7 +234,12 @@ usage() { # print the leading comment block (from line 2 up to the first non-com
   awk 'NR==1{next} /^#/{sub(/^# ?/,""); print; next} {exit}' "${BASH_SOURCE[0]}"
   exit 0
 }
-[[ "${PHASE}" == "help" || -z "${PHASE}" ]] && usage
+# no command: with a terminal or with options given, the implied command is 'all'; otherwise show usage
+IMPLIED_ALL="false"
+if [[ -z "${PHASE}" ]]; then
+  if [[ ${#CLI_VARS[@]} -gt 0 || -t 0 ]]; then PHASE="all"; IMPLIED_ALL="true"; else PHASE="help"; fi
+fi
+[[ "${PHASE}" == "help" ]] && usage
 case "${PHASE}" in
   preflight|network|k0s|workers|addons|envoy|cnpg|values|deploy|verify|all|uninstall|cleanup|status|diagnose) ;;
   platform-install|platform-uninstall|platform-status|app-install|app-upgrade|app-rollback|app-uninstall|app-status|worker-join) ;;
@@ -254,10 +282,7 @@ expand_home() { local v="$1"; v="${v/#\~/${HOME}}"; v="${v/#\$\{HOME\}/${HOME}}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 if [[ -z "${CONFIG_FILE}" ]]; then
   for _c in "./ascent.conf" "${SCRIPT_DIR}/ascent.conf"; do [[ -f "${_c}" ]] && { CONFIG_FILE="${_c}"; break; }; done
-  if [[ -z "${CONFIG_FILE}" ]]; then
-    echo "no configuration: pass --config <file> or place ascent.conf in the current directory (see ascent.conf.example)" >&2; exit 2
-  fi
-  echo "[ascent-install] using ${CONFIG_FILE} (no --config given)"
+  [[ -z "${CONFIG_FILE}" ]] || echo "[ascent-install] using ${CONFIG_FILE} (no --config given)"
 fi
 unset _c
 if [[ -n "${CONFIG_FILE}" ]]; then
@@ -275,9 +300,142 @@ if [[ -n "${CONFIG_FILE}" ]]; then
   fi
 fi
 # environment overrides for secrets (CI / secret managers): ASCENT_ADMIN_PASSWORD etc.
-for _v in ${SECRET_VARS}; do _e="ASCENT_${_v}"; [[ -n "${!_e:-}" ]] && printf -v "${_v}" '%s' "${!_e}"; done
-for _v in ${PATH_VARS}; do [[ -n "${!_v}" ]] && printf -v "${_v}" '%s' "$(expand_home "${!_v}")"; done
+for _v in ${SECRET_VARS}; do _e="ASCENT_${_v}"; if [[ -n "${!_e:-}" ]]; then printf -v "${_v}" '%s' "${!_e}"; fi; done
+# command-line options override the files
+CLI_SECRET_FLAGS=""
+for _v in "${!CLI_VARS[@]}"; do printf -v "${_v}" '%s' "${CLI_VARS[${_v}]}"; if is_secret_var "${_v}"; then CLI_SECRET_FLAGS="${CLI_SECRET_FLAGS} ${_v}"; fi; done
+for _v in ${PATH_VARS}; do if [[ -n "${!_v}" ]]; then printf -v "${_v}" '%s' "$(expand_home "${!_v}")"; fi; done
 unset _v _e
+
+# ---------------------------------------------------------------------------
+# interactive completion: ask for whatever a command needs and is not configured, then persist it
+# ---------------------------------------------------------------------------
+REQUIRED_VARS="DOMAIN ADMIN_NAME ADMIN_ORG ADMIN_EMAIL ADMIN_PASSWORD PG_PASSWORD S3_URL S3_BUCKET S3_REGION S3_ACCESS S3_SECRET"
+command_needs_config() { case "${PHASE}" in preflight|all|platform-install|app-install|app-upgrade|values|deploy|verify|worker-join) return 0 ;; *) return 1 ;; esac; }
+missing_required() { local v; for v in ${REQUIRED_VARS}; do [[ -n "${!v}" ]] || echo "${v}"; done; [[ -n "${TLS_CERT_FILE}" || "${TLS_SELF_SIGNED}" == "true" ]] || echo TLS_CERT_FILE; }
+VALIDATION_MSG=""
+v_domain()   { [[ "$1" =~ ^[a-z0-9]([-a-z0-9]{0,61}[a-z0-9])?(\.[a-z0-9]([-a-z0-9]{0,61}[a-z0-9])?)+$ ]] && ! [[ "$1" =~ ^[0-9.]+$ ]] || { VALIDATION_MSG="must be a lowercase DNS name like ascent.example.com"; return 1; }; }
+v_email()    { [[ "$1" =~ ^[^@[:space:]]+@[^@[:space:]]+\.[^@[:space:]]+$ ]] || { VALIDATION_MSG="must be an email address"; return 1; }; }
+v_word()     { [[ -n "$1" && ! "$1" =~ [[:space:]] ]] || { VALIDATION_MSG="must not be empty or contain spaces"; return 1; }; }
+v_admin_pw() { local why=""; [[ ${#1} -ge 12 ]] || why="${why} 12+ chars"; [[ "$1" =~ [A-Z] ]] || why="${why} uppercase"; [[ "$1" =~ [a-z] ]] || why="${why} lowercase"; [[ "$1" =~ [0-9] ]] || why="${why} digit"; [[ "$1" =~ [^A-Za-z0-9] ]] || why="${why} special"
+               [[ "$1" == *\'* && "$1" == *\"* ]] && why="${why} (must not contain both ' and \")"; [[ -z "${why}" ]] || { VALIDATION_MSG="password policy: needs${why}"; return 1; }; }
+v_pg_pw()    { [[ "$1" =~ ^[A-Za-z0-9._~-]{8,}$ ]] || { VALIDATION_MSG="8+ characters, only letters, digits and . _ ~ - (it is embedded in database URLs)"; return 1; }; }
+v_url()      { [[ "${1%/}" =~ ^https?://[^/]+$ ]] || { VALIDATION_MSG="the bare endpoint, e.g. https://s3.us-east-1.amazonaws.com (no bucket, no path)"; return 1; }; }
+v_file()     { [[ -f "$(expand_home "$1")" ]] || { VALIDATION_MSG="file not found"; return 1; }; }
+v_int()      { [[ "$1" =~ ^[0-9]+$ ]] || { VALIDATION_MSG="must be a whole number"; return 1; }; }
+v_choice()   { local x="$1"; shift; local c; for c in "$@"; do [[ "${x}" == "${c}" ]] && return 0; done; VALIDATION_MSG="one of: $*"; return 1; }
+v_bucket()   { [[ "$1" =~ ^[a-z0-9]([a-z0-9.-]{1,61}[a-z0-9])?$ ]] || { VALIDATION_MSG="lowercase letters, digits, . and -"; return 1; }; }
+ask() { # ask <VAR> <prompt> <default> <validator...>   (validator may be empty; "secret:" prefix hides input and asks twice)
+  local var="$1" text="$2" def="$3" secret="" ans ans2; shift 3
+  [[ "${1:-}" == secret ]] && { secret="yes"; shift; }
+  while true; do
+    if [[ -n "${secret}" ]]; then
+      printf '%s: ' "${text}" > /dev/tty; IFS= read -r -s ans < /dev/tty; printf '\n' > /dev/tty
+    else
+      printf '%s%s: ' "${text}" "${def:+ [${def}]}" > /dev/tty; IFS= read -r ans < /dev/tty
+    fi
+    local used_default=""
+    [[ -z "${ans}" && -n "${def}" ]] && { ans="${def}"; used_default="yes"; }
+    [[ -n "${ans}" ]] || { printf '  a value is required\n' > /dev/tty; continue; }
+    if [[ $# -gt 0 ]] && ! "$@" "${ans}"; then printf '  %s\n' "${VALIDATION_MSG}" > /dev/tty; continue; fi
+    if [[ -n "${secret}" && -n "${used_default}" ]]; then printf '  using the generated value (saved to ascent-secrets.conf)\n' > /dev/tty
+    elif [[ -n "${secret}" ]]; then
+      printf '%s (again): ' "${text}" > /dev/tty; IFS= read -r -s ans2 < /dev/tty; printf '\n' > /dev/tty
+      [[ "${ans}" == "${ans2}" ]] || { printf '  the two entries differ\n' > /dev/tty; continue; }
+    fi
+    printf -v "${var}" '%s' "${ans}"; return 0
+  done
+}
+ask_var() { # prompt for one config key with its default and validator
+  case "$1" in
+    CLUSTER_MODE)   ask CLUSTER_MODE "Cluster: k0s = install k0s on this host, existing = use the current kubeconfig" "${CLUSTER_MODE:-k0s}" v_choice k0s existing ;;
+    STORAGE_CLASS)  ask STORAGE_CLASS "Storage class" "${STORAGE_CLASS}" v_word ;;
+    CLOUD_PROVIDER) ask CLOUD_PROVIDER "Cloud provider for LoadBalancer annotations (none|aws|oci)" "${CLOUD_PROVIDER}" v_choice none aws oci ;;
+    DOMAIN)         ask DOMAIN "Domain users will open, e.g. ascent.example.com" "${DOMAIN}" v_domain ;;
+    ADMIN_NAME)     ask ADMIN_NAME "Admin user name" "${ADMIN_NAME:-admin}" v_word ;;
+    ADMIN_ORG)      ask ADMIN_ORG "Admin organisation" "${ADMIN_ORG:-apica}" v_word ;;
+    ADMIN_EMAIL)    ask ADMIN_EMAIL "Admin email (used to log in)" "${ADMIN_EMAIL}" v_email ;;
+    ADMIN_PASSWORD) ask ADMIN_PASSWORD "Admin password (12+ chars, upper, lower, digit, special; hidden)" "" secret v_admin_pw ;;
+    PG_PASSWORD)    local gen; gen="$(openssl rand -base64 36 2>/dev/null | tr -dc 'A-Za-z0-9' | cut -c1-24)"
+                    printf 'Postgres password: press Enter to use a generated one, or type your own (8+ chars, letters/digits/._~-)\n' > /dev/tty
+                    ask PG_PASSWORD "Postgres password (hidden)" "${gen}" secret v_pg_pw ;;
+    S3_URL)         ask S3_URL "S3 endpoint URL, e.g. https://s3.us-east-1.amazonaws.com" "${S3_URL}" v_url; S3_URL="${S3_URL%/}" ;;
+    S3_BUCKET)      ask S3_BUCKET "S3 bucket" "${S3_BUCKET}" v_bucket ;;
+    S3_REGION)      local guess=""; [[ "${S3_URL}" =~ objectstorage\.([a-z0-9-]+)\.oraclecloud\.com|s3[.-]([a-z0-9-]+)\.amazonaws\.com ]] && guess="${BASH_REMATCH[1]:-${BASH_REMATCH[2]}}"
+                    ask S3_REGION "S3 region" "${S3_REGION:-${guess}}" v_word ;;
+    S3_ACCESS)      ask S3_ACCESS "S3 access key" "${S3_ACCESS}" v_word ;;
+    S3_SECRET)      ask S3_SECRET "S3 secret key (hidden)" "" secret v_word ;;
+    TLS_CERT_FILE)  printf 'TLS: enter the certificate file for %s, or leave empty to generate a self-signed certificate\n' "${DOMAIN}" > /dev/tty
+                    printf 'Certificate file (PEM, leaf + intermediates): ' > /dev/tty; IFS= read -r TLS_CERT_FILE < /dev/tty
+                    if [[ -z "${TLS_CERT_FILE}" ]]; then TLS_SELF_SIGNED="true"
+                    else TLS_CERT_FILE="$(expand_home "${TLS_CERT_FILE}")"; v_file "${TLS_CERT_FILE}" || { printf '  %s\n' "${VALIDATION_MSG}" > /dev/tty; TLS_CERT_FILE=""; ask_var TLS_CERT_FILE; return; }
+                      ask TLS_KEY_FILE "Private key file (PEM, unencrypted)" "${TLS_KEY_FILE}" v_file; TLS_KEY_FILE="$(expand_home "${TLS_KEY_FILE}")"
+                      printf 'CA / intermediate chain file (optional, Enter to skip): ' > /dev/tty; IFS= read -r TLS_CA_FILE < /dev/tty; TLS_CA_FILE="$(expand_home "${TLS_CA_FILE}")"; fi ;;
+    DB_ENGINE)      ask DB_ENGINE "Database: bitnami = single Postgres, cnpg = CloudNativePG cluster" "${DB_ENGINE}" v_choice bitnami cnpg ;;
+    INGEST_GB_PER_DAY) ask INGEST_GB_PER_DAY "Expected ingest volume in GB per day (sizes pods, disk and the rate limit)" "${INGEST_GB_PER_DAY:-50}" v_int ;;
+    INGEST_MODE)    ask INGEST_MODE "Ingest mode: lake = indexed & searchable, flow = pipeline only" "${INGEST_MODE}" v_choice lake flow ;;
+    *)              ask "$1" "$1" "${!1}" ;;
+  esac
+}
+WIZARD_ORDER="CLUSTER_MODE DOMAIN ADMIN_NAME ADMIN_ORG ADMIN_EMAIL ADMIN_PASSWORD PG_PASSWORD S3_URL S3_BUCKET S3_REGION S3_ACCESS S3_SECRET TLS_CERT_FILE DB_ENGINE INGEST_GB_PER_DAY INGEST_MODE"
+run_wizard() { # run_wizard <all|missing>
+  local v
+  printf '\nApica Ascent installer — configuration\n(answers are saved to ascent.conf and ascent-secrets.conf; Enter accepts the value in brackets)\n\n' > /dev/tty
+  if [[ "$1" == all ]]; then
+    for v in ${WIZARD_ORDER}; do
+      ask_var "${v}"
+      if [[ "${v}" == CLUSTER_MODE && "${CLUSTER_MODE}" == existing ]]; then ask_var STORAGE_CLASS; ask_var CLOUD_PROVIDER; fi
+    done
+  else
+    for v in $(missing_required); do ask_var "${v}"; done
+  fi
+}
+quote_conf() { if [[ "$1" == *\'* ]]; then printf '"%s"' "$1"; else printf "'%s'" "$1"; fi; }
+config_set_key() { # config_set_key <file> <KEY> <value>: replace the line or append
+  local f="$1" k="$2" v; v="$(quote_conf "$3")"
+  [[ -f "${f}" ]] || { umask 077; : > "${f}"; }
+  if grep -qE "^[[:space:]]*(export[[:space:]]+)?${k}=" "${f}"; then
+    local tmp; tmp="$(mktemp)"; awk -v k="${k}" -v v="${v}" 'BEGIN{done=0} $0 ~ "^[ \t]*(export[ \t]+)?"k"=" && !done {print k"="v; done=1; next} {print}' "${f}" > "${tmp}" && cat "${tmp}" > "${f}" && rm -f "${tmp}"
+  else printf '%s=%s\n' "${k}" "${v}" >> "${f}"; fi
+  chmod 600 "${f}"
+}
+persist_config() { # write every user-facing key to the config files (secrets to the secrets file)
+  local main="${CONFIG_FILE:-./ascent.conf}" sec="${SECRETS_FILE:-$(dirname "${CONFIG_FILE:-./ascent.conf}")/ascent-secrets.conf}" k
+  [[ -f "${main}" ]] || printf '# Apica Ascent installer configuration — written by the installer on %s\n# Secrets live in %s\n' "$(date -u +%FT%TZ)" "$(basename "${sec}")" > "${main}"
+  [[ -f "${sec}" ]]  || { umask 077; printf '# Apica Ascent installer secrets — mode 600, never commit\n' > "${sec}"; }
+  for k in CLUSTER_MODE DOMAIN ADMIN_NAME ADMIN_ORG ADMIN_EMAIL S3_URL S3_BUCKET S3_REGION TLS_CERT_FILE TLS_KEY_FILE TLS_CA_FILE TLS_SELF_SIGNED DB_ENGINE INGEST_GB_PER_DAY INGEST_MODE; do
+    if [[ -n "${!k}" ]]; then config_set_key "${main}" "${k}" "${!k}"; fi
+  done
+  if [[ "${CLUSTER_MODE}" == existing ]]; then config_set_key "${main}" STORAGE_CLASS "${STORAGE_CLASS}"; config_set_key "${main}" CLOUD_PROVIDER "${CLOUD_PROVIDER}"; fi
+  for k in "${!CLI_VARS[@]}"; do if ! is_secret_var "${k}"; then config_set_key "${main}" "${k}" "${!k}"; fi; done
+  for k in ${SECRET_VARS}; do if [[ -n "${!k}" ]]; then config_set_key "${sec}" "${k}" "${!k}"; fi; done
+  chmod 600 "${main}" "${sec}"
+  CONFIG_FILE="${main}"; SECRETS_FILE="${sec}"
+  echo "[ascent-install] configuration saved to ${main} and ${sec} (mode 600) — later runs pick them up automatically"
+}
+if [[ "${PHASE}" != help ]] && command_needs_config; then
+  _missing="$(missing_required | tr '\n' ' ')"
+  if [[ "${INTERACTIVE}" == "true" || ( -z "${CONFIG_FILE}" && -n "${_missing}" ) ]]; then
+    [[ -t 0 && -w /dev/tty ]] || { echo "no configuration and no terminal: pass --config <file>, the --<option> values, or ASCENT_<VAR> variables (missing:${_missing:+ ${_missing}})" >&2; exit 2; }
+    run_wizard all; persist_config
+  elif [[ -n "${_missing}" ]]; then
+    if [[ -t 0 && -w /dev/tty ]]; then
+      printf 'Not configured yet:%s\nEnter them now? [Y/n] ' "${_missing:+ ${_missing}}" > /dev/tty; IFS= read -r _a < /dev/tty
+      [[ "${_a}" =~ ^[Nn] ]] && { echo "aborted: set the missing values in ${CONFIG_FILE} or pass them as options" >&2; exit 2; }
+      run_wizard missing; persist_config
+    else
+      echo "required settings missing:${_missing} — set them in ${CONFIG_FILE:-ascent.conf}/ascent-secrets.conf, pass --<option> values, or ASCENT_<VAR> variables" >&2; exit 2
+    fi
+  elif [[ ${#CLI_VARS[@]} -gt 0 ]]; then
+    persist_config   # values given as options are recorded so that later runs do not need them again
+  fi
+  unset _missing _a
+fi
+if [[ "${IMPLIED_ALL}" == "true" && "${ASSUME_YES}" != "true" ]]; then
+  printf 'Run preflight, platform install and app install now? [Y/n] ' > /dev/tty; IFS= read -r _a < /dev/tty
+  [[ "${_a}" =~ ^[Nn] ]] && { echo "not started; run './ascent-install.sh all' when ready (configuration is saved)"; exit 0; }
+  unset _a
+fi
 
 # --- redaction: every line printed or logged passes through here ---
 REDACT_EXPRS=(-E
@@ -2292,6 +2450,7 @@ cmd_diagnose() {
 # ---------------------------------------------------------------------------
 banner
 info "command '${PHASE//-/ }' — log ${LOG_FILE}"
+[[ -z "${CLI_SECRET_FLAGS}" ]] || warn "secrets passed as command-line options (${CLI_SECRET_FLAGS# }) are visible in shell history and process lists — prefer the prompt, ASCENT_<VAR> variables or ascent-secrets.conf"
 case "${PHASE}" in
   preflight) phase_preflight || exit 1 ;;
   network|k0s|workers|addons|envoy|cnpg|values|deploy|verify) run_phase "${PHASE}" ;;

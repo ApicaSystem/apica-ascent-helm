@@ -28,7 +28,30 @@ breaks self-managed Kubernetes.
 See [TESTING.md](TESTING.md) for the step-by-step test procedure (static checks, positive and
 negative preflight, failure diagnostics, idempotent re-run, uninstall/cleanup, fresh VM, multi-node).
 
-## Quick start
+## Quick start (interactive)
+
+```bash
+cd installer
+./ascent-install.sh            # asks every required setting, saves ascent.conf + ascent-secrets.conf, runs 'all'
+```
+
+Passwords and the S3 secret are typed hidden and confirmed twice; every answer is validated on
+the spot (domain syntax, password policy, endpoint shape, files exist). Any setting can be given
+up front as an option named after its config key, and only the rest is asked for:
+
+```bash
+./ascent-install.sh --domain ascent.example.com --admin-email ops@example.com \
+  --s3-url https://s3.us-east-1.amazonaws.com --s3-bucket ascent --s3-region us-east-1 \
+  --ingest-gb-per-day 100 --db-engine cnpg
+```
+
+Whatever was entered or passed is written to `ascent.conf` and `ascent-secrets.conf` (mode 600),
+so `app upgrade`, `status` and `uninstall` later need no retyping. Without a terminal (CI, cron)
+the installer never prompts: it stops and lists the missing settings; supply them as options,
+`ASCENT_<VAR>` variables or the files. Secrets given as options work but are visible in shell
+history and process lists, so the installer warns; prefer the prompt, the environment or the file.
+
+## Quick start (config files)
 
 ```bash
 cd installer
@@ -63,8 +86,9 @@ touch the platform.
 | `diagnose` | redacted support bundle `~/ascent-install/diagnostics/ascent-diagnostics-<ts>.tar.gz` |
 | `network` `k0s` `workers` `addons` `envoy` `cnpg` `values` `deploy` `verify` | single idempotent phases |
 
-Flags: `--config <file>` (default `./ascent.conf`, then the file next to the script), `--yes`
-(skip confirmations), `--help` (documents every command).
+Flags: `--config <file>` (default `./ascent.conf`, then the file next to the script), `--<key>
+<value>` for any config key, `--interactive` (re-ask everything), `--yes` (skip confirmations),
+`--help` (documents every command). With no command the installer runs `all` after the wizard.
 
 `app uninstall`, `platform uninstall` and `app rollback` ask for confirmation; the prompt is written
 directly to the terminal. When stdin is not a terminal (cron, CI, `nohup`) they refuse to run
