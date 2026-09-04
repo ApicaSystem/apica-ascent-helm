@@ -346,10 +346,6 @@ envoyGateway:
 apicaTLSSecret:
   enabled: true
 prometheus:
-  nameOverride: prometheus
-  persistence:
-    enabled: true
-    size: 20Gi
   alertmanager:
     enabled: true
     replicaCount: 1
@@ -359,7 +355,6 @@ prometheus:
     image:
       repository: bitnamilegacy/alertmanager
   prometheus:
-    enabled: true
     resources:
       requests:
         memory: 500Mi
@@ -389,54 +384,6 @@ prometheus:
           memory: 100Mi
         limits:
           memory: 200Mi
-      image:
-        repository: bitnamilegacy/thanos
-  operator:
-    enabled: true
-    replicaCount: 1
-    kubeletService:
-      enabled: false
-    image:
-      repository: bitnamilegacy/prometheus-operator
-    extraArgs:
-    - --namespaces={{ .Release.Namespace }}
-  kube-state-metrics:
-    serviceMonitor:
-      enabled: false
-  node-exporter:
-    serviceMonitor:
-      enabled: false
-  kubeApiServer:
-    enabled: false
-  kubeControllerManager:
-    enabled: false
-    service:
-      enabled: false
-  kubeScheduler:
-    enabled: false
-    service:
-      enabled: false
-  kubelet:
-    enabled: false
-  coreDns:
-    enabled: false
-    service:
-      enabled: false
-  kubeProxy:
-    enabled: false
-    service:
-      enabled: false
-  blackboxExporter:
-    enabled: false
-    image:
-      repository: bitnamilegacy/blackbox-exporter
-  exporters:
-    node-exporter:
-      enabled: false
-    kube-state-metrics:
-      enabled: false
-grafana:
-  fullnameOverride: grafana
 logiqctl:
   image:
     repository: logiqai/logiqctl
