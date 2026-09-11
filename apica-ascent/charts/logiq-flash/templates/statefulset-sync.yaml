@@ -106,8 +106,18 @@ spec:
             - sh
             - -c
             - >
-              until redis-cli -h {{ .Values.global.environment.redis_host }} ping;
+              until redis-cli
+              {{- if and .Values.global.environment.redis_tls.enabled .Values.global.environment.redis_tls.skip_verify }} --tls --insecure
+              {{- else if and .Values.global.environment.redis_tls.enabled .Values.tls.redis.caCert }} --tls --cacert {{ .Values.tls.redis.caCert }}
+              {{- else if .Values.global.environment.redis_tls.enabled }} --tls
+              {{- end }}
+              -h {{ .Values.global.environment.redis_host }} ping;
               do echo "waiting for {{ .Values.global.environment.redis_host }}"; sleep 1; done;
+          {{- if and .Values.global.environment.redis_tls.enabled .Values.tls.certSecretName (not .Values.global.environment.redis_tls.skip_verify) }}
+          volumeMounts:
+            - mountPath: /flash/tls-certs
+              name: tls-certs
+          {{- end }}
 
         {{- if .Values.global.chart.s3gateway }}
         - name: check-s3-gateway
@@ -135,6 +145,11 @@ spec:
         - name: certs
           secret:
             secretName: {{ .Values.secrets_name }}
+        {{- end }}
+        {{- if .Values.tls.certSecretName }}
+        - name: tls-certs
+          secret:
+            secretName: {{ .Values.tls.certSecretName }}
         {{- end }}
         {{- if .Values.global.sharedSecretName }}
         - name: sharedcert
@@ -260,6 +275,32 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: status.podIP
+            {{- if .Values.global.environment.postgres_tls.enabled }}
+            - name: POSTGRES_SSLMODE
+              value: {{ .Values.global.environment.postgres_tls.sslmode }}
+            {{- if .Values.tls.postgres.caCert }}
+            - name: POSTGRES_SSLROOTCERT
+              value: {{ .Values.tls.postgres.caCert }}
+            {{- end }}
+            {{- if .Values.global.environment.postgres_tls.mtls }}
+            - name: POSTGRES_SSLCERT
+              value: {{ .Values.tls.postgres.clientCert }}
+            - name: POSTGRES_SSLKEY
+              value: {{ .Values.tls.postgres.clientKey }}
+            {{- end }}
+            {{- end }}
+            {{- if .Values.global.environment.redis_tls.enabled }}
+            - name: REDIS_TLS
+              value: "true"
+            {{- if .Values.tls.redis.caCert }}
+            - name: REDIS_CA_CERT
+              value: {{ .Values.tls.redis.caCert }}
+            {{- end }}
+            {{- if .Values.global.environment.redis_tls.skip_verify }}
+            - name: REDIS_TLS_SKIP_VERIFY
+              value: "true"
+            {{- end }}
+            {{- end }}
             - name: dataSourceName
               valueFrom:
                 secretKeyRef:
@@ -274,6 +315,10 @@ spec:
             {{- if .Values.secrets_name }}
             - mountPath: /flash/certs
               name: certs
+            {{- end }}
+            {{- if .Values.tls.certSecretName }}
+            - mountPath: /flash/tls-certs
+              name: tls-certs
             {{- end }}
             {{- if .Values.global.sharedSecretName }}
             - mountPath: /flash/sharedcerts
