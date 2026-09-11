@@ -273,6 +273,18 @@ spec:
                   name: {{ template "logiq-flash.fullname" . }}
                   key: postgres_db
             {{- if .Values.global.sharedSecretName }}
+            {{- if .Values.global.environment.s3_credentials_secret.name }}
+            - name: S3_ACCESS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.global.environment.s3_credentials_secret.name }}
+                  key: {{ .Values.global.environment.s3_credentials_secret.access_key_name }}
+            - name: S3_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.global.environment.s3_credentials_secret.name }}
+                  key: {{ .Values.global.environment.s3_credentials_secret.secret_key_name }}
+            {{- else }}
             - name: S3_ACCESS
               valueFrom:
                 secretKeyRef:
@@ -283,6 +295,7 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.global.sharedSecretName }}
                   key: s3_secret
+            {{- end }}
             - name: S3_BUCKET
               valueFrom:
                 secretKeyRef:
@@ -526,6 +539,18 @@ spec:
                   name: {{ template "logiq-flash.fullname" . }}
                   key: postgres_db
             {{- if .Values.global.sharedSecretName }}
+            {{- if .Values.global.environment.s3_credentials_secret.name }}
+            - name: S3_ACCESS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.global.environment.s3_credentials_secret.name }}
+                  key: {{ .Values.global.environment.s3_credentials_secret.access_key_name }}
+            - name: S3_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.global.environment.s3_credentials_secret.name }}
+                  key: {{ .Values.global.environment.s3_credentials_secret.secret_key_name }}
+            {{- else }}
             - name: S3_ACCESS
               valueFrom:
                 secretKeyRef:
@@ -536,6 +561,7 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.global.sharedSecretName }}
                   key: s3_secret
+            {{- end }}
             - name: S3_BUCKET
               valueFrom:
                 secretKeyRef:
