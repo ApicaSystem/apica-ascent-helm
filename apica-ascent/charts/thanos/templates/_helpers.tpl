@@ -74,6 +74,11 @@ Outputs nothing when s3_credentials_secret.name is empty (legacy behavior).
     secretKeyRef:
       name: {{ .Values.global.environment.s3_credentials_secret.name }}
       key: {{ .Values.global.environment.s3_credentials_secret.secret_key_name }}
+- name: S3_BUCKET
+  valueFrom:
+    secretKeyRef:
+      name: {{ .Values.global.environment.s3_credentials_secret.name }}
+      key: {{ .Values.global.environment.s3_credentials_secret.bucket_key_name }}
 {{- if .Values.global.environment.s3_credentials_secret.session_token_name }}
 - name: AWS_SESSION_TOKEN
   valueFrom:
