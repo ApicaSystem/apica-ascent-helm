@@ -529,6 +529,7 @@ global:
       name: ""
       access_key_name: access_key
       secret_key_name: secret_key
+      bucket_key_name: bucket
       session_token_name: ""
       mount_path: /flash/s3creds
     AWS_ACCESS_KEY_ID: "s3_access"

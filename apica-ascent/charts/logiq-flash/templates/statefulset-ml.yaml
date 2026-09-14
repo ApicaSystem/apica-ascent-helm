@@ -265,6 +265,11 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.global.environment.s3_credentials_secret.name }}
                   key: {{ .Values.global.environment.s3_credentials_secret.secret_key_name }}
+            - name: S3_BUCKET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.global.environment.s3_credentials_secret.name }}
+                  key: {{ .Values.global.environment.s3_credentials_secret.bucket_key_name }}
             {{- else }}
             - name: S3_ACCESS
               valueFrom:
@@ -276,12 +281,12 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.global.sharedSecretName }}
                   key: s3_secret
-            {{- end }}
             - name: S3_BUCKET
               valueFrom:
                 secretKeyRef:
                   name: {{ .Values.global.sharedSecretName }}
                   key: s3_bucket
+            {{- end }}
             {{- end }}
             {{- if .Values.global.environment.cluster_id }}
             - name: MY_CLUSTER_ID
