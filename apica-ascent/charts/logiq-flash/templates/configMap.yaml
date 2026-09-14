@@ -78,7 +78,7 @@ data:
     
             s3:
     
-              bucket: {{.Values.global.environment.s3_bucket}}
+              bucket: {{ if .Values.global.environment.s3_credentials_secret.name }}{{ $s := lookup "v1" "Secret" .Release.Namespace .Values.global.environment.s3_credentials_secret.name }}{{ if $s }}{{ index $s.data .Values.global.environment.s3_credentials_secret.bucket_key_name | b64dec }}{{ else }}{{ required "global.environment.s3_bucket must be set when s3_credentials_secret.name is used and the secret is not available at render time (e.g. helm template or initial install)" .Values.global.environment.s3_bucket }}{{ end }}{{ else }}{{.Values.global.environment.s3_bucket}}{{ end }}
     
 {{ if .Values.global.chart.s3gateway }}
 
