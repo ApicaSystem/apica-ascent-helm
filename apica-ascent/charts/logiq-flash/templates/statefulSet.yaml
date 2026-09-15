@@ -164,6 +164,11 @@ spec:
           secret:
             secretName: {{ .Values.global.sharedSecretName }}
         {{- end }}
+        {{- if .Values.global.environment.s3_credentials_secret.name }}
+        - name: s3-creds
+          secret:
+            secretName: {{ .Values.global.environment.s3_credentials_secret.name }}
+        {{- end }}
         {{- if .Values.kafka_client.enabled }}
         - name: apica-kafka-secret
           secret:
@@ -268,6 +273,23 @@ spec:
                   name: {{ template "logiq-flash.fullname" . }}
                   key: postgres_db
             {{- if .Values.global.sharedSecretName }}
+            {{- if .Values.global.environment.s3_credentials_secret.name }}
+            - name: S3_ACCESS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.global.environment.s3_credentials_secret.name }}
+                  key: {{ .Values.global.environment.s3_credentials_secret.access_key_name }}
+            - name: S3_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.global.environment.s3_credentials_secret.name }}
+                  key: {{ .Values.global.environment.s3_credentials_secret.secret_key_name }}
+            - name: S3_BUCKET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.global.environment.s3_credentials_secret.name }}
+                  key: {{ .Values.global.environment.s3_credentials_secret.bucket_key_name }}
+            {{- else }}
             - name: S3_ACCESS
               valueFrom:
                 secretKeyRef:
@@ -283,6 +305,7 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.global.sharedSecretName }}
                   key: s3_bucket
+            {{- end }}
             {{- end }}
             {{- if .Values.global.environment.cluster_id }}
             - name: MY_CLUSTER_ID
@@ -359,6 +382,11 @@ spec:
             {{- if .Values.global.sharedSecretName }}
             - mountPath: /flash/sharedcerts
               name: sharedcert
+            {{- end }}
+            {{- if .Values.global.environment.s3_credentials_secret.name }}
+            - mountPath: {{ .Values.global.environment.s3_credentials_secret.mount_path }}
+              name: s3-creds
+              readOnly: true
             {{- end }}
             {{- if .Values.global.environment.s3_custom_ca.enabled }}
             - mountPath: /etc/ssl/certs/ca.crt
@@ -516,6 +544,23 @@ spec:
                   name: {{ template "logiq-flash.fullname" . }}
                   key: postgres_db
             {{- if .Values.global.sharedSecretName }}
+            {{- if .Values.global.environment.s3_credentials_secret.name }}
+            - name: S3_ACCESS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.global.environment.s3_credentials_secret.name }}
+                  key: {{ .Values.global.environment.s3_credentials_secret.access_key_name }}
+            - name: S3_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.global.environment.s3_credentials_secret.name }}
+                  key: {{ .Values.global.environment.s3_credentials_secret.secret_key_name }}
+            - name: S3_BUCKET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.global.environment.s3_credentials_secret.name }}
+                  key: {{ .Values.global.environment.s3_credentials_secret.bucket_key_name }}
+            {{- else }}
             - name: S3_ACCESS
               valueFrom:
                 secretKeyRef:
@@ -531,6 +576,7 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.global.sharedSecretName }}
                   key: s3_bucket
+            {{- end }}
             {{- end }}
             {{- if .Values.global.environment.cluster_id }}
             - name: MY_CLUSTER_ID
@@ -640,6 +686,11 @@ spec:
             {{- if .Values.global.sharedSecretName }}
             - mountPath: /flash/sharedcerts
               name: sharedcert
+            {{- end }}
+            {{- if .Values.global.environment.s3_credentials_secret.name }}
+            - mountPath: {{ .Values.global.environment.s3_credentials_secret.mount_path }}
+              name: s3-creds
+              readOnly: true
             {{- end }}
             {{- if .Values.global.environment.s3_custom_ca.enabled }}
             - mountPath: /etc/ssl/certs/ca.crt

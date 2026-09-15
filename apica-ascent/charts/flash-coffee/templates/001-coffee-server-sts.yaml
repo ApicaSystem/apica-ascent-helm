@@ -252,26 +252,6 @@ spec:
                 secretKeyRef:
                   name: {{ template "flash-coffee.fullname" . }}
                   key: coffee_database_url
-            - name: S3_URL
-              valueFrom:
-                secretKeyRef:
-                  name: {{ template "flash-coffee.fullname" . }}
-                  key: s3_url
-            - name: S3_ACCESS
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.global.sharedSecretName }}
-                  key: s3_access
-            - name: S3_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.global.sharedSecretName }}
-                  key: s3_secret
-            - name: S3_BUCKET
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.global.sharedSecretName }}
-                  key: s3_bucket
             {{- if .Values.global.environment.admin_name }}
             - name: ADMIN_NAME
               valueFrom:

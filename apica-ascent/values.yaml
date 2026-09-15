@@ -519,12 +519,19 @@ global:
       mtls: false
     s3_url: "https://<bucket-namespace>.compat.objectstorage.<region>.oraclecloud.com"
     s3_access: "s3_access"
-    s3_secret: "s3_secret"
+    s3_secret: "s3_secret" # if migrating to s3_credentials_secret be sure to empty this value
     s3_bucket: "bucket-name"
     s3_region: "region"
     s3_custom_ca:
       enabled: false
       map_name: "kube-root-ca.crt"
+    s3_credentials_secret:
+      name: ""
+      access_key_name: access_key
+      secret_key_name: secret_key
+      bucket_key_name: bucket
+      session_token_name: ""
+      mount_path: /flash/s3creds
     AWS_ACCESS_KEY_ID: "s3_access"
     AWS_SECRET_ACCESS_KEY: "s3_secret"
     admin_name: "devops@apica.io"
