@@ -487,6 +487,13 @@ global:
     s3_custom_ca:
       enabled: false
       map_name: kube-root-ca.crt
+    s3_credentials_secret:
+      name: ''
+      access_key_name: access_key
+      secret_key_name: secret_key
+      bucket_key_name: bucket
+      session_token_name: ''
+      mount_path: /flash/s3creds
     AWS_ACCESS_KEY_ID: '##YOUR_S3_ACCESS_KEY##'
     AWS_SECRET_ACCESS_KEY: '##YOUR_S3_ACCESS_SECRET##'
     admin_name: '##ADMIN_ACCOUNT_NAME##'
