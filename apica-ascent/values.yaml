@@ -519,7 +519,7 @@ global:
       mtls: false
     s3_url: "https://<bucket-namespace>.compat.objectstorage.<region>.oraclecloud.com"
     s3_access: "s3_access"
-    s3_secret: "s3_secret"
+    s3_secret: "s3_secret" # if migrating to s3_credentials_secret be sure to empty this value
     s3_bucket: "bucket-name"
     s3_region: "region"
     s3_custom_ca:
