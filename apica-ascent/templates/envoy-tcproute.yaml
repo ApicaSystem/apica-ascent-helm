@@ -43,70 +43,41 @@ spec:
           name: logiq-flash-ml
           port: 8081
           weight: 1
-# ---
-# TCPRoute for port 14250 - Jaeger gRPC (OpenTelemetry)
-# apiVersion: gateway.networking.k8s.io/v1alpha2
-# kind: TCPRoute
-# metadata:
-#   name: {{ .Release.Name }}-tcp-14250
-#   namespace: {{ .Release.Namespace }}
-#   labels:
-#     app.kubernetes.io/name: apica-ascent
-# spec:
-#   parentRefs:
-#     - group: gateway.networking.k8s.io
-#       kind: Gateway
-#       name: {{ .Release.Name }}-gateway
-#       sectionName: tcp-14250
-#   rules:
-#     - backendRefs:
-#         - group: ''
-#           kind: Service
-#           name: logiq-flash
-#           port: 14250
-#           weight: 1
+
+# ============================================================================
+# Jaeger-compatible trace ingestion (unauthenticated) - opt-in only.
+# Gated by envoyGateway.traceIngestion.enabled, which must stay false unless
+# the gateway is reachable only from a trusted network.
+# ============================================================================
+{{- $trace := .Values.envoyGateway.traceIngestion | default dict }}
+{{- /* Accept bool true or the string "true" (CD pipelines often pass strings).
+       Anything else - including the string "false", which Go templates would
+       otherwise treat as truthy - leaves these ports closed. */}}
+{{- $traceEnabled := eq (lower (toString (default false $trace.enabled))) "true" }}
+{{- if $traceEnabled }}
+{{- range $trace.ports }}
 ---
-# TCPRoute for port 20514 - Jaeger HTTP (OpenTelemetry)
+# TCPRoute for port {{ .port }} - {{ .description | default "trace ingestion" }}
 apiVersion: gateway.networking.k8s.io/v1alpha2
 kind: TCPRoute
 metadata:
-  name: {{ .Release.Name }}-tcp-20514
-  namespace: {{ .Release.Namespace }}
+  name: {{ $.Release.Name }}-{{ .name }}
+  namespace: {{ $.Release.Namespace }}
   labels:
-    {{- include "logiq.labels" . | nindent 4 }}
+    {{- include "logiq.labels" $ | nindent 4 }}
 spec:
   parentRefs:
     - group: gateway.networking.k8s.io
       kind: Gateway
-      name: {{ .Release.Name }}-gateway
-      sectionName: tcp-20514
+      name: {{ $.Release.Name }}-gateway
+      sectionName: {{ .name }}
   rules:
     - backendRefs:
         - group: ''
           kind: Service
-          name: logiq-flash
-          port: 20514
+          name: {{ .service | default "logiq-flash" }}
+          port: {{ .port }}
           weight: 1
-# ---
-# TCPRoute for port 14268 - Jaeger HTTP (OpenTelemetry)
-# apiVersion: gateway.networking.k8s.io/v1alpha2
-# kind: TCPRoute
-# metadata:
-#   name: {{ .Release.Name }}-tcp-14268
-#   namespace: {{ .Release.Namespace }}
-#   labels:
-#     app.kubernetes.io/name: apica-ascent
-# spec:
-#   parentRefs:
-#     - group: gateway.networking.k8s.io
-#       kind: Gateway
-#       name: {{ .Release.Name }}-gateway
-#       sectionName: tcp-14268
-#   rules:
-#     - backendRefs:
-#         - group: ''
-#           kind: Service
-#           name: logiq-flash
-#           port: 14268
-#           weight: 1
+{{- end }}
+{{- end }}
 {{- end }}

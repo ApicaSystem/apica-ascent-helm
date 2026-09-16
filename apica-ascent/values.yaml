@@ -332,9 +332,34 @@ envoyGateway:
       - name: tcp-8081
         port: 8081
         protocol: TCP
+
+  # Jaeger-compatible trace ingestion at the gateway.
+  # These collector ports accept spans without authentication, so they are
+  # disabled by default. Enable only when the gateway is restricted to a
+  # trusted network (internal LB, source-IP allowlist, or private endpoint).
+  traceIngestion:
+    # -- Open the Jaeger collector listeners (and their TCPRoutes) on the gateway.
+    enabled: false
+    # -- Also route HTTP(S) /api/traces to the Jaeger collector on the shared
+    # HTTP/HTTPS listener. Independent of the TCP ports above.
+    httpApiTraces: true
+    # -- Listener/route pairs created when traceIngestion.enabled is true.
+    ports:
+      - name: tcp-14250
+        port: 14250
+        protocol: TCP
+        service: logiq-flash
+        description: Jaeger gRPC collector
+      - name: tcp-14268
+        port: 14268
+        protocol: TCP
+        service: logiq-flash
+        description: Jaeger HTTP collector
       - name: tcp-20514
         port: 20514
         protocol: TCP
+        service: logiq-flash
+        description: Jaeger syslog-style trace ingest
 
   # Compression configuration using BackendTrafficPolicy compressor field
   compressor:
