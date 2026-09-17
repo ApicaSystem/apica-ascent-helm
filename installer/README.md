@@ -288,10 +288,23 @@ permissions, a storage class named in `STORAGE_CLASS`
 Preflight checks these, sizes against the cluster's allocatable CPU and memory, and `verify`
 probes the gateway through the address the LoadBalancer assigns, IP or hostname.
 `CLOUD_PROVIDER="aws"` adds the NLB annotations to the Envoy service; `oci` keeps the chart's
-OCI annotations; `none` removes them. On a shared cluster that already runs Envoy Gateway or the
-CNPG operator under the same release names, use `app install` rather than `platform install`
-so those shared releases are not upgraded. OpenShift additionally needs SCC permissions for the
-chart's fixed-UID containers, which the installer does not manage.
+OCI annotations; `none` removes them. When the cluster already provides Gateway API CRDs or a
+CloudNativePG operator, `platform install` leaves them untouched (the chart runs its own
+per-release envoy-gateway controller, so no cluster-wide one is needed); it requires the
+experimental-channel `TCPRoute` CRD because the ingest listeners are TCPRoutes. OpenShift
+additionally needs SCC permissions for the chart's fixed-UID containers, which the installer
+does not manage.
+
+**Mirantis Kubernetes Engine.** MKE 4k is k0s underneath and works through `CLUSTER_MODE="existing"`
+with the `mkectl`-generated kubeconfig (the kubeconfig uses `mkectl` as an exec plugin, so `mkectl`
+must be on the operator host's PATH). MKE 4k 4.1.3+ ships Envoy Gateway 1.6.1 in
+`envoy-gateway-system` with controller `gateway.envoyproxy.io/mke-gatewayclass-controller` and
+GatewayClass `mke-gateway-ingress`; the installer detects it and does not install its own `eg`
+release. Two things the MKE side must provide: a StorageClass (MKE 4 bundles no bare-metal storage
+provisioner; only the AWS EBS CSI driver on AWS) and a LoadBalancer implementation (MetalLB is an
+opt-in addon in `metallb-system`, L2 mode). OPA Gatekeeper is opt-in with no default constraints.
+MKE 3.7 to 3.9 (Kubernetes 1.31 in 3.8) work the same way with the client-bundle kubeconfig and
+MetalLB enabled via `cluster_config.metallb_config`. Not yet tested on an MKE cluster.
 
 ## Database
 

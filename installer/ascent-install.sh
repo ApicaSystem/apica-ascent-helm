@@ -939,7 +939,11 @@ check_cluster() {
      || kubectl get deploy -A --no-headers 2>/dev/null | grep -qE 'aws-load-balancer-controller|metallb-controller|cloud-controller-manager'; then
     ok "a LoadBalancer implementation is present"
   else wrn "no LoadBalancer implementation detected — the Envoy service will stay <pending> until one exists (cloud LB controller, MetalLB, ...)"; fi
-  kubectl get crd gateways.gateway.networking.k8s.io >/dev/null 2>&1 && ok "Gateway API CRDs present" || ok "Gateway API CRDs will be installed with Envoy Gateway"
+  if kubectl get crd gateways.gateway.networking.k8s.io >/dev/null 2>&1; then
+    ok "Gateway API CRDs present ($(kubectl get gatewayclass --no-headers 2>/dev/null | wc -l | tr -d ' ') GatewayClass) — the existing implementation is left untouched"
+    kubectl get crd tcproutes.gateway.networking.k8s.io >/dev/null 2>&1 && ok "TCPRoute CRD present (experimental channel)" \
+      || fail "TCPRoute CRD missing: the cluster's Gateway API is standard channel only, but the chart's TCP listeners (9999, 8081, 14250, 20514, 14268) need TCPRoute — install the experimental CRDs"
+  else ok "Gateway API CRDs will be installed with Envoy Gateway"; fi
   kubectl auth can-i create namespace >/dev/null 2>&1 && ok "cluster-admin level permissions" || fail "the kubectl identity cannot create namespaces — cluster-admin is required for the install"
   [[ "${CLOUD_PROVIDER}" =~ ^(none|aws|oci)$ ]] && ok "CLOUD_PROVIDER ${CLOUD_PROVIDER}" || fail "CLOUD_PROVIDER must be none|aws|oci"
   [[ -z "${WORKERS}" ]] || fail "WORKERS is only used in CLUSTER_MODE=k0s"
@@ -1754,6 +1758,15 @@ unstick_release() { # unstick_release <release> <namespace>
 # ---------------------------------------------------------------------------
 phase_envoy() {
   CURRENT_PHASE="envoy"
+  if existing_cluster && ! marked installed.envoy-release && kubectl get crd gateways.gateway.networking.k8s.io >/dev/null 2>&1; then
+    # a Gateway API implementation is already present (MKE 4k, OpenShift, an existing eg release, ...):
+    # the chart brings its own per-release envoy-gateway controller, so nothing else is needed and
+    # upgrading someone else's controller is not this installer's business
+    kubectl get crd tcproutes.gateway.networking.k8s.io >/dev/null 2>&1 \
+      || die "Gateway API CRDs exist but TCPRoute is missing (standard channel only) — the chart's TCP listeners need the experimental channel; install the Gateway API experimental CRDs or Envoy Gateway ${ENVOY_GATEWAY_VERSION}"
+    log "envoy: Gateway API is already provided by the cluster ($(kubectl get gatewayclass --no-headers 2>/dev/null | awk '{print $1}' | tr '\n' ' ')) — not installing or upgrading the eg release"
+    return 0
+  fi
   unstick_release eg envoy-gateway-system
   log "installing envoy gateway ${ENVOY_GATEWAY_VERSION}"
   helm status eg -n envoy-gateway-system >/dev/null 2>&1 || mark installed.envoy-release
@@ -1769,6 +1782,10 @@ phase_envoy() {
 phase_cnpg() {
   CURRENT_PHASE="cnpg"
   [[ "${DB_ENGINE}" == "cnpg" ]] || { log "cnpg: DB_ENGINE=${DB_ENGINE}, skipping operator install"; return 0; }
+  if existing_cluster && ! marked installed.cnpg-operator-release && kubectl get crd clusters.postgresql.cnpg.io >/dev/null 2>&1; then
+    log "cnpg: a CloudNativePG operator is already present ($(kubectl get deploy -A --no-headers 2>/dev/null | awk '/cloudnative-pg|cnpg/{print $1"/"$2}' | head -n1)) — not installing or upgrading it"
+    return 0
+  fi
   unstick_release cnpg-operator cnpg-system
   log "installing CloudNativePG operator (chart ${CNPG_OPERATOR_CHART_VERSION})"
   helm repo list 2>/dev/null | grep -q '^cnpg\s' || { helm repo add cnpg https://cloudnative-pg.github.io/charts >/dev/null; mark added.helm-repo.cnpg; }
@@ -2350,6 +2367,7 @@ require_platform() {
   kubectl get sc "${STORAGE_CLASS}" >/dev/null 2>&1 || missing="${missing} storage-class:${STORAGE_CLASS}"
   existing_cluster || kubectl get ipaddresspool -n metallb >/dev/null 2>&1 || missing="${missing} metallb"
   kubectl get crd gateways.gateway.networking.k8s.io >/dev/null 2>&1 || missing="${missing} envoy-gateway"
+  kubectl get crd tcproutes.gateway.networking.k8s.io >/dev/null 2>&1 || missing="${missing} gateway-api-experimental-crds(TCPRoute)"
   [[ "${DB_ENGINE}" != "cnpg" ]] || kubectl get crd clusters.postgresql.cnpg.io >/dev/null 2>&1 || missing="${missing} cnpg-operator"
   [[ -z "${missing}" ]] || die "platform components missing:${missing} — ${hint}"
 }
