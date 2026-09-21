@@ -28,6 +28,20 @@ breaks self-managed Kubernetes.
 See [TESTING.md](TESTING.md) for the step-by-step test procedure (static checks, positive and
 negative preflight, failure diagnostics, idempotent re-run, uninstall/cleanup, fresh VM, multi-node).
 
+## Getting the installer
+
+The repository is public and GitHub Pages serves it, so a customer needs only the script (plus
+`ascent.conf.example` and `ascent-secrets.conf.example` for reference):
+
+```bash
+BASE=https://apicasystem.github.io/apica-ascent-helm/installer
+curl -fsSLO "$BASE/ascent-install.sh" && curl -fsSLO "$BASE/SHA256SUMS"
+sha256sum -c SHA256SUMS && chmod +x ascent-install.sh
+```
+
+`SHA256SUMS` is regenerated as part of the release checklist in the repository README. Cloning
+the repository and running `installer/ascent-install.sh` works the same way.
+
 ## Quick start (interactive)
 
 ```bash
@@ -304,7 +318,30 @@ release. Two things the MKE side must provide: a StorageClass (MKE 4 bundles no 
 provisioner; only the AWS EBS CSI driver on AWS) and a LoadBalancer implementation (MetalLB is an
 opt-in addon in `metallb-system`, L2 mode). OPA Gatekeeper is opt-in with no default constraints.
 MKE 3.7 to 3.9 (Kubernetes 1.31 in 3.8) work the same way with the client-bundle kubeconfig and
-MetalLB enabled via `cluster_config.metallb_config`. Not yet tested on an MKE cluster.
+MetalLB enabled via `cluster_config.metallb_config`.
+
+Tested on MKE 4k 4.2.0 (single node, OCI). Three things came out of it:
+
+- The chart's in-namespace envoy-gateway controller binds to the ClusterRole normally created by
+  the `eg` release. When the cluster already provides Envoy Gateway, the installer now reuses the
+  cluster's `*-envoy-gateway-role` ClusterRole (`envoyGateway.controller.clusterRoleName`) instead
+  of installing a second controller; if none exists it installs `eg`.
+- MKE runs a cluster-wide prometheus-operator (`mke/monitoring-kube-prometheus-operator`). Two
+  operators reconciling the same Prometheus and Alertmanager objects rewrite their StatefulSets
+  in a loop, so with `PROMETHEUS_OPERATOR=auto` (default) the installer disables the chart's own
+  operator whenever a cluster-wide one exists and lets the cluster's reconcile Ascent's objects.
+  A current operator also renders config that the chart's pinned Prometheus 2.32 and Alertmanager
+  0.23 images reject, so in that mode the installer pins `bitnamilegacy/prometheus:2.55.1` and
+  `bitnamilegacy/alertmanager:0.28.1` (`EXTERNAL_OPERATOR_PROMETHEUS_TAG`,
+  `EXTERNAL_OPERATOR_ALERTMANAGER_TAG`). The same applies to any cluster running
+  kube-prometheus-stack.
+- MKE's `mke4-ucpauthz` ValidatingAdmissionPolicy denies privileged pods and host bind mounts for
+  service accounts that are not cluster-admin. hostPath storage provisioners such as OpenEBS
+  need an exemption, for example
+  `kubectl create clusterrolebinding openebs-mke-hostpath-exempt --clusterrole=cluster-admin --serviceaccount=openebs:openebs`,
+  or the equivalent grant in `mke4.yaml`. Preflight warns when the policy is present. MKE 4
+  itself ships no bare-metal storage class and exposes its own gateway on NodePorts 33000/33001,
+  so a MetalLB pool for Ascent and a front proxy for MKE's UI are both the operator's job.
 
 ## Database
 

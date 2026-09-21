@@ -64,6 +64,11 @@ INGEST_GB_PER_DAY="50"
 #CLUSTER_MODE="k0s"
 #CLOUD_PROVIDER="none"                # existing clusters: aws adds NLB annotations, oci keeps
                                       # the chart defaults, none removes them
+#PROMETHEUS_OPERATOR="auto"           # auto: reuse a cluster-wide prometheus-operator when the
+                                      # cluster has one (MKE, kube-prometheus-stack) instead of
+                                      # running a second one; chart | external to force
+#EXTERNAL_OPERATOR_PROMETHEUS_TAG="2.55.1"    # image tags used when the cluster's operator drives
+#EXTERNAL_OPERATOR_ALERTMANAGER_TAG="0.28.1"  # Ascent's Prometheus/Alertmanager (chart defaults are too old)
 
 # --- topology (CLUSTER_MODE=k0s) ---------------------------------------------
 # Leave WORKERS empty for a single-node install (k0s --single).

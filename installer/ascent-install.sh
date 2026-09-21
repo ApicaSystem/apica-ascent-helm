@@ -156,6 +156,9 @@ ADMIN_ORG="apica"
 ADMIN_EMAIL=""                      # required
 PG_PASSWORD=""                      # required: >=8 chars from [A-Za-z0-9._~-] (embedded in URLs)
 DB_ENGINE="bitnami"                 # bitnami (single Postgres) | cnpg (CloudNativePG cluster)
+PROMETHEUS_OPERATOR="auto"          # chart | external | auto: use the cluster's prometheus-operator when one already runs cluster-wide (two operators fight over the same StatefulSets)
+EXTERNAL_OPERATOR_PROMETHEUS_TAG="2.55.1"     # bitnamilegacy/prometheus and /alertmanager tags used with an external operator: the chart's
+EXTERNAL_OPERATOR_ALERTMANAGER_TAG="0.28.1"   # defaults (2.32.1 / 0.23.0) reject the config and flags a current prometheus-operator generates
 RATE_LIMIT_FLAGS=""                 # optional override of the derived ingest rate limit, e.g. "-max_bytes_per_sec=346729"
 # --- sizing (https://docs.apica.io/getting-started/paas-deployment/paas-architecture) ---
 INGEST_GB_PER_DAY=""                # expected daily ingest volume in GB; empty = chart default rate limit (30 GB/day in chart 3.1.5, 64 GB/day in newer charts)
@@ -188,7 +191,8 @@ TLS_CERT_FILE TLS_KEY_FILE TLS_CA_FILE TLS_SELF_SIGNED S3_URL S3_BUCKET S3_REGIO
 S3_CA_FILE ADMIN_NAME ADMIN_PASSWORD ADMIN_ORG ADMIN_EMAIL PG_PASSWORD DB_ENGINE RATE_LIMIT_FLAGS
 STORAGE_CLASS UPLOAD_DASHBOARD INSTALL_DIR MIN_CPU REC_CPU MIN_RAM_MIB REC_RAM_MIB MIN_DISK_GB REC_DISK_GB
 ADOPT_EXISTING_CLUSTER SKIP_CHECKSUM_VERIFY K0S_SHA256 KUBECTL_SHA256 HELM_SHA256 SECRETS_FILE
-INGEST_GB_PER_DAY INGEST_MODE WORKLOAD_TIER INGEST_DESTINATIONS PEAK_MULTIPLIER CLUSTER_MODE CLOUD_PROVIDER"
+INGEST_GB_PER_DAY INGEST_MODE WORKLOAD_TIER INGEST_DESTINATIONS PEAK_MULTIPLIER CLUSTER_MODE CLOUD_PROVIDER PROMETHEUS_OPERATOR
+EXTERNAL_OPERATOR_PROMETHEUS_TAG EXTERNAL_OPERATOR_ALERTMANAGER_TAG"
 SECRET_VARS="ADMIN_PASSWORD PG_PASSWORD S3_ACCESS S3_SECRET"
 PATH_VARS="INSTALL_DIR TLS_CERT_FILE TLS_KEY_FILE TLS_CA_FILE S3_CA_FILE SSH_KEY EXTRA_VALUES_FILE CHART_PATH SECRETS_FILE"
 
@@ -574,7 +578,7 @@ cluster_known() { # the running cluster is one this installer created or was tol
 #   Ingest vCPUs = ceil(GB/day ÷ baseline × destination factor × peak × HA)   (+10 vCPU / 28 GB / 150 GB core tier)
 #   ~1 ingest pod per 4 vCPU, 4 GB RAM per vCPU (Lake) / 2 GB (Flow), 50 GB disk per pod minimum
 # ---------------------------------------------------------------------------
-FLASH_PVC_SIZE=""; SZ_ENABLED="false"; SZ_VCPU=0; SZ_PODS=0; SZ_POD_CPU=0; SZ_POD_MEM_GI=0; SZ_POD_DISK_GI=0; SZ_TOTAL_VCPU=0; SZ_TOTAL_RAM_GB=0; SZ_TOTAL_DISK_GB=0; SZ_BYTES_PER_SEC=0
+K0S_WAS_RESET="false"; FLASH_PVC_SIZE=""; SZ_ENABLED="false"; SZ_VCPU=0; SZ_PODS=0; SZ_POD_CPU=0; SZ_POD_MEM_GI=0; SZ_POD_DISK_GI=0; SZ_TOTAL_VCPU=0; SZ_TOTAL_RAM_GB=0; SZ_TOTAL_DISK_GB=0; SZ_BYTES_PER_SEC=0
 compute_sizing() {
   [[ -n "${INGEST_GB_PER_DAY}" ]] || return 0
   [[ "${INGEST_GB_PER_DAY}" =~ ^[0-9]+$ && "${WORKLOAD_TIER}" =~ ^[1-5]$ && "${INGEST_DESTINATIONS}" =~ ^[0-9]+$ && "${PEAK_MULTIPLIER}" =~ ^[0-9]+$ && "${INGEST_MODE}" =~ ^(lake|flow)$ ]] || return 0
@@ -935,17 +939,33 @@ check_cluster() {
   cluster_capacity; ok "allocatable: ${CL_CPU_TOTAL} CPU, ${CL_MEM_GIB_TOTAL} GiB total; largest node ${CL_CPU_MAX} CPU / ${CL_MEM_GIB_MAX} GiB"
   kubectl get sc "${STORAGE_CLASS}" >/dev/null 2>&1 && ok "storage class ${STORAGE_CLASS} exists" \
     || fail "storage class ${STORAGE_CLASS} not found (available: $(kubectl get sc -o name 2>/dev/null | sed 's|storageclass.storage.k8s.io/||' | tr '\n' ' '))"
-  if kubectl get svc -A --no-headers 2>/dev/null | awk '$3=="LoadBalancer" && $5!="<pending>"' | grep -q . \
-     || kubectl get deploy -A --no-headers 2>/dev/null | grep -qE 'aws-load-balancer-controller|metallb-controller|cloud-controller-manager'; then
-    ok "a LoadBalancer implementation is present"
+  local lb=""
+  kubectl get svc -A --no-headers 2>/dev/null | awk '$3=="LoadBalancer" && $5!="<pending>"' | grep -q . && lb="an assigned LoadBalancer service"
+  [[ -n "${lb}" ]] || { kubectl get crd ipaddresspools.metallb.io >/dev/null 2>&1 && lb="MetalLB ($(kubectl get ipaddresspools.metallb.io -A -o jsonpath='{.items[*].spec.addresses[*]}' 2>/dev/null | cut -c1-80))"; }
+  [[ -n "${lb}" ]] || { kubectl get deploy -A --no-headers 2>/dev/null | grep -qE 'aws-load-balancer-controller|metallb-controller|cloud-controller-manager|cloud-provider' && lb="a load balancer controller deployment"; }
+  [[ -n "${lb}" ]] || { kubectl get nodes -o jsonpath='{.items[0].spec.providerID}' 2>/dev/null | grep -qE '^(aws|oci|gce|azure)://' && lb="cloud provider $(kubectl get nodes -o jsonpath='{.items[0].spec.providerID}' 2>/dev/null | cut -d: -f1)"; }
+  if [[ -n "${lb}" ]]; then ok "LoadBalancer implementation: ${lb}"
   else wrn "no LoadBalancer implementation detected — the Envoy service will stay <pending> until one exists (cloud LB controller, MetalLB, ...)"; fi
   if kubectl get crd gateways.gateway.networking.k8s.io >/dev/null 2>&1; then
     ok "Gateway API CRDs present ($(kubectl get gatewayclass --no-headers 2>/dev/null | wc -l | tr -d ' ') GatewayClass) — the existing implementation is left untouched"
     kubectl get crd tcproutes.gateway.networking.k8s.io >/dev/null 2>&1 && ok "TCPRoute CRD present (experimental channel)" \
       || fail "TCPRoute CRD missing: the cluster's Gateway API is standard channel only, but the chart's TCP listeners (9999, 8081, 14250, 20514, 14268) need TCPRoute — install the experimental CRDs"
+    local role; role="$(existing_envoy_clusterrole)"
+    [[ -n "${role}" ]] && ok "Envoy Gateway ClusterRole ${role} will be reused by the chart's controller" || wrn "no Envoy Gateway ClusterRole found — the installer will install the eg release next to the existing Gateway API"
   else ok "Gateway API CRDs will be installed with Envoy Gateway"; fi
   kubectl auth can-i create namespace >/dev/null 2>&1 && ok "cluster-admin level permissions" || fail "the kubectl identity cannot create namespaces — cluster-admin is required for the install"
+  local vaps; vaps="$(kubectl get validatingadmissionpolicies.admissionregistration.k8s.io -o name 2>/dev/null | sed 's|.*/||' | tr '\n' ' ')"
+  if grep -qiE 'ucpauthz|mke' <<<"${vaps}"; then
+    wrn "MKE admission policy active (${vaps}): it denies privileged pods and host bind mounts for non-exempt service accounts — hostPath storage provisioners (OpenEBS) need an exemption in MKE before volumes can be provisioned"
+  elif [[ -n "${vaps}" ]]; then info "ValidatingAdmissionPolicies present: ${vaps}"; fi
+  kubectl get ns --no-headers 2>/dev/null | awk '{print $1}' | grep -qx mke && ok "Mirantis Kubernetes Engine 4 detected (namespace mke)"
   [[ "${CLOUD_PROVIDER}" =~ ^(none|aws|oci)$ ]] && ok "CLOUD_PROVIDER ${CLOUD_PROVIDER}" || fail "CLOUD_PROVIDER must be none|aws|oci"
+  [[ "${PROMETHEUS_OPERATOR}" =~ ^(auto|chart|external)$ ]] || fail "PROMETHEUS_OPERATOR must be auto|chart|external"
+  local fpo; fpo="$(foreign_prometheus_operator)"
+  if [[ -n "${fpo}" ]]; then
+    if use_external_prometheus_operator; then ok "cluster-wide prometheus-operator found (${fpo}) — the chart's own operator will be disabled and Ascent's Prometheus/Alertmanager are reconciled by it"
+    else fail "cluster-wide prometheus-operator found (${fpo}) while PROMETHEUS_OPERATOR=chart: two operators would rewrite Ascent's Prometheus StatefulSets in a loop — set PROMETHEUS_OPERATOR=auto or external"; fi
+  else ok "no cluster-wide prometheus-operator — the chart installs its own"; fi
   [[ -z "${WORKERS}" ]] || fail "WORKERS is only used in CLUSTER_MODE=k0s"
   [[ -z "${LB_IP}" ]] || ok "LB_IP ${LB_IP} will be used for probes"
 }
@@ -1759,14 +1779,20 @@ unstick_release() { # unstick_release <release> <namespace>
 phase_envoy() {
   CURRENT_PHASE="envoy"
   if existing_cluster && ! marked installed.envoy-release && kubectl get crd gateways.gateway.networking.k8s.io >/dev/null 2>&1; then
-    # a Gateway API implementation is already present (MKE 4k, OpenShift, an existing eg release, ...):
-    # the chart brings its own per-release envoy-gateway controller, so nothing else is needed and
-    # upgrading someone else's controller is not this installer's business
+    # A Gateway API implementation is already present (MKE 4k, an existing eg release, ...). The chart runs
+    # its own per-release envoy-gateway controller, but binds it to the ClusterRole that the eg release
+    # normally provides; reuse the cluster's Envoy Gateway ClusterRole instead of installing another eg.
     kubectl get crd tcproutes.gateway.networking.k8s.io >/dev/null 2>&1 \
       || die "Gateway API CRDs exist but TCPRoute is missing (standard channel only) — the chart's TCP listeners need the experimental channel; install the Gateway API experimental CRDs or Envoy Gateway ${ENVOY_GATEWAY_VERSION}"
-    log "envoy: Gateway API is already provided by the cluster ($(kubectl get gatewayclass --no-headers 2>/dev/null | awk '{print $1}' | tr '\n' ' ')) — not installing or upgrading the eg release"
-    return 0
+    local role; role="$(existing_envoy_clusterrole)"
+    if [[ -n "${role}" ]]; then
+      state_set envoy.clusterrole "${role}"
+      log "envoy: Gateway API is already provided by the cluster ($(kubectl get gatewayclass --no-headers 2>/dev/null | awk '{print $1}' | tr '\n' ' ')) — reusing ClusterRole ${role}, not installing the eg release"
+      return 0
+    fi
+    warn "envoy: Gateway API CRDs exist but no Envoy Gateway ClusterRole was found — installing the eg release to provide one"
   fi
+  state_del envoy.clusterrole
   unstick_release eg envoy-gateway-system
   log "installing envoy gateway ${ENVOY_GATEWAY_VERSION}"
   helm status eg -n envoy-gateway-system >/dev/null 2>&1 || mark installed.envoy-release
@@ -1945,6 +1971,10 @@ phase_values() {
     fi
     echo
     echo "envoyGateway:"
+    if [[ -n "$(state_get envoy.clusterrole)" ]]; then
+      echo "  controller:"
+      echo "    clusterRoleName: $(yq_str "$(state_get envoy.clusterrole)")   # Envoy Gateway ClusterRole provided by the cluster"
+    fi
     echo "  envoyProxy:"
     echo "    provider:"
     echo "      deployment:"
@@ -1961,7 +1991,18 @@ phase_values() {
     esac
     echo
     echo "prometheus:"
+    if use_external_prometheus_operator; then
+      echo "  operator:"
+      echo "    enabled: false   # a cluster-wide prometheus-operator already reconciles Prometheus/Alertmanager objects"
+      echo "  alertmanager:"
+      echo "    image:"
+      echo "      tag: $(yq_str "${EXTERNAL_OPERATOR_ALERTMANAGER_TAG}")   # chart default 0.23.0 rejects flags a current operator passes"
+    fi
     echo "  prometheus:"
+    if use_external_prometheus_operator; then
+      echo "    image:"
+      echo "      tag: $(yq_str "${EXTERNAL_OPERATOR_PROMETHEUS_TAG}")   # chart default 2.32.1 cannot parse the config a current operator renders"
+    fi
     echo "    replicaCount: 1   # chart default is 2 x 15Gi"
     if ! is_multi_node; then
       echo "    resources:"
@@ -2092,6 +2133,15 @@ phase_deploy() {
   fi
   reconcile_release_state
   clear_stale_gatewayclass
+  # roleRef of a ClusterRoleBinding is immutable: when the envoy-gateway ClusterRole changes (eg release
+  # vs a cluster-provided role), drop the release's binding so helm recreates it with the new roleRef
+  local want_role crb="${RELEASE_NAME}-gateway-helm-envoy-gateway-rolebinding" have_role
+  want_role="$(state_get envoy.clusterrole)"; want_role="${want_role:-eg-gateway-helm-envoy-gateway-role}"
+  have_role="$(kubectl get clusterrolebinding "${crb}" -o jsonpath='{.roleRef.name}' 2>/dev/null || true)"
+  if [[ -n "${have_role}" && "${have_role}" != "${want_role}" ]]; then
+    info "envoy-gateway ClusterRoleBinding ${crb} points at ${have_role}; recreating it for ${want_role}"
+    kubectl delete clusterrolebinding "${crb}" --ignore-not-found >/dev/null
+  fi
 
   local secrets_values="${TMP_DIR}/secrets.values.yaml"
   write_secret_values "${secrets_values}"
@@ -2190,7 +2240,7 @@ phase_verify() {
    URL:        https://${DOMAIN}   (DNS: point ${DOMAIN} at ${PUBLIC_IP:-${GATEWAY_ADDR}})
    Login:      ${ADMIN_NAME} / (ADMIN_PASSWORD from your config)
    Ingest:     ${GATEWAY_ADDR} ports 9999 (flash), 8081, 14250/14268 (jaeger), 20514 (syslog TLS)
-   Namespace:  ${NAMESPACE}   release: ${RELEASE_NAME}   database: ${DB_ENGINE}
+   Namespace:  ${NAMESPACE}   release: ${RELEASE_NAME}   database: ${DB_ENGINE}   prometheus-operator: $(use_external_prometheus_operator && echo cluster || echo chart)
    Sizing:     $([[ "${SZ_ENABLED}" == true ]] && echo "${INGEST_GB_PER_DAY} GB/day ${INGEST_MODE} → ${SZ_PODS} flash pod(s) × ${SZ_POD_CPU} CPU/${SZ_POD_MEM_GI} GiB, limit ${SZ_BYTES_PER_SEC} B/s" || echo "chart defaults (set INGEST_GB_PER_DAY; the chart's default rate limit applies)")
    Values:     ${INSTALL_DIR}/values.yaml
    Log:        ${LOG_FILE}
@@ -2220,6 +2270,20 @@ clear_stale_gatewayclass() { # Terminating GatewayClass with no Gateways left: n
     kubectl patch gatewayclass "${gc}" --type=merge -p '{"metadata":{"finalizers":null}}' >/dev/null 2>&1 || true
     kubectl delete gatewayclass "${gc}" --ignore-not-found --timeout=30s >/dev/null 2>&1 || true
   fi
+}
+
+foreign_prometheus_operator() { # cluster-wide prometheus-operator deployments outside the release namespace (MKE monitoring, kube-prometheus-stack, ...)
+  kubectl get deploy -A --no-headers 2>/dev/null | awk -v ns="${NAMESPACE}" '$1!=ns && $2 ~ /prometheus-operator/ {print $1"/"$2}' | tr '\n' ' ' | sed 's/ $//'
+}
+use_external_prometheus_operator() {
+  case "${PROMETHEUS_OPERATOR}" in
+    external) return 0 ;; chart) return 1 ;;
+    *) existing_cluster && have_kubectl && [[ -n "$(foreign_prometheus_operator)" ]] ;;
+  esac
+}
+
+existing_envoy_clusterrole() { # ClusterRole of a cluster-provided Envoy Gateway controller (MKE 4k, an eg release, ...)
+  kubectl get clusterrole -o name 2>/dev/null | sed 's|clusterrole.rbac.authorization.k8s.io/||' | grep -E 'envoy-gateway-role$' | grep -v '^apica' | head -n1
 }
 
 gateway_api_pre_uninstall() {
@@ -2314,6 +2378,7 @@ phase_cleanup() {
     ip="${k#joined.worker.}"
     log "worker ${ip}: k0s stop + reset"
     ssh_worker "${ip}" "${REMOTE_PRELUDE}; sudo k0s stop 2>/dev/null; sudo k0s reset 2>&1 | tail -n 3; sudo rm -f /etc/k0s/token" | sed 's/^/  /' || warn "worker ${ip}: reset failed (unreachable?)"
+    K0S_WAS_RESET="true"; warn "worker ${ip}: reboot it before reusing it for a cluster"
     if marked "firewall.worker.${ip}.chain.created" || marked "applied.iptables.worker.${ip}"; then
       local wl="false"; marked "applied.iptables.worker.${ip}" && wl="true"
       ssh_worker "${ip}" "bash -s" <<<"$(fw_script remove "${WORKER_PORTS}" false "${wl}")" || true
@@ -2325,6 +2390,7 @@ phase_cleanup() {
     log "stopping and resetting k0s on the controller (this wipes all cluster state)"
     sudo k0s stop 2>&1 | sed 's/^/  /'
     sudo k0s reset 2>&1 | tail -n 5 | sed 's/^/  /'
+    K0S_WAS_RESET="true"
   fi
   if marked firewall.chain.created || marked applied.iptables; then
     log "removing the installer's iptables chains"
@@ -2348,7 +2414,7 @@ phase_cleanup() {
   log "cleanup OK ($(elapsed)). Logs kept in ${INSTALL_DIR}/logs."
   marked_reboot_hint
 }
-marked_reboot_hint() { command -v k0s >/dev/null 2>&1 || echo "  A reboot is recommended after 'k0s reset' to clear leftover network interfaces and mounts."; }
+marked_reboot_hint() { [[ "${K0S_WAS_RESET:-false}" == "true" ]] && echo "  Reboot the node before installing anything else: 'k0s reset' leaves netfilter chains, interfaces and mounts behind that break a new cluster."; return 0; }
 
 # ---------------------------------------------------------------------------
 # orchestration
