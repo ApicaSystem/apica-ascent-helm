@@ -291,6 +291,11 @@ bootstraps the admin account a few minutes after it starts).
   (never on a command line), are stored with mode 0600, invalidated on the controller after the
   join, and deleted from the worker once its kubelet client config exists.
 
+Worker SSH uses `StrictHostKeyChecking=accept-new`: the first connection to each worker trusts and
+pins its host key, later connections verify it. On a network you do not control, pre-populate
+`~/.ssh/known_hosts` on the controller (`ssh-keyscan -H <worker-ip> >> ~/.ssh/known_hosts`) before
+the install so the first connection is verified too.
+
 ## Existing clusters (EKS, OpenShift, any managed Kubernetes)
 
 `CLUSTER_MODE="existing"` deploys onto the cluster of the current kubeconfig instead of
