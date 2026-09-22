@@ -53,16 +53,24 @@ logiq-flash:
         memory: 750Mi
   logflow_only:
     enabled: false
-    args: -object_writers=1 -max_bytes_per_sec=1246485
+    args: -object_writers=1 -max_bytes_per_sec=2485513
   kafka_client:
     enabled: false
     kafka_args: -kafka_ca_cert_path=/flash/kafka/ca.crt -kafka_client_key_path=/flash/kafka/tls.key -kafka_client_cert_path=/flash/kafka/tls.crt
+  tls:
+    certSecretName: ''
+    postgres:
+      caCert: ''
+      clientCert: /flash/tls-certs/pg-client.crt
+      clientKey: /flash/tls-certs/pg-client.key
+    redis:
+      caCert: ''
   secrets_name: my-ascent-ingest
 flash-discovery:
   fullnameOverride: flash-discovery
   image:
     repository: logiqai/flash-discovery
-    tag: 2.0.3
+    tag: v2.0.5
     pullPolicy: IfNotPresent
   replicaCountDiscovery: 1
   persistence:
@@ -74,6 +82,12 @@ flash-discovery:
     requests:
       cpu: 10m
       memory: 16Mi
+  tls:
+    certSecretName: ''
+    postgres:
+      caCert: ''
+      clientCert: /flash/tls-certs/pg-client.crt
+      clientKey: /flash/tls-certs/pg-client.key
 redis:
   enabled: true
   fullnameOverride: redis
@@ -199,6 +213,14 @@ flash-coffee:
         cpu: 100m
       limits:
         memory: 2000Mi
+  tls:
+    certSecretName: ''
+    postgres:
+      caCert: ''
+      clientCert: /coffee/certs/pg-client.crt
+      clientKey: /coffee/certs/pg-client.key
+    redis:
+      caCert: ''
 thanos:
   createObjstoreSecret: true
   receive:
@@ -437,19 +459,26 @@ global:
   toolbox:
     image:
       repository: logiqai/toolbox
-      tag: 2.0.1
+      tag: 2.1.0
   environment:
     logiq_flash_host: logiq-flash
     logiq_flash_port: 9999
     redis_opts: true
     redis_host: redis-master
     redis_port: '6379'
+    redis_tls:
+      enabled: false
+      skip_verify: false
     postgres_host: postgres
     postgres_port: '5432'
     postgres_user: postgres
     postgres_password: '##YOUR_POSTGRES_PASSWORD##'
     postgres_db: postgres
     postgres_coffee_db: coffee
+    postgres_tls:
+      enabled: false
+      sslmode: verify-full
+      mtls: false
     s3_url: '##YOUR_S3_URL##'
     s3_access: '##YOUR_S3_ACCESS_KEY##'
     s3_secret: '##YOUR_S3_ACCESS_SECRET##'
@@ -458,6 +487,13 @@ global:
     s3_custom_ca:
       enabled: false
       map_name: kube-root-ca.crt
+    s3_credentials_secret:
+      name: ''
+      access_key_name: access_key
+      secret_key_name: secret_key
+      bucket_key_name: bucket
+      session_token_name: ''
+      mount_path: /flash/s3creds
     AWS_ACCESS_KEY_ID: '##YOUR_S3_ACCESS_KEY##'
     AWS_SECRET_ACCESS_KEY: '##YOUR_S3_ACCESS_SECRET##'
     admin_name: '##ADMIN_ACCOUNT_NAME##'
@@ -473,7 +509,7 @@ global:
     internal_cert_crt: ''
     internal_cert_key: ''
     extraflag: -hauler-node-affinity=false --tail_longpoll=true -persist=true -rl_type=tokenbucket
-    rate_limit_flags: -max_bytes_per_sec=346729
+    rate_limit_flags: -max_bytes_per_sec=745654
   persistence:
     storageClass: openebs-hostpath
   chart:
@@ -530,7 +566,7 @@ cnpg:
         memory: 20000Mi
     postgresql:
       parameters:
-        pg_stat_statements.max: "5000"
+        pg_stat_statements.max: '5000'
         pg_stat_statements.track: all
         max_connections: '400'
         shared_buffers: 1024MB
