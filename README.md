@@ -4,6 +4,39 @@ Deploys the Apica Ascent observability platform (logging, metrics, tracing) on
 Kubernetes. Single-namespace deployment. Requires Kubernetes >= 1.24.0 and
 Helm 3.
 
+There are two ways to deploy it:
+
+- **Installer** (recommended for on-prem, single-VM and customer installs): one script that
+  sets up the platform and the chart, with prerequisite checks and diagnostics. See
+  [Installing on-prem (installer)](#installing-on-prem-installer) below.
+- **Helm directly** (for existing Kubernetes platforms managed by your own tooling): the
+  chart in `apica-ascent/`, documented in the sections that follow the installer.
+
+## Installing on-prem (installer)
+
+For customer and single-VM installs use the installer in [`installer/`](installer/README.md)
+instead of running helm by hand. It installs k0s, MetalLB, OpenEBS, Envoy Gateway and
+optionally the CloudNativePG operator, then this chart, and it also works against an
+existing cluster (EKS, OKE, MKE, OpenShift) with `CLUSTER_MODE=existing`.
+
+```bash
+BASE=https://apicasystem.github.io/apica-ascent-helm/installer
+curl -fsSLO "$BASE/ascent-install.sh" && curl -fsSLO "$BASE/SHA256SUMS" && sha256sum -c SHA256SUMS
+chmod +x ascent-install.sh
+./ascent-install.sh                     # asks for every setting, saves ascent.conf, runs the install
+./ascent-install.sh status              # health of platform and application
+./ascent-install.sh --help              # all commands and options
+```
+
+Cloning the repository and running `installer/ascent-install.sh` works the same way.
+
+What it adds over plain helm: a preflight that reports every failing prerequisite in one
+pass (host, network, TLS, live S3 read/write test, password policy, sizing from the capacity
+planning guide), idempotent phases with resume guidance and diagnostics on failure, separate
+platform and application lifecycles, an uninstall/cleanup that removes only what it created,
+and a redacted support bundle (`diagnose`). Details, requirements and the test procedure are in
+[installer/README.md](installer/README.md).
+
 ## Chart structure
 
 ```
@@ -318,6 +351,8 @@ generate a new tarball. If there are more than two tarballs, `git rm` the
 oldest one(s).
 1. Run `helm repo index .` from the top-level directory. This will update
 `index.yaml` so clients see the new version.
+1. If the installer changed, refresh its checksum file:
+`(cd installer && shasum -a 256 ascent-install.sh > SHA256SUMS)`.
 1. Open a pull request to get the changes merged.
 1. Once the PR is merged, create an annotated tag matching the release version
 and push it.
