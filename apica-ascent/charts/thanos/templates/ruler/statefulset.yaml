@@ -157,6 +157,7 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.name
+            {{- include "thanos.s3CredentialsEnvVars" . | nindent 12 }}
             {{- if .Values.ruler.extraEnvVars }}
             {{- include "common.tplvalues.render" (dict "value" .Values.ruler.extraEnvVars "context" $) | nindent 12 }}
             {{- end }}
