@@ -991,7 +991,6 @@ check_network() {
       [[ -z "${r}" || "${r}" == default ]] && continue
       is_cidr "${r}" || continue
       [[ "${r}" == "${NODE_SUBNET}" ]] && continue
-      if grep -q "^${POD_CIDR%%/*}" <<<"${r}" || grep -q "^${SERVICE_CIDR%%/*}" <<<"${r}"; then :; fi
       if cidrs_overlap "${r}" "${POD_CIDR}" && ! k0s_running; then wrn "existing route ${r} overlaps POD_CIDR"; fi
     done < <(ip -o -4 route show 2>/dev/null | awk '{print $1}')
   fi
@@ -1240,14 +1239,14 @@ check_s3() {
   if [[ "$(printf '%s\n' "7.75.0" "${cv}" | sort -V | head -n1)" != "7.75.0" ]]; then
     if command -v python3 >/dev/null 2>&1 && python3 -c 'import boto3' 2>/dev/null; then
       if S3_URL="${S3_URL}" S3_BUCKET="${S3_BUCKET}" S3_REGION="${S3_REGION}" S3_ACCESS="${S3_ACCESS}" S3_SECRET="${S3_SECRET}" S3_CA_FILE="${S3_CA_FILE}" python3 - <<'PYEOF'
-import os, sys, boto3, botocore
+import os, sys, uuid, boto3, botocore
 s3 = boto3.client("s3", endpoint_url=os.environ["S3_URL"], aws_access_key_id=os.environ["S3_ACCESS"],
     aws_secret_access_key=os.environ["S3_SECRET"], region_name=os.environ["S3_REGION"],
     verify=(os.environ.get("S3_CA_FILE") or True),
     config=botocore.config.Config(s3={"addressing_style": "path"}, connect_timeout=10, retries={"max_attempts": 1}))
 try:
     s3.list_objects_v2(Bucket=os.environ["S3_BUCKET"], MaxKeys=1)
-    k = "ascent-preflight-probe.txt"; s3.put_object(Bucket=os.environ["S3_BUCKET"], Key=k, Body=b"ok"); s3.delete_object(Bucket=os.environ["S3_BUCKET"], Key=k)
+    k = f"ascent-preflight-probe-{uuid.uuid4().hex}.txt"; s3.put_object(Bucket=os.environ["S3_BUCKET"], Key=k, Body=b"ok"); s3.delete_object(Bucket=os.environ["S3_BUCKET"], Key=k)
 except Exception as e:
     print(f"  {e}", file=sys.stderr); sys.exit(1)
 PYEOF
@@ -2367,7 +2366,7 @@ phase_cleanup() {
       kubectl delete namespace envoy-gateway-system --ignore-not-found --wait --timeout=5m 2>&1 | sed 's/^/  /'
     fi
     if marked applied.metallb-pool && ! marked created.k0s-cluster; then
-      log "removing metallb address pool"; kubectl delete ipaddresspool ascent-pool l2advertisement ascent-l2 -n metallb --ignore-not-found 2>&1 | sed 's/^/  /'
+      log "removing metallb address pool"; kubectl delete ipaddresspool/ascent-pool l2advertisement/ascent-l2 -n metallb --ignore-not-found 2>&1 | sed 's/^/  /'
     fi
   else
     warn "cluster not reachable via kubectl — skipping in-cluster removals"
