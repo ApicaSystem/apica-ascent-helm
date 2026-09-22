@@ -4,6 +4,14 @@ Deploys the Apica Ascent observability platform (logging, metrics, tracing) on
 Kubernetes. Single-namespace deployment. Requires Kubernetes >= 1.24.0 and
 Helm 3.
 
+There are two ways to deploy it:
+
+- **Installer** (recommended for on-prem, single-VM and customer installs): one script that
+  sets up the platform and the chart, with prerequisite checks and diagnostics. See
+  [Installing on-prem (installer)](#installing-on-prem-installer) below.
+- **Helm directly** (for existing Kubernetes platforms managed by your own tooling): the
+  chart in `apica-ascent/`, documented in the sections that follow the installer.
+
 ## Installing on-prem (installer)
 
 For customer and single-VM installs use the installer in [`installer/`](installer/README.md)
