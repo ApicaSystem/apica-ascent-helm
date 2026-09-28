@@ -3,7 +3,7 @@
 Context for the automated Claude PR review. State only what the diff shows; when unsure, stay silent.
 
 ## What this is
-Umbrella Helm 3 chart (`apica-ascent`, Chart apiVersion v2, chart 3.1.5, appVersion v2.16.6, kubeVersion >=1.24.0) that deploys the Apica Ascent observability platform (logging, metrics, tracing) onto Kubernetes. Ingress is Gateway API via **Envoy Gateway v1.6.0**. First-party subcharts: `logiq-flash` (ingest), `flash-coffee` (UI/worker), `flash-discovery`, `logiqctl`. Vendored deps: `cluster` (cnpg/CloudNativePG), plus Bitnami `postgresql`, `redis`, `grafana`, `kube-prometheus`, `thanos`, `common`.
+Umbrella Helm 3 chart (`apica-ascent`, Chart apiVersion v2, chart 3.1.5, appVersion v2.16.6, kubeVersion >=1.24.0) that deploys the Apica Ascent observability platform (logging, metrics, tracing) onto Kubernetes. Ingress is Gateway API via **Envoy Gateway v1.6.0**. First-party subcharts: `logiq-flash` (ingest), `flash-coffee` (UI/worker), `flash-discovery`, `logiqctl`. Vendored deps: `cluster` (cnpg/CloudNativePG — the sole Postgres backend), plus Bitnami `redis`, `grafana`, `kube-prometheus`, `thanos`, `common`. There is no bundled Bitnami Postgres; CNPG is always the default DB and `cnpg.enabled` gates it like any other subchart (default `true`).
 
 ## Layout
 - `apica-ascent/` — the chart; everything below is relative to it.
@@ -11,12 +11,13 @@ Umbrella Helm 3 chart (`apica-ascent`, Chart apiVersion v2, chart 3.1.5, appVers
 - `values.{single,small,medium,large}.yaml` — t-shirt sizing presets, selected with `-f`; identical structure, differ only in `replicaCount`/`resources`.
 - `templates/` — mostly Envoy Gateway / Gateway API objects, `perfectscale-*` autoscaling automation, Secret templates (`shared-secret`, `vault-secrets`, `thanos-secret`, `cnpg-secrets`), thanos-ruler configmap, storageclass, metrics-server.
 - `charts/logiq-flash|flash-coffee|flash-discovery|logiqctl/` — first-party subcharts (full templates, legacy `logiq.*` helpers, `logiqai/*` images).
-- `charts/cluster|postgresql|redis|grafana|kube-prometheus|thanos|common/` — vendored upstream subcharts.
+- `charts/cluster|redis|grafana|kube-prometheus|thanos|common/` — vendored upstream subcharts.
 - `update-onprem-values.pl` — values-manipulation helper.
 
 ## Build / conventions
 - `global.*` carries cross-cutting config: `imageRegistry` (override for air-gapped, default `docker.io`), `nodeSelectors`/`taints` (`apica-node-pool` pool labels), `environment.*` (app config incl. DB/S3/admin settings), `persistence.storageClass`.
 - Subcharts are gated by conditions: `global.chart.<name>` (e.g. `global.chart.prometheus`, `global.chart.redis`) and `cnpg.enabled`. Adding a subchart means wiring both `Chart.yaml` dependency + condition + a `global.chart` toggle.
+- `cnpg.fullnameOverride: "postgres"` fixes the CNPG cluster name so the RW service is deterministically `postgres-rw`, which `global.environment.postgres_host` points at by default. An external Postgres instance can be used instead by setting `cnpg.enabled: false` and pointing `global.environment.postgres_host` (and related `postgres_*` values) at it.
 - Images are pinned to explicit tags in values (e.g. `logiqai/flash:v3.21.4`, `envoyproxy/gateway:v1.6.0`, cnpg `postgresql:18`); no `:latest`.
 - TLS Secrets self-generate via `logiq.gen-certs` when cert values are empty; secret data is `b64enc`-ed from values.
 - No `helm lint`/kubeconform in-repo; `deploy-test.yaml` fires an external Jenkins deploy test. Mentally render templates for correctness — CI won't catch a broken template here.
@@ -30,7 +31,7 @@ Umbrella Helm 3 chart (`apica-ascent`, Chart apiVersion v2, chart 3.1.5, appVers
 6. RBAC scope: new/widened cluster-scoped roles or bindings (existing cluster roles: envoy-gateway controller, `logiq-flash` PV/storageclass read, vault, metrics-server).
 
 ## Do NOT flag (known-intentional)
-- Vendored subcharts under `charts/` (`cluster`, `postgresql`, `redis`, `grafana`, `kube-prometheus`, `thanos`, `common`) — upstream code, not maintained here; skip their internals.
+- Vendored subcharts under `charts/` (`cluster`, `redis`, `grafana`, `kube-prometheus`, `thanos`, `common`) — upstream code, not maintained here; skip their internals.
 - Repo-root `apica-ascent-*.tgz`, `index.yaml`, `index.html`, `github-markdown.css` — generated Helm chart-repository artifacts.
 - Placeholder creds in `values*.yaml` (`postgres/postgres`, `admin_password: password`, `s3_access`/`s3_secret`, example S3 URLs) — defaults meant to be overridden at install; not leaked secrets.
 - The four `values.*` sizing files being near-identical — deliberate; they diverge only in replicas/resources.

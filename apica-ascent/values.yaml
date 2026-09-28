@@ -161,38 +161,6 @@ redis:
     create: true
     name: redis
 
-postgres:
-  enabled: true
-  fullnameOverride: postgres
-  postgresqlPostgresPassword: postgres
-  postgresqlUsername: postgres
-  postgresqlDatabase: postgres
-  postgresqlPassword: postgres
-  postgresqlExtendedConf:
-    maxConnections: "400"
-    sharedBuffers: "1024MB"
-  metrics:
-    enabled: true
-    serviceMonitor:
-      enabled: true
-    additionalLabels:
-      release: prometheus
-  persistence:
-    size: 20Gi
-  resources:
-    limits:
-      memory: 20000Mi
-    requests:
-      memory: 4000Mi
-      cpu: 500m
-  securityContext:
-    enabled: true
-    fsGroup: 1001
-    runAsUser: 1001
-  serviceAccount:
-    enabled: true
-    name: postgres
-
 flash-coffee:
   service:
     type: ClusterIP
@@ -506,8 +474,8 @@ global:
     redis_tls:
       enabled: false  # set to true to enable TLS for redis connections
       skip_verify: false
-    # When migrating to CNPG, update these values to point to the new CNPG service.
-    postgres_host: "postgres"
+    # CNPG read-write service, named "<cnpg.fullnameOverride>-rw".
+    postgres_host: "postgres-rw"
     postgres_port: "5432"
     postgres_user: "postgres"
     postgres_password: "postgres"
@@ -552,7 +520,6 @@ global:
     storageClass: oci-bv
   chart:
     prometheus: true
-    postgres: true
     redis: true
     s3gateway: false
     grafana: false
@@ -561,9 +528,8 @@ cnpg:
   # -- Set to true to deploy a CloudNativePG cluster via the cnpg/cluster subchart.
   enabled: true
 
-  # -- Override the cluster name. Defaults to <release-name>-cnpg.
-  # The CNPG read-write service will be <fullnameOverride>-rw (or <release-name>-cnpg-rw if unset).
-  fullnameOverride: ""
+  # -- Override the cluster name. The CNPG read-write service will be <fullnameOverride>-rw.
+  fullnameOverride: "postgres"
   # -- Override the namespace. Defaults to the release namespace.
   namespaceOverride: ""
 
@@ -574,55 +540,10 @@ cnpg:
     username: postgres
     password: postgres
 
-  # -- Cluster mode of operation.
-  # "standalone" creates a fresh cluster.
-  # "recovery" bootstraps from an existing Postgres instance via import (use for migration from Bitnami).
+  # -- Cluster mode of operation. "standalone" creates a fresh cluster.
+  # "recovery" restores a cluster from an existing CNPG barman object store backup
+  # (disaster recovery / environment rebuild) — see README.md for the full configuration.
   mode: standalone
-
-  # -- Recovery / migration configuration. Required when mode is "recovery".
-  # Two recovery methods are supported:
-  #
-  # 1. Import from a live Postgres (Bitnami migration):
-  #    method: import  (default)
-  #
-  # 2. Restore from a barman object store backup:
-  #    method: object_store
-  #    recovery:
-  #      method: object_store
-  #      clusterName: "<release-name>"   # serverName in backup — directory name in bucket, e.g. s3://bucket/cnpg-test/ → "cnpg-test"
-  #      pitrTarget:
-  #        time: ""                      # Optional RFC3339 timestamp for PITR; leave empty for latest backup
-  #      provider: s3                    # or azure / google
-  #      endpointURL: "https://<namespace>.compat.objectstorage.<region>.oraclecloud.com"
-  #      s3:
-  #        region: "<region>"
-  #        bucket: "<bucket-name>"
-  #        path: "/"
-  #        accessKey: ""
-  #        secretKey: ""
-  #      secret:
-  #        create: true                  # cluster subchart creates the S3 credentials Secret
-  recovery:
-    method: import
-    import:
-      # "monolith" imports all databases and roles. "microservice" imports a single database.
-      type: monolith
-      databases:
-        - "*"
-      roles:
-        - "*"
-      source:
-        host: postgres
-        port: 5432
-        username: postgres
-        database: postgres
-        # Use "disable" for in-cluster migration without TLS; "verify-full" for external sources.
-        sslMode: disable
-        passwordSecret:
-          name: cnpg-import-source-password
-          key: password
-          # Secret is created by templates/cnpg-secrets.yaml when mode is "recovery".
-          value: postgres
 
   cluster:
     instances: 2

@@ -304,36 +304,11 @@ helm upgrade --namespace apica \
 apica apica-repo/apica
 ```
 
-### 3.5 Using external AWS RDS Postgres database instance
+### 3.5 Postgres backend (CloudNativePG)
 
-To use external AWS RDS Postgres database for your Ascent deployment, execute the following command.
+Ascent's Postgres backend is a CloudNativePG (CNPG) cluster, deployed by default via the [cnpg/cluster](https://github.com/cloudnative-pg/charts/tree/main/charts/cluster) subchart. The [CloudNativePG operator](https://cloudnative-pg.io/) must already be installed in the target cluster — this chart only creates the `Cluster` custom resource, not the operator itself.
 
-```bash
-helm install apica --namespace apica \
---set global.chart.postgres=false \
---set global.environment.postgres_host=<postgres-host-ip/dns> \
---set global.environment.postgres_user=<username> \
---set global.environment.postgres_password=<password> \
---set global.persistence.storageClass=<storage class name> apica-repo/apica
-```
-
-| HELM Option | Description | Default |
-| :--- | :--- | :--- |
-| `global.chart.postgres` | Deploy Postgres which is needed for Ascent metadata. Set this to false if an external Postgres cluster is being used | true |
-| `global.environment.postgres_host` | Host IP/DNS for external Postgres | postgres |
-| `global.environment.postgres_user` | Postgres admin user | postgres |
-| `global.environment.postgres_password` | Postgres admin user password | postgres |
-| `global.environment.postgres_port` | Host Port for external Postgres | 5432 |
-
-> While configuring RDS, create a new parameter group that sets autoVaccum to true or the value "1", associate this parameter group to your RDS instance.
->
-> Auto vacuum automates the execution of `VACUUM` and `ANALYZE` \(to gather statistics\) commands. Auto vacuum checks for bloated tables in the database and reclaims the space for reuse.
-
-### 3.6 Using CloudNativePG (CNPG) as the Postgres provider
-
-This chart can deploy a CloudNativePG cluster as the Ascent Postgres backend via the [cnpg/cluster](https://github.com/cloudnative-pg/charts/tree/main/charts/cluster) subchart. The [CloudNativePG operator](https://cloudnative-pg.io/) must be installed in the cluster before enabling this.
-
-**Install the CNPG operator:**
+**Install the CNPG operator (one-time, per cluster):**
 
 ```bash
 helm repo add cnpg https://cloudnative-pg.github.io/charts
@@ -342,39 +317,45 @@ helm upgrade --install cnpg-operator cnpg/cloudnative-pg \
   --create-namespace
 ```
 
-**Deploy Ascent with a CNPG cluster (fresh):**
+**Deploy Ascent (default):**
 
 ```bash
-helm install apica apica-repo/apica \
-  --namespace apica \
-  --set global.chart.postgres=false \
-  --set cnpg.enabled=true \
-  --set global.environment.postgres_host=<release-name>-cnpg-rw \
-  --set global.environment.postgres_user=postgres \
-  --set global.environment.postgres_password=<password> \
-  --set cnpg.superuserSecret.password=<password>
+helm install apica --namespace apica \
+--set global.persistence.storageClass=<storage class name> apica-repo/apica
 ```
 
-The CNPG read-write service is named `<cnpg.fullnameOverride>-rw`, or `<release-name>-cnpg-rw` when `fullnameOverride` is unset.
+By default `cnpg.enabled: true` and `cnpg.fullnameOverride: "postgres"`, so the CNPG read-write service is named `postgres-rw`, and `global.environment.postgres_host` already points at it. To use a different cluster name, set `cnpg.fullnameOverride` and `global.environment.postgres_host` to `<fullnameOverride>-rw` together.
 
-**Migrating from Bitnami Postgres to CNPG:**
+| HELM Option | Description | Default |
+| :--- | :--- | :--- |
+| `cnpg.enabled` | Deploy a CNPG cluster as the Postgres backend | `true` |
+| `cnpg.fullnameOverride` | Name of the CNPG cluster (the RW service is named `<fullnameOverride>-rw`) | `postgres` |
+| `cnpg.cluster.instances` | Number of CNPG instances | `2` |
+| `cnpg.cluster.storage.size` | PVC size for each instance | `50Gi` |
+| `cnpg.backups.enabled` | Enable WAL archiving and scheduled backups to object storage | see `values.yaml` |
+| `global.environment.postgres_host` | Host/DNS for Postgres | `postgres-rw` |
+| `global.environment.postgres_user` | Postgres admin user | `postgres` |
+| `global.environment.postgres_password` | Postgres admin user password | `postgres` |
+| `global.environment.postgres_port` | Host port for Postgres | `5432` |
 
-> **Important — do steps 2 and 3 in a single `helm upgrade`.** If you switch `postgres_host` to the CNPG service in a separate later upgrade, any writes made to Bitnami between the import completing and the switchover will be lost. The safe approach is to change both at once: applications will fail to reach the database while CNPG imports (expected downtime), and reconnect successfully once the import completes with all data intact.
+#### Using an external Postgres instance (e.g. AWS RDS)
 
-1. Keep `global.chart.postgres: true` so the existing Bitnami Postgres stays running during migration.
-2. In a **single upgrade**, enable CNPG in recovery mode and switch the application connection to CNPG simultaneously:
-   - Set `cnpg.enabled: true` and `cnpg.mode: recovery`
-   - Configure `cnpg.recovery.import.source` to point at the Bitnami service (`host: postgres`, `sslMode: disable` for in-cluster)
-   - Set `global.environment.postgres_host` to `<release-name>-cnpg-rw`
-   - The CNPG operator bootstraps the new cluster via `pg_dump`/`pg_restore` — no separate Job is required
-3. Wait for the CNPG cluster to reach `Cluster in healthy state`. Applications will reconnect automatically once the RW service becomes available.
-4. Set `global.chart.postgres: false` to decommission the Bitnami instance.
+To point Ascent at an external Postgres instance instead of deploying CNPG, disable the bundled cluster and set the connection details:
 
-> **Note:** The `monolith` import copies all user databases (`coffee`, `flash`, `casdoor`, etc.) but skips the `postgres` database — it is a reserved name in CNPG and is never imported. Verify no application schema lives in the `postgres` database before migrating (the default Ascent setup stores no schema there).
+```bash
+helm install apica --namespace apica \
+--set cnpg.enabled=false \
+--set global.environment.postgres_host=<postgres-host-ip/dns> \
+--set global.environment.postgres_user=<username> \
+--set global.environment.postgres_password=<password> \
+--set global.persistence.storageClass=<storage class name> apica-repo/apica
+```
 
-> **Note:** The CNPG cluster `bootstrap` configuration is immutable after creation. After a successful migration, `cnpg.mode: recovery` in values has no effect on the running cluster and can be left as-is or changed to `standalone` for documentation purposes only.
+> While configuring RDS, create a new parameter group that sets autoVaccum to true or the value "1", associate this parameter group to your RDS instance.
+>
+> Auto vacuum automates the execution of `VACUUM` and `ANALYZE` \(to gather statistics\) commands. Auto vacuum checks for bloated tables in the database and reclaims the space for reuse.
 
-**Restoring from a barman backup:**
+#### Restoring from a barman backup
 
 To recreate a CNPG cluster from an existing barman object store backup (disaster recovery, environment rebuild):
 
@@ -403,15 +384,10 @@ The `clusterName` must match the serverName stored in the backup — it is the t
 
 | HELM Option | Description | Default |
 | :--- | :--- | :--- |
-| `cnpg.enabled` | Deploy a CNPG cluster as the Postgres backend | `false` |
-| `cnpg.mode` | `standalone` for a new cluster; `recovery` to import from Bitnami or restore from backup | `standalone` |
-| `cnpg.recovery.method` | `import` (from live Postgres), `object_store` (from barman backup), `backup` (from CNPG Backup object) | `import` |
+| `cnpg.mode` | `standalone` for a new cluster; `recovery` to restore from a backup | `standalone` |
+| `cnpg.recovery.method` | `object_store` (from barman backup), `backup` (from a CNPG Backup object) | `backup` |
 | `cnpg.recovery.clusterName` | serverName in the backup store — must match the backup bucket directory name | `""` |
 | `cnpg.recovery.pitrTarget.time` | RFC3339 timestamp for point-in-time recovery; empty = latest | `""` |
-| `cnpg.fullnameOverride` | Override the cluster name (affects the RW service name) | `""` |
-| `cnpg.cluster.instances` | Number of CNPG instances | `2` |
-| `cnpg.cluster.storage.size` | PVC size for each instance | `20Gi` |
-| `cnpg.backups.enabled` | Enable WAL archiving and scheduled backups to object storage | `false` |
 
 ### 3.7 Upload Ascent professional license
 

@@ -33,11 +33,6 @@ dependencies:
   - name: flash-discovery
     version: 1.0.0
     condition: global.chart.flash-discovery
-  - alias: postgres
-    condition: global.chart.postgres
-    name: postgresql
-    repository: https://charts.bitnami.com/bitnami
-    version: 8.7.3
   - alias: redis
     condition: global.chart.redis
     name: redis

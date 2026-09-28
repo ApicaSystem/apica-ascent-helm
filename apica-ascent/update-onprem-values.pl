@@ -64,8 +64,6 @@ foreach my $size (@tshirts) {
     $clone->{global}{environment}{admin_password}        = '##ADMIN_ACCOUNT_PASSWORD##';
     $clone->{global}{environment}{admin_org}             = '##ADMIN_ORGANIZATION##';
     $clone->{global}{environment}{admin_email}           = '##ADMIN_EMAIL##';
-    $clone->{postgres}{postgresqlPostgresPassword}       = '##YOUR_POSTGRES_ROOT_PASSWORD##';
-    $clone->{postgres}{postgresqlPassword}               = '##YOUR_POSTGRES_PASSWORD##';
 
     # Kafka client always disabled
     $clone->{'logiq-flash'}{kafka_client}{enabled} = $JSON::PP::false;
@@ -74,8 +72,7 @@ foreach my $size (@tshirts) {
     $clone->{'logiq-flash'}{secrets_name} = 'my-ascent-ingest';
     $clone->{gateway}{tls}{secretName} = 'my-ascent-ingress';
 
-    # Turn off cnpg by default
-    $clone->{cnpg}{enabled} = $JSON::PP::false;
+    # No object storage creds in these example files; leave backups off by default
     $clone->{cnpg}{backups}{enabled} = $JSON::PP::false;
 
     # Envoy proxy annotations not needed
@@ -87,7 +84,7 @@ foreach my $size (@tshirts) {
 
     # Reduce memory limits for single-node
     if ($size eq 'single') {
-        $clone->{postgres}{resources}{limits}{memory}               = '8000Mi';
+        $clone->{cnpg}{cluster}{resources}{limits}{memory}           = '8000Mi';
         $clone->{prometheus}{prometheus}{resources}{limits}{memory} = '2000Mi';
         $clone->{redis}{master}{resources}{limits}{memory}          = '2000Mi';
     }

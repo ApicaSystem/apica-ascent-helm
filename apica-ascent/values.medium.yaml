@@ -155,37 +155,6 @@ redis:
   serviceAccount:
     create: true
     name: redis
-postgres:
-  enabled: true
-  fullnameOverride: postgres
-  postgresqlPostgresPassword: '##YOUR_POSTGRES_ROOT_PASSWORD##'
-  postgresqlUsername: postgres
-  postgresqlDatabase: postgres
-  postgresqlPassword: '##YOUR_POSTGRES_PASSWORD##'
-  postgresqlExtendedConf:
-    maxConnections: '400'
-    sharedBuffers: 1024MB
-  metrics:
-    enabled: true
-    serviceMonitor:
-      enabled: true
-    additionalLabels:
-      release: prometheus
-  persistence:
-    size: 20Gi
-  resources:
-    limits:
-      memory: 20000Mi
-    requests:
-      memory: 4000Mi
-      cpu: 500m
-  securityContext:
-    enabled: true
-    fsGroup: 1001
-    runAsUser: 1001
-  serviceAccount:
-    enabled: true
-    name: postgres
 flash-coffee:
   service:
     type: ClusterIP
@@ -469,7 +438,7 @@ global:
     redis_tls:
       enabled: false
       skip_verify: false
-    postgres_host: postgres
+    postgres_host: postgres-rw
     postgres_port: '5432'
     postgres_user: postgres
     postgres_password: '##YOUR_POSTGRES_PASSWORD##'
@@ -514,37 +483,18 @@ global:
     storageClass: openebs-hostpath
   chart:
     prometheus: true
-    postgres: true
     redis: true
     s3gateway: false
     grafana: false
 cnpg:
-  enabled: false
-  fullnameOverride: ''
+  enabled: true
+  fullnameOverride: postgres
   namespaceOverride: ''
   superuserSecret:
     name: ascent-db-superuser
     username: postgres
     password: postgres
   mode: standalone
-  recovery:
-    method: import
-    import:
-      type: monolith
-      databases:
-      - '*'
-      roles:
-      - '*'
-      source:
-        host: postgres
-        port: 5432
-        username: postgres
-        database: postgres
-        sslMode: disable
-        passwordSecret:
-          name: cnpg-import-source-password
-          key: password
-          value: postgres
   cluster:
     instances: 2
     imageName: ghcr.io/cloudnative-pg/postgresql:18
