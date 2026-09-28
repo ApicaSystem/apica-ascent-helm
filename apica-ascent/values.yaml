@@ -333,17 +333,20 @@ envoyGateway:
         port: 8081
         protocol: TCP
 
-  # Jaeger-compatible trace ingestion at the gateway.
-  # These collector ports accept spans without authentication, so they are
-  # disabled by default. Enable only when the gateway is restricted to a
-  # trusted network (internal LB, source-IP allowlist, or private endpoint).
+  # ==========================================================================
+  # Public trace / RELP ingestion through Envoy - ports 14250, 14268, 20514.
+  # ONE flag controls every public-facing path: the Gateway TCP listeners,
+  # their TCPRoutes, and the HTTP /api/traces route. All are unauthenticated,
+  # so they stay closed by default and are enabled from the pipeline when
+  # required.
+  #
+  # In-cluster access is unaffected: the logiq-flash Service keeps these ports
+  # for internal clients. This flag only decides whether Envoy fronts them.
+  # ==========================================================================
   traceIngestion:
-    # -- Open the Jaeger collector listeners (and their TCPRoutes) on the gateway.
+    # -- The one switch. false (default) = not reachable through Envoy.
     enabled: false
-    # -- Also route HTTP(S) /api/traces to the Jaeger collector on the shared
-    # HTTP/HTTPS listener. Independent of the TCP ports above.
-    httpApiTraces: true
-    # -- Listener/route pairs created when traceIngestion.enabled is true.
+    # -- Listeners/routes created when enabled is true.
     ports:
       - name: tcp-14250
         port: 14250
@@ -359,7 +362,10 @@ envoyGateway:
         port: 20514
         protocol: TCP
         service: logiq-flash
-        description: Jaeger syslog-style trace ingest
+        # NOTE: RELP log ingestion, not a Jaeger trace port. Gated here because
+        # it was in scope for SO-10170; disabling only removes its public
+        # Envoy listener, internal RELP ingest keeps working.
+        description: RELP log ingestion
 
   # Compression configuration using BackendTrafficPolicy compressor field
   compressor:

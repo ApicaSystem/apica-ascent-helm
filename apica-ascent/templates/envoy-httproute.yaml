@@ -187,10 +187,9 @@ spec:
     {{- end }}
 
   # Jaeger-compatible trace ingestion.
-  # Unauthenticated, so it is gated by envoyGateway.traceIngestion.httpApiTraces.
-  {{- /* Defaults on; the strings "false"/"0"/"off" turn it off as well as bool false. */}}
-  {{- $httpTraces := not (has (lower (toString (.Values.envoyGateway.traceIngestion | default dict).httpApiTraces)) (list "false" "0" "off" "no")) }}
-  {{- if $httpTraces }}
+  # Hits logiq-flash:14268, so it rides the same single flag as the TCP ports.
+  {{- $trace := .Values.envoyGateway.traceIngestion | default dict }}
+  {{- if eq (lower (toString (default false $trace.enabled))) "true" }}
   - matches:
     - path:
         type: PathPrefix

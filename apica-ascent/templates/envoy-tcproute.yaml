@@ -46,8 +46,8 @@ spec:
 
 # ============================================================================
 # Jaeger-compatible trace ingestion (unauthenticated) - opt-in only.
-# Gated by envoyGateway.traceIngestion.enabled, which must stay false unless
-# the gateway is reachable only from a trusted network.
+# Gated by the single flag envoyGateway.traceIngestion.enabled, which must stay
+# false unless the gateway is reachable only from a trusted network.
 # ============================================================================
 {{- $trace := .Values.envoyGateway.traceIngestion | default dict }}
 {{- /* Accept bool true or the string "true" (CD pipelines often pass strings).
