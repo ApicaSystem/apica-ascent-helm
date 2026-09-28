@@ -117,8 +117,12 @@ spec:
             {{- .Values.bucketweb.extraFlags | toYaml | nindent 12 }}
             {{- end }}
             {{- end }}
+          {{- if or .Values.bucketweb.extraEnvVars .Values.global.environment.s3_credentials_secret.name }}
+          env:
+          {{- include "thanos.s3CredentialsEnvVars" . | nindent 12 }}
           {{- if .Values.bucketweb.extraEnvVars }}
-          env: {{- include "common.tplvalues.render" (dict "value" .Values.bucketweb.extraEnvVars "context" $) | nindent 12 }}
+          {{- include "common.tplvalues.render" (dict "value" .Values.bucketweb.extraEnvVars "context" $) | nindent 12 }}
+          {{- end }}
           {{- end }}
           {{- if or .Values.bucketweb.extraEnvVarsCM .Values.bucketweb.extraEnvVarsSecret }}
           envFrom:
