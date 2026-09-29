@@ -149,6 +149,7 @@ spec:
                 secretKeyRef:
                   key: objstore.yml
                   name: {{ include "thanos.objstoreSecretName" . }}
+            {{- include "thanos.s3CredentialsEnvVars" . | nindent 12 }}
             {{- if .Values.receive.extraEnvVars }}
             {{- include "common.tplvalues.render" (dict "value" .Values.receive.extraEnvVars "context" $) | nindent 12 }}
             {{- end }}

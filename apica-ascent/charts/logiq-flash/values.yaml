@@ -288,11 +288,25 @@ global:
     s3_custom_ca:
       enabled: false
       map_name: "kube-root-ca.crt"
+    s3_credentials_secret:
+      name: ""
+      access_key_name: access_key
+      secret_key_name: secret_key
+      bucket_key_name: bucket
+      session_token_name: ""
+      mount_path: /flash/s3creds
     AWS_ACCESS_KEY_ID: "AWS_ACCESS"
     AWS_SECRET_ACCESS_KEY: "AWS_SECRET"
     awsServiceEndpoint: "https://s3.amazonaws.com"
     extraflag: ""
     rate_limit_flags: ""
+    postgres_tls:
+      enabled: false
+      sslmode: "verify-full"
+      mtls: false     # set true to add POSTGRES_SSLCERT/KEY (requires pg-client.crt/pg-client.key in tls.certSecretName secret)
+    redis_tls:
+      enabled: false
+      skip_verify: false  # REDIS_TLS_SKIP_VERIFY; encrypts without server auth — logs a warning
 
   persistence:
     createStorageClass:
@@ -301,3 +315,14 @@ global:
 kafka_client:
   enabled: false
   kafka_args: ""
+
+tls:
+  # Secret mounted into flash pods at /flash/tls-certs.
+  # Must be set whenever any cert path below is configured.
+  certSecretName: ""
+  postgres:
+    caCert: ""                                   # e.g. /flash/tls-certs/pg-ca.crt; omit for publicly-signed certs
+    clientCert: "/flash/tls-certs/pg-client.crt"   # mTLS client cert
+    clientKey: "/flash/tls-certs/pg-client.key"    # mTLS client key
+  redis:
+    caCert: ""        # e.g. /flash/tls-certs/redis-ca.crt; omit for publicly-signed certs

@@ -59,6 +59,32 @@ Return true if a secret object should be created
 {{- end -}}
 
 {{/*
+Render AWS credential env vars from s3_credentials_secret when configured.
+Outputs nothing when s3_credentials_secret.name is empty (legacy behavior).
+*/}}
+{{- define "thanos.s3CredentialsEnvVars" -}}
+{{- if .Values.global.environment.s3_credentials_secret.name -}}
+- name: AWS_ACCESS_KEY_ID
+  valueFrom:
+    secretKeyRef:
+      name: {{ .Values.global.environment.s3_credentials_secret.name }}
+      key: {{ .Values.global.environment.s3_credentials_secret.access_key_name }}
+- name: AWS_SECRET_ACCESS_KEY
+  valueFrom:
+    secretKeyRef:
+      name: {{ .Values.global.environment.s3_credentials_secret.name }}
+      key: {{ .Values.global.environment.s3_credentials_secret.secret_key_name }}
+{{- if .Values.global.environment.s3_credentials_secret.session_token_name }}
+- name: AWS_SESSION_TOKEN
+  valueFrom:
+    secretKeyRef:
+      name: {{ .Values.global.environment.s3_credentials_secret.name }}
+      key: {{ .Values.global.environment.s3_credentials_secret.session_token_name }}
+{{- end }}
+{{- end }}
+{{- end -}}
+
+{{/*
 Return a YAML of either .Values.query or .Values.querier
 If .Values.querier is used, we merge in the defaults from .Values.query, giving preference to .Values.querier
 */}}
