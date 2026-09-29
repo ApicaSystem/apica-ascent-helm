@@ -218,13 +218,6 @@ spec:
     backendRefs:
       - group: ''
         kind: Service
-  - matches:
-    - path:
-        type: PathPrefix
-        value: /api/v2/logs
-    backendRefs:
-      - group: ''
-        kind: Service
         name: logiq-flash
         port: 9999
         weight: 1
