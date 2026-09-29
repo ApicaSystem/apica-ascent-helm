@@ -1,7 +1,9 @@
-{{- define "cluster.externalClusters" -}}
-{{- if eq .Values.mode "standalone" }}
-{{- else }}
-externalClusters:
+{{/*
+Builds the externalClusters list items only. Renders empty when the selected
+mode/method needs no external cluster - notably recovery.method=backup, which
+restores from an in-cluster CNPG Backup object.
+*/}}
+{{- define "cluster.externalClustersItems" -}}
 {{- if eq .Values.mode "recovery" }}
   {{- if eq .Values.recovery.method "pg_basebackup" }}
   - name: pgBaseBackupSource
@@ -27,8 +29,20 @@ externalClusters:
   {{- if not (empty .Values.replica.origin.pg_basebackup.host) }}
     {{- include "cluster.externalSourceCluster" .Values.replica.origin.pg_basebackup | nindent 4 }}
   {{- end }}
-{{- else }}
+{{- else if ne .Values.mode "standalone" }}
   {{ fail "Invalid cluster mode!" }}
 {{- end }}
+{{- end }}
+
+{{/*
+Emits the externalClusters key ONLY when the list above is non-empty. Emitting
+a bare "externalClusters:" yields null, which the CNPG CRD rejects with
+"spec.externalClusters in body must be of type array: null".
+*/}}
+{{- define "cluster.externalClusters" -}}
+{{- $items := include "cluster.externalClustersItems" . -}}
+{{- if trim $items }}
+externalClusters:
+{{ trimSuffix "\n" $items }}
 {{- end }}
 {{ end }}

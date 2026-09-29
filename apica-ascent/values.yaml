@@ -520,7 +520,7 @@ cnpg:
   enabled: true
 
   # -- Override the cluster name. The CNPG read-write service will be <fullnameOverride>-rw.
-  fullnameOverride: ""
+  fullnameOverride: ''
   # -- Override the namespace. Defaults to the release namespace.
   namespaceOverride: ""
 
