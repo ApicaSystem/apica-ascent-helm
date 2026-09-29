@@ -488,7 +488,7 @@ global:
     grafana: false
 cnpg:
   enabled: true
-  fullnameOverride: postgres
+  fullnameOverride: ""
   namespaceOverride: ''
   superuserSecret:
     name: ascent-db-superuser
