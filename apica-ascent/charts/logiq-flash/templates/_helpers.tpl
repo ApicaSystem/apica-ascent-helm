@@ -38,10 +38,11 @@ Integer division is intentional, as fractional CPUs round down.
 */}}
 {{- define "logiq-flash.flashWorkers" -}}
 {{- $cpuStr := .Values.resources.ingest.requests.cpu | toString -}}
+{{- $perCPU := .Values.flash.workersPerCPU | int64 -}}
 {{- if hasSuffix "m" $cpuStr -}}
-{{- mul 150 (div (trimSuffix "m" $cpuStr | int64) 1000) -}}
+{{- mul $perCPU (div (trimSuffix "m" $cpuStr | int64) 1000) -}}
 {{- else -}}
-{{- mul 150 ($cpuStr | int64) -}}
+{{- mul $perCPU ($cpuStr | int64) -}}
 {{- end -}}
 {{- end -}}
 
