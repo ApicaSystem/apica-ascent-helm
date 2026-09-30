@@ -32,7 +32,7 @@ Create chart name and version as used by the chart label.
 {{- end -}}
 
 {{/*
-Compute the -workers count as 150 × CPU request in whole CPUs.
+Compute the -workers count as workersPerCPU × CPU request in whole CPUs.
 CPU request may be expressed as milliCPUs (e.g. "1250m") or whole CPUs (e.g. "2").
 Integer division is intentional, as fractional CPUs round down.
 */}}
