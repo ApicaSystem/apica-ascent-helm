@@ -198,19 +198,6 @@ spec:
         port: 14268
         weight: 1
 
-  # General API endpoints (organization, etc.)
-  # This must come after specific /api routes (/api/v1/receive, /api/traces)
-  # but before the catch-all / route
-  - matches:
-    - path:
-        type: PathPrefix
-        value: /api
-    backendRefs:
-      - group: ''
-        kind: Service
-        name: coffee
-        port: 80
-        weight: 1
   # Datadog agent ingest
   - matches:
     - path:
