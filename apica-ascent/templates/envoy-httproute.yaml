@@ -188,6 +188,9 @@ spec:
     {{- end }}
 
   # Jaeger-compatible trace ingestion.
+  # Hits logiq-flash:14268, so it rides the same single flag as the TCP ports.
+  {{- $trace := .Values.envoyGateway.traceIngestion | default dict }}
+  {{- if eq (lower (toString (default false $trace.enabled))) "true" }}
   - matches:
     - path:
         type: PathPrefix
@@ -198,6 +201,7 @@ spec:
         name: logiq-flash
         port: 14268
         weight: 1
+  {{- end }}
 
   # Datadog agent ingest
   - matches:
