@@ -25,58 +25,7 @@ spec:
       # preStop(15s) fills the LB-drain gap before SIGTERM; 60s is the hard ceiling.
       terminationGracePeriodSeconds: {{ .Values.coffee.terminationGracePeriodSeconds }}
 
-      # Soft spread across nodes and zones — ScheduleAnyway never blocks scheduling.
-      {{- if .Values.coffee.topologySpreadConstraints.enabled }}
-      topologySpreadConstraints:
-        - maxSkew: {{ .Values.coffee.topologySpreadConstraints.maxSkew }}
-          topologyKey: kubernetes.io/hostname
-          whenUnsatisfiable: {{ .Values.coffee.topologySpreadConstraints.whenUnsatisfiable }}
-          labelSelector:
-            matchLabels:
-              app: coffee-server
-        - maxSkew: {{ .Values.coffee.topologySpreadConstraints.maxSkew }}
-          topologyKey: topology.kubernetes.io/zone
-          whenUnsatisfiable: {{ .Values.coffee.topologySpreadConstraints.whenUnsatisfiable }}
-          labelSelector:
-            matchLabels:
-              app: coffee-server
-      {{- end }}
-
-      affinity:
-        {{- if .Values.global.nodeSelectors.enabled }}
-        nodeAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            nodeSelectorTerms:
-              - matchExpressions:
-                  - key: {{ .Values.global.nodeSelectors.label }}
-                    operator: In
-                    values:
-                      - {{ .Values.global.nodeSelectors.other }}
-        {{- end }}
-        # Preferred anti-affinity: adds scheduling pressure without ever blocking.
-        {{- if .Values.coffee.podAntiAffinity.enabled }}
-        podAntiAffinity:
-          preferredDuringSchedulingIgnoredDuringExecution:
-            - weight: {{ .Values.coffee.podAntiAffinity.weight }}
-              podAffinityTerm:
-                topologyKey: kubernetes.io/hostname
-                labelSelector:
-                  matchLabels:
-                    app: coffee-server
-        {{- end }}
-
-      {{- if .Values.global.taints.enabled }}
-      tolerations:
-        - key: dedicated
-          operator: Equal
-          value: {{ .Values.global.taints.other }}
-          effect: NoSchedule
-      {{- end }}
-
-      securityContext:
-        fsGroup: 1000
-        runAsUser: 1000
-        runAsGroup: 1000
+      {{- include "flash-coffee.podScheduling" (dict "root" $ "app" "coffee-server" "values" .Values.coffee) | nindent 6 }}
 
       {{- if .Values.useSecret }}
       imagePullSecrets:
