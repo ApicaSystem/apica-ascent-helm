@@ -10,7 +10,7 @@ dependencies:
   version: 1.0.0
 - name: kube-prometheus-stack
   repository: https://prometheus-community.github.io/helm-charts
-  version: 88.6.3
+  version: 91.9.0
 - name: logiq-flash
   repository: ""
   version: 1.0.0
@@ -19,9 +19,9 @@ dependencies:
   version: 1.0.0
 - name: valkey
   repository: https://valkey.io/valkey-helm
-  version: 0.9.0
+  version: 0.12.0
 - name: thanos
   repository: oci://ghcr.io/thanos-community/helm-charts
-  version: 0.18.0
-digest: sha256:68cfc46b1eb4ccffc522eb5a1e2670478bb72b09f697bcac0a8b4e2a620f7bd7
-generated: "2026-09-04T16:01:55.68276-04:00"
+  version: 0.46.0
+digest: sha256:131d382c05da14437f3002b8445ccd8b0d9c1d76ea36e1e845789d7a0efabcb5
+generated: "2026-10-02T15:26:27.315795-04:00"
