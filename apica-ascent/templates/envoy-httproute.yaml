@@ -166,6 +166,7 @@ spec:
         port: 9999
         weight: 1
 
+
   # API v1 endpoints (general routing - must come AFTER all specific /v1/* routes).
   - matches:
     - path:
@@ -202,6 +203,18 @@ spec:
         weight: 1
   {{- end }}
 
+  # Datadog agent ingest
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /api/v2/logs
+    backendRefs:
+      - group: ''
+        kind: Service
+        name: logiq-flash
+        port: 9999
+        weight: 1
+
   # General API endpoints (organization, etc.)
   # This must come after specific /api routes (/api/v1/receive, /api/traces)
   # but before the catch-all / route
@@ -215,7 +228,6 @@ spec:
         name: coffee
         port: 80
         weight: 1
-
   # Additional routes injected via values.yaml (cloud or environment specific).
   {{- if .Values.gateway.extraRoutes }}
   {{- range .Values.gateway.extraRoutes }}

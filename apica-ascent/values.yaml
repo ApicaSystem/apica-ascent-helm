@@ -6,7 +6,7 @@ logiq-flash:
     type: NodePort
   image:
     repository: logiqai/flash
-    tag: v4.0.1
+    tag: v4.0.7
     pullPolicy: IfNotPresent
   persistence:
     enabled: true
@@ -200,7 +200,7 @@ flash-coffee:
     replicaCount: 2
     image:
       repository: logiqai/flash-brew-coffee
-      tag: v4.0.1
+      tag: v4.0.4
       pullPolicy: IfNotPresent
     resources:
       requests:
@@ -212,7 +212,7 @@ flash-coffee:
     replicaCount: 2
     image:
       repository: logiqai/flash-brew-coffee
-      tag: v4.0.1
+      tag: v4.0.4
       pullPolicy: IfNotPresent
     resources:
       requests:
@@ -680,10 +680,18 @@ cnpg:
         pg_stat_statements.track: all
         max_connections: "400"
         shared_buffers: "1024MB"
+    additionalLabels:
+      release: kube-prometheus-stack
     monitoring:
-      enabled: false
+      enabled: true
       podMonitor:
         enabled: true
+        labels:
+          release: kube-prometheus-stack
+      prometheusRule:
+        enabled: true
+        excludeRules:
+          - CNPGClusterHAWarning
 
   # -- Backup configuration. Disabled by default; configure provider credentials before enabling.
   backups:
