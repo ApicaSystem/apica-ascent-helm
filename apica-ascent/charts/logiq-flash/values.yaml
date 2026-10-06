@@ -36,6 +36,7 @@ flash:
     type: RollingUpdate
     maxUnavailable: 1
   preStopSleepSeconds: 30
+  workersPerCPU: 150
   # N-1 for replicaCount=2
   pdb:
     enabled: true
