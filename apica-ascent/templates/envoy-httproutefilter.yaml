@@ -1,0 +1,26 @@
+{{- if .Values.envoyGateway.enabled }}
+{{- $trace := .Values.envoyGateway.traceIngestion | default dict }}
+{{- if not (eq (lower (toString (default false $trace.enabled))) "true") }}
+---
+# Direct-response filter used by the /api/traces rule in envoy-httproute.yaml
+# while envoyGateway.traceIngestion.enabled is false.
+#
+# Without it that rule would have no destination and Envoy Gateway would answer
+# with a 500, which reads as a server fault. A deliberately disabled endpoint
+# should answer 404.
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: HTTPRouteFilter
+metadata:
+  name: {{ .Release.Name }}-traces-disabled
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "logiq.labels" . | nindent 4 }}
+spec:
+  directResponse:
+    statusCode: 404
+    contentType: text/plain
+    body:
+      type: Inline
+      inline: "Trace ingestion is not enabled on this gateway.\n"
+{{- end }}
+{{- end }}

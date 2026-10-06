@@ -204,13 +204,22 @@ spec:
   # Disabled: keep an explicit rule for /api/traces. Without it the path falls
   # through to the "/api" rule below and Envoy forwards trace payloads to the
   # coffee API service, which is neither intended nor obvious when debugging.
-  # A rule with matches and no backendRefs returns 404 (Gateway API spec:
-  # "if there are also no filters specified that would result in a response
-  # being sent, a HTTP 404 status code is returned").
+  #
+  # The rule must carry a direct-response filter, not just an empty backendRefs
+  # list: Envoy Gateway turns a rule with no resolvable destination into a 500,
+  # which would wrongly look like a server fault and pollute 5xx alerting. A
+  # filter-supplied response takes precedence and gives a clean 404.
+  # See envoy-httproutefilter.yaml for the referenced filter.
   - matches:
     - path:
         type: PathPrefix
         value: /api/traces
+    filters:
+    - type: ExtensionRef
+      extensionRef:
+        group: gateway.envoyproxy.io
+        kind: HTTPRouteFilter
+        name: {{ .Release.Name }}-traces-disabled
   {{- end }}
 
   # General API endpoints (organization, etc.)
