@@ -200,6 +200,17 @@ spec:
         name: logiq-flash
         port: 14268
         weight: 1
+  {{- else }}
+  # Disabled: keep an explicit rule for /api/traces. Without it the path falls
+  # through to the "/api" rule below and Envoy forwards trace payloads to the
+  # coffee API service, which is neither intended nor obvious when debugging.
+  # A rule with matches and no backendRefs returns 404 (Gateway API spec:
+  # "if there are also no filters specified that would result in a response
+  # being sent, a HTTP 404 status code is returned").
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /api/traces
   {{- end }}
 
   # General API endpoints (organization, etc.)

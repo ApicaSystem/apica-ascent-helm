@@ -33,7 +33,19 @@ apica-ascent/
 
 **Envoy Gateway** is wired up via ~15 custom templates (not a subchart). It
 provides the external LoadBalancer and handles HTTP, HTTPS, and TCP listeners
-(ports 9999, 8081, 14250, 20514, 14268).
+(ports 9999 and 8081).
+
+The unauthenticated ingestion ports — 14250 (Jaeger gRPC), 14268 (Jaeger HTTP,
+also behind the `/api/traces` HTTP route) and 20514 (RELP logs) — are **opt-in
+as of chart 3.1.6** and are not exposed by the Gateway unless
+`envoyGateway.traceIngestion.enabled` is set to `true`. Enable it only where the
+Gateway is reachable from a trusted network. The `logiq-flash` Service keeps
+these ports for in-cluster clients either way.
+
+> **Upgrading from 3.1.5 or earlier:** these three ports were previously always
+> exposed. Upgrading with the default (`false`) removes their Gateway listeners
+> and TCPRoutes, which will break external Jaeger clients *and* external RELP log
+> shippers on 20514.
 
 **PerfectScale** resource automation configs are present but off by default
 (`perfectscale.enabled: false`).

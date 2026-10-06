@@ -367,9 +367,18 @@ envoyGateway:
   #
   # In-cluster access is unaffected: the logiq-flash Service keeps these ports
   # for internal clients. This flag only decides whether Envoy fronts them.
+  #
+  # !! BREAKING CHANGE IN 3.1.6 !!
+  # Up to 3.1.5 all three ports were always exposed by the Gateway. Upgrading
+  # with the default below REMOVES the Gateway listeners and TCPRoutes, so any
+  # external client shipping to 14250/14268/20514 stops delivering - including
+  # RELP log shippers on 20514, which are not traces. Existing deployments that
+  # rely on these ports must set enabled: true at upgrade time, or move those
+  # clients to an authenticated path first.
   # ==========================================================================
   traceIngestion:
     # -- The one switch. false (default) = not reachable through Envoy.
+    #    See the BREAKING CHANGE note above before upgrading from <= 3.1.5.
     enabled: false
     # -- Listeners/routes created when enabled is true.
     ports:

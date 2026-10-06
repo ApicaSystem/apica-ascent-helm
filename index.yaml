@@ -261,6 +261,6 @@ entries:
     - https://github.com/apica-io/apica-ascent-helm
     type: application
     urls:
-    - apica-ascent-3.1.6.tgz
-    version: 3.1.6
+    - apica-ascent-3.1.4.tgz
+    version: 3.1.4
 generated: "2026-09-24T17:21:22.967724+05:30"
