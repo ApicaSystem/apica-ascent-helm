@@ -78,9 +78,7 @@ spec:
   # closed unless envoyGateway.traceIngestion.enabled is explicitly set.
   # ============================================================================
   {{- $trace := .Values.envoyGateway.traceIngestion | default dict }}
-  {{- /* Bool true or string "true" only; see envoy-tcproute.yaml. */}}
-  {{- $traceEnabled := eq (lower (toString (default false $trace.enabled))) "true" }}
-  {{- if $traceEnabled }}
+  {{- if eq (include "logiq.traceIngestionEnabled" .) "true" }}
   {{- range $trace.ports }}
   - name: {{ .name }}
     protocol: {{ .protocol | default "TCP" }}

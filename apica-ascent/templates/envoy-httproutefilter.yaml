@@ -1,6 +1,5 @@
 {{- if .Values.envoyGateway.enabled }}
-{{- $trace := .Values.envoyGateway.traceIngestion | default dict }}
-{{- if not (eq (lower (toString (default false $trace.enabled))) "true") }}
+{{- if ne (include "logiq.traceIngestionEnabled" .) "true" }}
 ---
 # Direct-response filter used by the /api/traces rule in envoy-httproute.yaml
 # while envoyGateway.traceIngestion.enabled is false.
