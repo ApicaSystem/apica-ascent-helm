@@ -210,7 +210,7 @@ spec:
             - /bin/bash
           args:
             - -c
-            - /flash/bin/flash -config /flash/config/config.yaml -install_root /flash -runtime_folder /flash/db -discovery_domain $(DISCOVERY_DOMAIN) -discovery_url $(DISCOVERY_URL) -discovery_id flash1 -pg_max_idle_conns 3 -pg_max_open_Conns 5 -postgres_timeout 20s -workers 150 -connection_channel_size 10 --pg_conn_max_lifetime 5m {{ .Values.global.environment.extraflag }} {{- if eq (toString .Values.logflow_only.enabled) "true" }} {{ .Values.logflow_only.args }} {{- else }} {{ .Values.global.environment.rate_limit_flags }} {{- end }} {{- if .Values.kafka_client.enabled }} {{ .Values.kafka_client.kafka_args }} {{- end }}
+            - /flash/bin/flash -config /flash/config/config.yaml -install_root /flash -runtime_folder /flash/db -discovery_domain $(DISCOVERY_DOMAIN) -discovery_url $(DISCOVERY_URL) -discovery_id flash1 -pg_max_idle_conns 3 -pg_max_open_Conns 5 -postgres_timeout 20s -workers {{ include "logiq-flash.flashWorkers" . }} -connection_channel_size 10 --pg_conn_max_lifetime 5m {{ .Values.global.environment.extraflag }} {{- if eq (toString .Values.logflow_only.enabled) "true" }} {{ .Values.logflow_only.args }} {{- else }} {{ .Values.global.environment.rate_limit_flags }} {{- end }} {{- if .Values.kafka_client.enabled }} {{ .Values.kafka_client.kafka_args }} {{- end }}
           # PreStop: blocking flush to S3 before kubelet sends SIGTERM.
           # 1. POST /flush blocks until flush is done (wait=true) or curl timeout fires.
           # 2. Poll /flush/status as a safety net in case wait=true returned early.

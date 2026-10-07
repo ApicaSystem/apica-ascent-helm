@@ -47,6 +47,7 @@ flash:
   updateStrategy:
     type: RollingUpdate
     maxUnavailable: 1
+  workersPerCPU: 150
   # N-1 for replicaCount=2
   pdb:
     enabled: true

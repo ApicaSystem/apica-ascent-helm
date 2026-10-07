@@ -73,7 +73,31 @@ spec:
         weight: 1
     {{- end }}
 
-  # /v1 catch-all for ML; specific flash /v1/* rules in envoy-httproute-flash.yaml take priority.
+  # JSON ingestion endpoints (must come before general /v1 route).
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /v1/json_batch
+    backendRefs:
+      - group: ''
+        kind: Service
+        name: logiq-flash
+        port: 9999
+        weight: 1
+
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /v1/json
+    backendRefs:
+      - group: ''
+        kind: Service
+        name: logiq-flash
+        port: 9999
+        weight: 1
+
+  # /v1 catch-all for ML; specific flash /v1/* rules in envoy-httproute-flash.yaml take
+  # priority. API v1 endpoints (general routing) — must come AFTER all specific /v1/* routes.
   - matches:
     - path:
         type: PathPrefix
@@ -93,6 +117,43 @@ spec:
         weight: 1
     {{- end }}
 
+  # Jaeger-compatible trace ingestion.
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /api/traces
+    backendRefs:
+      - group: ''
+        kind: Service
+        name: logiq-flash
+        port: 14268
+        weight: 1
+
+  # Datadog agent ingest
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /api/v2/logs
+    backendRefs:
+      - group: ''
+        kind: Service
+        name: logiq-flash
+        port: 9999
+        weight: 1
+
+  # General API endpoints (organization, etc.)
+  # This must come after specific /api routes (/api/v1/receive, /api/traces)
+  # but before the catch-all / route
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /api
+    backendRefs:
+      - group: ''
+        kind: Service
+        name: coffee
+        port: 80
+        weight: 1
   # Additional routes injected via values.yaml (cloud or environment specific).
   {{- if .Values.gateway.extraRoutes }}
   {{- range .Values.gateway.extraRoutes }}
