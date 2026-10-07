@@ -199,6 +199,9 @@ flash-coffee:
       caCert: "" # set to /coffee/certs/redis-ca.crt if needed; omit for publicly-signed certs
 
 thanos:
+  global:
+    objstore:
+      secretName: thanos-objstore-secret
   ruler:
     enabled: true
 
@@ -335,6 +338,8 @@ kube-prometheus-stack:
   nodeExporter:
     enabled: false
   kubeApiServer:
+    enabled: false
+  kubeEtcd:
     enabled: false
   kubeControllerManager:
     enabled: false
