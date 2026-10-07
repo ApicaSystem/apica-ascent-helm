@@ -11,11 +11,8 @@ spec:
     name: logiq-flash-ml
   automation:
     operational:
-      {{- if (index .Values "logiq-flash").ml.hpa.enabled }}
-      automationMode: "Disabled"
-      {{- else }}
+      # ml has no HPA (removed — no ingest-style metric, would have fought this resize).
       automationMode: "Enabled"
-      {{- end }}
     containers:
       logiq-flash-ml:
         operational:

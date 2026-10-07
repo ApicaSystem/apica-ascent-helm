@@ -11,11 +11,8 @@ spec:
     name: logiq-flash-sync
   automation:
     operational:
-      {{- if (index .Values "logiq-flash").sync.hpa.enabled }}
-      automationMode: "Disabled"
-      {{- else }}
+      # sync has no HPA (removed — no ingest-style metric, would have fought this resize).
       automationMode: "Enabled"
-      {{- end }}
     containers:
       logiq-flash-sync:
         operational:

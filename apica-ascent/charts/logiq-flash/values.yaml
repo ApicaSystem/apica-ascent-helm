@@ -23,20 +23,6 @@ sync:
   pdb:
     enabled: true
     minAvailable: 1
-  hpa:
-    enabled: false
-    minReplicas: 2
-    maxReplicas: 10
-    targetMemoryUtilizationPercentage: 75
-    targetCPUUtilizationPercentage: 65
-    scaleDown:
-      stabilizationWindowSeconds: 300
-      podsValue: 1
-      podsPeriodSeconds: 120
-    scaleUp:
-      stabilizationWindowSeconds: 0
-      podsValue: 2
-      podsPeriodSeconds: 60
 
 # Zone-only spread — hard podAntiAffinity (podPerNode) already covers hostname.
 flash:
@@ -141,20 +127,6 @@ ml:
   pdb:
     enabled: true
     minAvailable: 1
-  hpa:
-    enabled: false
-    minReplicas: 2
-    maxReplicas: 10
-    targetMemoryUtilizationPercentage: 75
-    targetCPUUtilizationPercentage: 65
-    scaleDown:
-      stabilizationWindowSeconds: 300
-      podsValue: 1
-      podsPeriodSeconds: 120
-    scaleUp:
-      stabilizationWindowSeconds: 0
-      podsValue: 2
-      podsPeriodSeconds: 60
 
 image:
   repository: logiqai/flash
