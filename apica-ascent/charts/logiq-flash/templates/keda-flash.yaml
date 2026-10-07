@@ -103,23 +103,26 @@ spec:
               )
             )
           ) or vector(0)
-    # Memory and CPU are the safety net, and the only triggers that see through a scale-down:
-    # resource metrics exclude Terminating pods, external metrics do not.
+    # Memory and CPU triggers disabled 2026-10-07: PerfectScale (psc-autoscaler) owns
+    # request/limit sizing via in-place pod resize, so these would fight it — PerfectScale
+    # shrinks/grows the request to track an efficiency target, which moves utilization% for
+    # the same absolute usage and can trigger a scale-up with no real change in ingest demand.
     #
-    # The external metric depends on Terminating pods only inside the HPA's 10% tolerance
-    # band. GetExternalPerPodMetricReplicas computes usageRatio = usage / (threshold x
+    # Accepted tradeoff: these were also the only triggers that see through a scale-down
+    # (resource metrics exclude Terminating pods, the external ingest metric does not).
+    # GetExternalPerPodMetricReplicas computes usageRatio = usage / (threshold x
     # status.replicas), and status.replicas counts pods still draining under the 1050s grace
-    # period. Outside the band it returns ceil(usage / threshold), independent of replica
-    # count; inside it returns status.replicas unchanged, so a scale-down pauses while
-    # Terminating pods linger. Measured 2026-08-14 at 11 replicas and 11.29 GB/hr:
-    # ratio 0.956, inside the band, so the HPA held at status.replicas. That is the intended
-    # deadband — a real scale-down drops load far enough to leave the band immediately.
-    - type: memory
-      metricType: Utilization
-      metadata:
-        value: {{ .Values.flash.keda.targetMemoryUtilizationPercentage | quote }}
-    - type: cpu
-      metricType: Utilization
-      metadata:
-        value: {{ .Values.flash.keda.targetCPUUtilizationPercentage | quote }}
+    # period; inside the HPA's 10% tolerance band this holds scale-down at status.replicas
+    # unchanged until they finish draining (measured 2026-08-14: 11 replicas, 11.29 GB/hr,
+    # ratio 0.956, held in-band). Without memory/cpu as a fallback, a scale-down can stall
+    # here until Terminating pods clear on their own.
+    #
+    # - type: memory
+    #   metricType: Utilization
+    #   metadata:
+    #     value: {{ .Values.flash.keda.targetMemoryUtilizationPercentage | quote }}
+    # - type: cpu
+    #   metricType: Utilization
+    #   metadata:
+    #     value: {{ .Values.flash.keda.targetCPUUtilizationPercentage | quote }}
 {{- end }}
