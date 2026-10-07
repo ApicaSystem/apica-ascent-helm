@@ -11,11 +11,11 @@ spec:
     name: logiq-flash
   automation:
     operational:
-      {{- if (index .Values "logiq-flash").flash.keda.enabled }}
-      automationMode: "Disabled"
-      {{- else }}
+      # Not gated on flash.keda.enabled: flash's KEDA ScaledObject now scales on the Envoy
+      # ingest metric only (memory/cpu triggers removed), so there is no Resource-utilization
+      # trigger left for PerfectScale's in-place resize to fight. ml/sync still run HPA on
+      # memory/cpu Utilization, so their automation configs keep the mutual-exclusivity gate.
       automationMode: "Enabled"
-      {{- end }}
     containers:
       logiq-flash:
         operational:
