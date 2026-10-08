@@ -188,6 +188,8 @@ spec:
     {{- end }}
 
   # Jaeger-compatible trace ingestion.
+  # Hits logiq-flash:14268, so it rides the same single flag as the TCP ports.
+  {{- if eq (include "logiq.traceIngestionEnabled" .) "true" }}
   - matches:
     - path:
         type: PathPrefix
@@ -198,6 +200,27 @@ spec:
         name: logiq-flash
         port: 14268
         weight: 1
+  {{- else }}
+  # Disabled: keep an explicit rule for /api/traces. Without it the path falls
+  # through to the "/api" rule below and Envoy forwards trace payloads to the
+  # coffee API service, which is neither intended nor obvious when debugging.
+  #
+  # The rule must carry a direct-response filter, not just an empty backendRefs
+  # list: Envoy Gateway turns a rule with no resolvable destination into a 500,
+  # which would wrongly look like a server fault and pollute 5xx alerting. A
+  # filter-supplied response takes precedence and gives a clean 404.
+  # See envoy-httproutefilter.yaml for the referenced filter.
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /api/traces
+    filters:
+    - type: ExtensionRef
+      extensionRef:
+        group: gateway.envoyproxy.io
+        kind: HTTPRouteFilter
+        name: {{ .Release.Name }}-traces-disabled
+  {{- end }}
 
   # Datadog agent ingest
   - matches:
