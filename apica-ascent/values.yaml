@@ -162,7 +162,7 @@ redis:
     name: redis
 
 postgres:
-  enabled: true
+  enabled: false
   fullnameOverride: postgres
   postgresqlPostgresPassword: postgres
   postgresqlUsername: postgres
@@ -586,7 +586,7 @@ global:
     storageClass: oci-bv
   chart:
     prometheus: true
-    postgres: true
+    postgres: false
     redis: true
     s3gateway: false
     grafana: false
