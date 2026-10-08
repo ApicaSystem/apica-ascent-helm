@@ -25,8 +25,6 @@ sync:
     minAvailable: 1
 
 # Zone-only spread — hard podAntiAffinity (podPerNode) already covers hostname.
-# preStop is 30s (vs 15s elsewhere) — flash has more persistent TCP connections.
-# terminationGracePeriodSeconds stays at 120s (set in template, not here).
 flash:
   topologySpreadConstraints:
     enabled: true
@@ -35,12 +33,81 @@ flash:
   updateStrategy:
     type: RollingUpdate
     maxUnavailable: 1
-  preStopSleepSeconds: 30
   workersPerCPU: 150
   # N-1 for replicaCount=2
   pdb:
     enabled: true
     minAvailable: 1
+
+  # Graceful shutdown via PreStop flush before SIGTERM.
+  # Budget: flushCurlTimeoutSeconds(900) + status-poll-max(60) + SIGTERM-buffer(60) + overhead(30) = 1050
+  flushCurlTimeoutSeconds: 900
+  flushAppTimeoutSeconds: 600
+  terminationGracePeriodSeconds: 1050
+
+  # KEDA autoscaling for flash. Requires KEDA in cluster; the Envoy PodMonitor auto-enables
+  # when keda.enabled=true. Single ingest trigger in keda-flash.yaml, where the query and its
+  # constraints are documented:
+  #   Ingest bytes/sec — 1 pod per 2 GB/hr (596523 B/s — see threshold below for the
+  #                      derivation). Counts accepted bytes only, plus 1 pod of headroom
+  #                      while flash returns 429, which is what lets it climb out of
+  #                      saturation.
+  # Memory/CPU triggers removed (see note below) — PerfectScale owns resource sizing via
+  # in-place pod resize, so pure ingest-driven scaling is used instead.
+  #
+  # scaleDown 1 pod / 150s after a 300s window: returning from maxReplicas is gradual by
+  # design (20 -> 7 takes ~35 min) so a partially-drained pod is never removed faster than
+  # its flush can finish. Note the HPA owns spec.replicas once enabled — the Argo Application
+  # must ignore /spec/replicas or every sync resets the count. See statefulSet.yaml.
+  keda:
+    enabled: false
+    minReplicas: 2
+    maxReplicas: 20
+    # Bytes/sec of accepted ingest per pod. 596523 = 2 GB/hr (2 x 1073741824 / 3600).
+    #
+    # Per the Ascent capacity doc, one flash pod handles 2.5 GB/hr. threshold is deliberately
+    # below that: 2 GB/hr, a 0.5 GB/hr (20%) margin.
+    #
+    # MUST stay <= flash's own per-pod cap, -max_bytes_per_sec in
+    # global.environment.rate_limit_flags (currently 745654 B/s = 2.5 GB/hr). The two are
+    # separate strings with nothing tying them together, so changing one alone breaks scaling.
+    #
+    # Why: a pod cannot accept more than its own cap, so at n pods accepted <= n x cap, and
+    # desired = ceil(accepted / threshold) + 1. Scale-up needs desired > n, which holds only
+    # while n < 1 / (1 - cap/threshold). With threshold <= cap that bound is infinite and
+    # scale-up always wins. With threshold > cap it is finite: flash pins there under a
+    # permanent 429 storm and a growing client backlog. At threshold = 2 x cap the bound is
+    # n < 2, i.e. stuck at minReplicas forever.
+    #
+    # Keeping threshold below cap (here 20% below) is the safe direction: it provisions a pod
+    # per 2 GB/hr against a 2.5 GB/hr capability, so pods scale before they hit their limit.
+    threshold: "596523"
+    fallbackReplicas: 2
+    # rate() window for the ingest query. Must span at least 2 Envoy scrapes
+    # (metrics.envoyPodMonitor.interval) or rate() returns no data and scaling stalls.
+    rateWindow: 2m
+    # Inert while minReplicas > 0 — KEDA warns "PollingInterval is configured but is not
+    # relevant". Metric freshness is driven by the HPA sync loop (15s default) querying the
+    # KEDA metrics adapter, not by this. Kept because it would apply if minReplicas ever
+    # became 0 (scale-to-zero).
+    pollingInterval: 15
+    failureThreshold: 3            # consecutive failures before falling back to fallbackReplicas
+    # Memory/CPU triggers disabled in keda-flash.yaml (PerfectScale owns resource sizing via
+    # in-place resize; running both fights it). Values kept here, commented, in case the
+    # triggers are ever re-enabled.
+    # targetMemoryUtilizationPercentage: 90
+    # targetCPUUtilizationPercentage: 90
+    # Empty string auto-derives: http://prometheus-operated.<release-namespace>.svc:9090
+    # Override if Prometheus is in a different namespace or uses a non-operator setup.
+    prometheusAddress: ""
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      podsValue: 1
+      podsPeriodSeconds: 150
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      podsValue: 4
+      podsPeriodSeconds: 60
 
 ml:
   topologySpreadConstraints:
@@ -82,6 +149,13 @@ metrics:
     enabled: false
     selector:
       release: prometheus
+
+  # PodMonitor that scrapes Envoy proxy pods on port 19001 (/stats/prometheus).
+  # Required for flash.keda to have data. Prometheus picks this up automatically
+  # (podMonitorSelector: {} in the Prometheus CR).
+  envoyPodMonitor:
+    enabled: false
+    interval: 15s
 
 secrets_name:
 pullSecretName: 
@@ -206,12 +280,13 @@ logflow_only:
   enabled: false
   args: ""
 
-resources: 
-   sidecarTracing: {}
-
-   sidecarTracingMl: {}   
-
-   sidecar: {}
+resources:
+  ingest: {}
+  ml: {}
+  sync: {}
+  sidecarQuery: {}
+  sidecarMlTracing: {}
+  sidecarTracing: {}
 
 
 

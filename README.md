@@ -92,7 +92,7 @@ replica):
 ```yaml
 global:
   environment:
-    rate_limit_flags: "-rl_type=tokenbucket -max_bytes_per_sec=346729"
+    rate_limit_flags: "-rl_type=tokenbucket -max_bytes_per_sec=745654"
 ```
 
 ## Database: Bitnami vs CNPG
