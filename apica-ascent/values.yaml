@@ -366,6 +366,13 @@ envoyGateway:
       - name: tcp-14268
         port: 14268
         protocol: TCP
+      # Splunk S2S listeners of Flash (Universal and Heavy Forwarders).
+      - name: tcp-9997
+        port: 9997
+        protocol: TCP
+      - name: tcp-9996
+        port: 9996
+        protocol: TCP
 
   # Compression configuration using BackendTrafficPolicy compressor field
   compressor:

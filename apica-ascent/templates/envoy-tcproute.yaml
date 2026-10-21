@@ -109,4 +109,48 @@ spec:
           name: logiq-flash
           port: 14268
           weight: 1
+---
+# TCPRoute for port 9997 - logiq-flash (Splunk S2S, TLS)
+apiVersion: gateway.networking.k8s.io/v1alpha2
+kind: TCPRoute
+metadata:
+  name: {{ .Release.Name }}-tcp-9997
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "logiq.labels" . | nindent 4 }}
+spec:
+  parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: {{ .Release.Name }}-gateway
+      sectionName: tcp-9997
+  rules:
+    - backendRefs:
+        - group: ''
+          kind: Service
+          name: logiq-flash
+          port: 9997
+          weight: 1
+---
+# TCPRoute for port 9996 - logiq-flash (Splunk S2S, plain)
+apiVersion: gateway.networking.k8s.io/v1alpha2
+kind: TCPRoute
+metadata:
+  name: {{ .Release.Name }}-tcp-9996
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "logiq.labels" . | nindent 4 }}
+spec:
+  parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: {{ .Release.Name }}-gateway
+      sectionName: tcp-9996
+  rules:
+    - backendRefs:
+        - group: ''
+          kind: Service
+          name: logiq-flash
+          port: 9996
+          weight: 1
 {{- end }}
