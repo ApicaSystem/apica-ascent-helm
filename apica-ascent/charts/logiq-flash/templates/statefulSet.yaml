@@ -440,6 +440,12 @@ spec:
             - name: filebeatls
               containerPort: 25225
               protocol: TCP
+            - name: s2stls
+              containerPort: 9997
+              protocol: TCP
+            - name: s2s
+              containerPort: 9996
+              protocol: TCP
             - name: healthcheck
               containerPort: 8080
               protocol: TCP

@@ -168,6 +168,16 @@ filebeatls:
   port: 25225
   name: filebeatls
 
+# Splunk S2S listener (Universal and Heavy Forwarders). TLS on 9997 with the
+# Flash server certificate, plain TCP on 9996 for lab use.
+s2stls:
+  port: 9997
+  name: s2stls
+
+s2s:
+  port: 9996
+  name: s2s
+
 raftHttp:
   port: 4001
   name: raft-http
