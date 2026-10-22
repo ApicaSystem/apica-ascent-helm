@@ -83,6 +83,11 @@ flash:
     # per 2 GB/hr against a 2.5 GB/hr capability, so pods scale before they hit their limit.
     threshold: "596523"
     fallbackReplicas: 2
+    # currentReplicasIfHigher: never scale down while the trigger/Prometheus is down — keep
+    # whatever the count was if it's above fallbackReplicas, otherwise float up to it. Default
+    # ("static") would instead force replicas to fallbackReplicas outright, which can mean a
+    # forced scale-down mid-outage under real load.
+    fallbackBehavior: currentReplicasIfHigher
     # rate() window for the ingest query. Must span at least 2 Envoy scrapes
     # (metrics.envoyPodMonitor.interval) or rate() returns no data and scaling stalls.
     rateWindow: 2m

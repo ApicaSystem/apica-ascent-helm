@@ -23,6 +23,7 @@ spec:
   fallback:
     failureThreshold: {{ .Values.flash.keda.failureThreshold }}
     replicas: {{ .Values.flash.keda.fallbackReplicas }}
+    behavior: {{ .Values.flash.keda.fallbackBehavior }}
   advanced:
     horizontalPodAutoscalerConfig:
       behavior:
