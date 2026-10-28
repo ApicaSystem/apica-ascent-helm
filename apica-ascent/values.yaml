@@ -71,14 +71,7 @@ logiq-flash:
       caCert: "" # set to /flash/tls-certs/redis-ca.crt if needed; omit for publicly-signed certs
 flash-discovery:
   fullnameOverride: flash-discovery
-  image:
-    repository: logiqai/flash-discovery
-    tag: v2.0.5
-    pullPolicy: IfNotPresent
   replicaCountDiscovery: 2
-  persistence:
-    enabled: true
-    size: 2Gi
   resources:
     limits:
       memory: 100Mi
