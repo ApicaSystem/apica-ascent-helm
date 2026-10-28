@@ -70,6 +70,9 @@ foreach my $size (@tshirts) {
     # Kafka client always disabled
     $clone->{'logiq-flash'}{kafka_client}{enabled} = $JSON::PP::false;
 
+    # Remove flash-discovery tag, let vendored chart take care of it
+    delete $clone->{'flash-discovery'}{image};
+
     # Set secret names because we don't use Vault
     $clone->{'logiq-flash'}{secrets_name} = 'my-ascent-ingest';
     $clone->{gateway}{tls}{secretName} = 'my-ascent-ingress';

@@ -72,6 +72,10 @@ logiq-flash:
 flash-discovery:
   fullnameOverride: flash-discovery
   replicaCountDiscovery: 2
+  image:
+    repository: logiqai/flash-discovery
+    tag: v2.0.6
+    pullPolicy: IfNotPresent
   resources:
     limits:
       memory: 100Mi
