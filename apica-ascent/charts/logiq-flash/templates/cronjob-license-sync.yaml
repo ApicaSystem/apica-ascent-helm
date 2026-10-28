@@ -56,6 +56,10 @@ spec:
               value: {{ .Release.Namespace }}
             - name: SCALED_OBJECT_NAME
               value: {{ template "logiq-flash.name" . }}
+            - name: ENVOY_PROXY_NAME
+              value: {{ .Release.Name }}-envoy-config
+            - name: FLASH_STATEFULSET_NAME
+              value: {{ template "logiq-flash.name" . }}
             - name: FETCH_DATA_URL
               value: {{ .Values.flash.licenseSync.fetchDataUrl | quote }}
             - name: FETCH_DATA_SHA256

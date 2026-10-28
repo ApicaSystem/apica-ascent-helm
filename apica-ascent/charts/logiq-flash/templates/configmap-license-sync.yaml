@@ -12,44 +12,105 @@ metadata:
 data:
   sync-license.sh: |
     #!/usr/bin/env bash
-    set -euo pipefail
+    # No top-level -e: the two phases below each run in their own subshell with their own
+    # set -euo pipefail, so a failure in one phase can't prevent the other from running.
+    set -uo pipefail
 
     BASE_URL="https://${DOMAIN}"
+    overall_status=0
 
-    echo "[license-sync] fetching fetch_data binary"
-    curl -fsSL -o /tmp/fetch_data "${FETCH_DATA_URL}"
-    actual_sha=$(sha256sum /tmp/fetch_data | awk '{print $1}')
-    if [[ "${actual_sha}" != "${FETCH_DATA_SHA256}" ]]; then
-      echo "[license-sync] FATAL: fetch_data checksum mismatch (got ${actual_sha}, expected ${FETCH_DATA_SHA256}) — refusing to run an unverified binary" >&2
-      exit 1
+    echo "[license-sync] === entitlement sync (license -> ScaledObject maxReplicaCount) ==="
+    if ! (
+      set -euo pipefail
+
+      echo "[license-sync] fetching fetch_data binary"
+      curl -fsSL -o /tmp/fetch_data "${FETCH_DATA_URL}"
+      actual_sha=$(sha256sum /tmp/fetch_data | awk '{print $1}')
+      if [[ "${actual_sha}" != "${FETCH_DATA_SHA256}" ]]; then
+        echo "[license-sync] FATAL: fetch_data checksum mismatch (got ${actual_sha}, expected ${FETCH_DATA_SHA256}) — refusing to run an unverified binary" >&2
+        exit 1
+      fi
+      chmod +x /tmp/fetch_data
+
+      echo "[license-sync] authenticating"
+      # stdout is "<session_id> <jwt_token>"; nothing is cached across runs.
+      token=$(/tmp/fetch_data --base-url "${BASE_URL}" --email "${ADMIN_EMAIL}" --password "${ADMIN_PASSWORD}" | awk '{print $2}')
+      if [[ -z "${token}" ]]; then
+        echo "[license-sync] FATAL: no token returned from fetch_data" >&2
+        exit 1
+      fi
+
+      echo "[license-sync] fetching license"
+      license_json=$(curl -fsS -H "cookie: x-api-key=${token}" "${BASE_URL}/v1/license")
+      licensed_pods=$(echo "${license_json}" | jq -r '.features["Number of flash pods"] // empty')
+
+      if ! [[ "${licensed_pods}" =~ ^[0-9]+$ ]]; then
+        echo "[license-sync] FATAL: license did not return a valid integer for 'Number of flash pods' (got: '${licensed_pods}')" >&2
+        exit 1
+      fi
+
+      current_max=$(kubectl get scaledobject "${SCALED_OBJECT_NAME}" -n "${NAMESPACE}" -o jsonpath='{.spec.maxReplicaCount}')
+
+      if [[ "${licensed_pods}" == "${current_max}" ]]; then
+        echo "[license-sync] no change: maxReplicaCount already ${current_max}"
+      else
+        echo "[license-sync] license entitlement changed: maxReplicaCount ${current_max} -> ${licensed_pods}"
+        kubectl patch scaledobject "${SCALED_OBJECT_NAME}" -n "${NAMESPACE}" --type=merge -p "{\"spec\":{\"maxReplicaCount\":${licensed_pods}}}"
+        echo "[license-sync] patched successfully"
+      fi
+    ); then
+      echo "[license-sync] entitlement sync FAILED — continuing to LB bandwidth sync independently" >&2
+      overall_status=1
     fi
-    chmod +x /tmp/fetch_data
 
-    echo "[license-sync] authenticating"
-    # stdout is "<session_id> <jwt_token>"; nothing is cached across runs.
-    token=$(/tmp/fetch_data --base-url "${BASE_URL}" --email "${ADMIN_EMAIL}" --password "${ADMIN_PASSWORD}" | awk '{print $2}')
-    if [[ -z "${token}" ]]; then
-      echo "[license-sync] FATAL: no token returned from fetch_data" >&2
-      exit 1
+    echo "[license-sync] === LB bandwidth sync ==="
+    if ! (
+      set -euo pipefail
+
+      # n = the ScaledObject's current maxReplicaCount, read fresh here rather than reusing the
+      # entitlement-sync phase's value above — that phase runs in its own subshell (so its
+      # variables aren't visible here anyway) and may have failed or skipped this tick. Reading
+      # it live keeps this phase correct whether or not the entitlement sync above ran.
+      n=$(kubectl get scaledobject "${SCALED_OBJECT_NAME}" -n "${NAMESPACE}" -o jsonpath='{.spec.maxReplicaCount}')
+      if ! [[ "${n}" =~ ^[0-9]+$ ]]; then
+        echo "[license-sync] FATAL: could not read maxReplicaCount from scaledobject/${SCALED_OBJECT_NAME}" >&2
+        exit 1
+      fi
+
+      echo "[license-sync] reading flash per-pod rate limit"
+      max_bytes_per_sec=$(kubectl get statefulset "${FLASH_STATEFULSET_NAME}" -n "${NAMESPACE}" \
+        -o jsonpath='{.spec.template.spec.containers[*].args}' \
+        | grep -oE 'max_bytes_per_sec=[0-9]+' | head -1 | cut -d= -f2)
+
+      if ! [[ "${max_bytes_per_sec}" =~ ^[0-9]+$ ]]; then
+        echo "[license-sync] FATAL: could not read max_bytes_per_sec from statefulset/${FLASH_STATEFULSET_NAME} args" >&2
+        exit 1
+      fi
+
+      # OCI flexible LB bandwidth, sized for full scale-out (n, not current replica count) at
+      # the per-pod rate cap, plus 30% buffer for protocol overhead: clamp(ceil(n*R*8*1.3/1e6), 10, 8000) Mbps
+      lb_max=$(awk -v n="${n}" -v r="${max_bytes_per_sec}" 'BEGIN {
+        v = n * r * 8 * 1.3 / 1000000
+        b = (v == int(v)) ? v : int(v) + 1
+        if (b < 10) b = 10
+        if (b > 8000) b = 8000
+        print b
+      }')
+
+      current_lb_max=$(kubectl get envoyproxy "${ENVOY_PROXY_NAME}" -n "${NAMESPACE}" \
+        -o jsonpath="{.spec.provider.kubernetes.envoyService.annotations['service\.beta\.kubernetes\.io/oci-load-balancer-shape-flex-max']}")
+
+      if [[ "${lb_max}" == "${current_lb_max}" ]]; then
+        echo "[license-sync] no change: LB flex-max already ${current_lb_max} Mbps"
+      else
+        echo "[license-sync] LB bandwidth needs resizing: flex-max ${current_lb_max} -> ${lb_max} Mbps (n=${n} pods, R=${max_bytes_per_sec} B/s)"
+        kubectl patch envoyproxy "${ENVOY_PROXY_NAME}" -n "${NAMESPACE}" --type=merge -p "{\"spec\":{\"provider\":{\"kubernetes\":{\"envoyService\":{\"annotations\":{\"service.beta.kubernetes.io/oci-load-balancer-shape-flex-max\":\"${lb_max}\"}}}}}}"
+        echo "[license-sync] patched successfully"
+      fi
+    ); then
+      echo "[license-sync] LB bandwidth sync FAILED" >&2
+      overall_status=1
     fi
 
-    echo "[license-sync] fetching license"
-    license_json=$(curl -fsS -H "cookie: x-api-key=${token}" "${BASE_URL}/v1/license")
-    licensed_pods=$(echo "${license_json}" | jq -r '.features["Number of flash pods"] // empty')
-
-    if ! [[ "${licensed_pods}" =~ ^[0-9]+$ ]]; then
-      echo "[license-sync] FATAL: license did not return a valid integer for 'Number of flash pods' (got: '${licensed_pods}')" >&2
-      exit 1
-    fi
-
-    current_max=$(kubectl get scaledobject "${SCALED_OBJECT_NAME}" -n "${NAMESPACE}" -o jsonpath='{.spec.maxReplicaCount}')
-
-    if [[ "${licensed_pods}" == "${current_max}" ]]; then
-      echo "[license-sync] no change: maxReplicaCount already ${current_max}"
-      exit 0
-    fi
-
-    echo "[license-sync] license entitlement changed: maxReplicaCount ${current_max} -> ${licensed_pods}"
-    kubectl patch scaledobject "${SCALED_OBJECT_NAME}" -n "${NAMESPACE}" --type=merge -p "{\"spec\":{\"maxReplicaCount\":${licensed_pods}}}"
-    echo "[license-sync] patched successfully"
+    exit "${overall_status}"
 {{- end }}

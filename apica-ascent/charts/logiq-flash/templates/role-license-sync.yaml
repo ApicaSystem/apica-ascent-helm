@@ -20,4 +20,23 @@ rules:
   verbs:
   - get
   - patch
+# Scoped to exactly this one EnvoyProxy CR — nothing else.
+- apiGroups:
+  - gateway.envoyproxy.io
+  resources:
+  - envoyproxies
+  resourceNames:
+  - {{ .Release.Name }}-envoy-config
+  verbs:
+  - get
+  - patch
+# Read-only: scoped to exactly this one StatefulSet, to read its live rate-limit arg.
+- apiGroups:
+  - apps
+  resources:
+  - statefulsets
+  resourceNames:
+  - {{ template "logiq-flash.name" . }}
+  verbs:
+  - get
 {{- end }}
