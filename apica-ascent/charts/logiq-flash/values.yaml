@@ -84,6 +84,8 @@ flash:
   # via a CronJob (see cronjob-license-sync.yaml) — KEDA has no way to drive maxReplicaCount
   # from a metric, so an external periodic patch is the only way to move it.
   licenseSync:
+    # Also sizes the OCI Flexible LB's flex-max bandwidth annotation on the EnvoyProxy CR —
+    # only enable this on an OCI + Envoy Gateway deployment.
     enabled: false
     schedule: "*/10 * * * *"
     image:
@@ -93,7 +95,8 @@ flash:
     fetchDataUrl: "https://harness-supporting-scripts.s3.amazonaws.com/fetch_data"
     # SHA-256 pin so a run fails closed if this binary ever changes unexpectedly.
     fetchDataSha256: "0082400884d1cff53b9b9771dfa5ce90fcebd580dd39fe661f4893bb49311bf4"
-    activeDeadlineSeconds: 60
+    # Covers both the entitlement sync and LB bandwidth sync phases, sequential in one pod.
+    activeDeadlineSeconds: 120
     successfulJobsHistoryLimit: 3
     failedJobsHistoryLimit: 5
 
