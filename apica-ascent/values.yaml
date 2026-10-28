@@ -73,7 +73,7 @@ flash-discovery:
   fullnameOverride: flash-discovery
   image:
     repository: logiqai/flash-discovery
-    tag: v2.0.5
+    tag: v2.0.6
     pullPolicy: IfNotPresent
   replicaCountDiscovery: 2
   persistence:
