@@ -70,6 +70,13 @@ foreach my $size (@tshirts) {
     # Kafka client always disabled
     $clone->{'logiq-flash'}{kafka_client}{enabled} = $JSON::PP::false;
 
+    # KEDA's ingest trigger depends on this team's Prometheus/Envoy setup — not assumed on-prem
+    $clone->{'logiq-flash'}{flash}{keda}{enabled} = $JSON::PP::false;
+
+    # licenseSync depends on this team's own license API and S3-hosted binary — not applicable
+    # to a customer's on-prem deployment
+    $clone->{'logiq-flash'}{flash}{licenseSync}{enabled} = $JSON::PP::false;
+
     # Set secret names because we don't use Vault
     $clone->{'logiq-flash'}{secrets_name} = 'my-ascent-ingest';
     $clone->{gateway}{tls}{secretName} = 'my-ascent-ingress';

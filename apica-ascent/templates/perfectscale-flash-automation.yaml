@@ -11,6 +11,9 @@ spec:
     name: logiq-flash
   automation:
     operational:
+      # Not gated on flash.keda.enabled: flash's KEDA ScaledObject scales on the Envoy ingest
+      # metric only (no Resource/Utilization trigger), so there's nothing left for
+      # PerfectScale's in-place resize to fight. ml/sync have no HPA at all (removed).
       automationMode: "Enabled"
     containers:
       logiq-flash:

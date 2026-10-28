@@ -1,0 +1,91 @@
+{{- if .Values.flash.keda.enabled }}
+{{- $flashCluster := printf "httproute/%s/%s-flash-http/rule/.*" .Release.Namespace .Release.Name }}
+{{- $window := .Values.flash.keda.rateWindow }}
+{{- $threshold := .Values.flash.keda.threshold }}
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{ template "logiq-flash.name" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ template "logiq-flash.name" . }}
+    chart: {{ template "logiq-flash.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: StatefulSet
+    name: {{ template "logiq-flash.name" . }}
+  pollingInterval: {{ .Values.flash.keda.pollingInterval }}
+  minReplicaCount: {{ .Values.flash.keda.minReplicas }}
+  maxReplicaCount: {{ .Values.flash.keda.maxReplicas }}
+  fallback:
+    failureThreshold: {{ .Values.flash.keda.failureThreshold }}
+    replicas: {{ .Values.flash.keda.fallbackReplicas }}
+    behavior: {{ .Values.flash.keda.fallbackBehavior }}
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleDown:
+          stabilizationWindowSeconds: {{ .Values.flash.keda.scaleDown.stabilizationWindowSeconds }}
+          policies:
+            - type: Pods
+              value: {{ .Values.flash.keda.scaleDown.podsValue }}
+              periodSeconds: {{ .Values.flash.keda.scaleDown.podsPeriodSeconds }}
+          selectPolicy: Min
+        scaleUp:
+          stabilizationWindowSeconds: {{ .Values.flash.keda.scaleUp.stabilizationWindowSeconds }}
+          policies:
+            - type: Pods
+              value: {{ .Values.flash.keda.scaleUp.podsValue }}
+              periodSeconds: {{ .Values.flash.keda.scaleUp.podsPeriodSeconds }}
+          selectPolicy: Max
+  triggers:
+    # Ingest demand = accepted bytes/sec (wire bytes x 2xx share, which corrects for client
+    # retries on 429) + 1 pod of headroom while any 429s are seen, so a saturated cluster can
+    # still climb out instead of only reading back its own current capacity. 429 only, not
+    # the 4xx/5xx class — a 503/401 means broken, where adding pods doesn't help. The inner
+    # "or vector(0)" avoids an empty-vector query before the first-ever 429, which would
+    # otherwise collapse the metric to 0 and hold flash at minReplicaCount.
+    #
+    # metricType AverageValue gives desired = ceil(total_bytes / threshold). Do NOT use Value —
+    # for External metrics it computes ceil(ratio x readyPods), which pins at maxReplicaCount.
+    - type: prometheus
+      metricType: AverageValue
+      metadata:
+        serverAddress: {{ .Values.flash.keda.prometheusAddress | default (printf "http://prometheus-operated.%s.svc:9090" .Release.Namespace) }}
+        threshold: {{ $threshold | quote }}
+        query: |
+          (
+            (
+              sum(rate(envoy_cluster_upstream_cx_tx_bytes_total{envoy_cluster_name=~"{{ $flashCluster }}"}[{{ $window }}]))
+              *
+              (
+                sum(rate(envoy_cluster_upstream_rq_xx{envoy_cluster_name=~"{{ $flashCluster }}", envoy_response_code_class="2"}[{{ $window }}]))
+                /
+                clamp_min(sum(rate(envoy_cluster_upstream_rq_xx{envoy_cluster_name=~"{{ $flashCluster }}"}[{{ $window }}])), 0.001)
+              )
+            )
+            +
+            (
+              {{ $threshold }}
+              *
+              (
+                (sum(rate(envoy_cluster_upstream_rq{envoy_cluster_name=~"{{ $flashCluster }}", envoy_response_code="429"}[{{ $window }}])) or vector(0))
+                > bool 0
+              )
+            )
+          ) or vector(0)
+    # Memory/CPU triggers disabled: PerfectScale owns resource sizing via in-place resize,
+    # which would fight a utilization-based trigger. Tradeoff: a scale-down can stall until
+    # Terminating pods finish draining, since only resource metrics see through that state.
+    # - type: memory
+    #   metricType: Utilization
+    #   metadata:
+    #     value: {{ .Values.flash.keda.targetMemoryUtilizationPercentage | quote }}
+    # - type: cpu
+    #   metricType: Utilization
+    #   metadata:
+    #     value: {{ .Values.flash.keda.targetCPUUtilizationPercentage | quote }}
+{{- end }}

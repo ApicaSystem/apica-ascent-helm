@@ -1,0 +1,55 @@
+{{- if .Values.flash.licenseSync.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ template "logiq-flash.fullname" . }}-license-sync
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ template "logiq-flash.name" . }}
+    chart: {{ template "logiq-flash.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+data:
+  sync-license.sh: |
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    BASE_URL="https://${DOMAIN}"
+
+    echo "[license-sync] fetching fetch_data binary"
+    curl -fsSL -o /tmp/fetch_data "${FETCH_DATA_URL}"
+    actual_sha=$(sha256sum /tmp/fetch_data | awk '{print $1}')
+    if [[ "${actual_sha}" != "${FETCH_DATA_SHA256}" ]]; then
+      echo "[license-sync] FATAL: fetch_data checksum mismatch (got ${actual_sha}, expected ${FETCH_DATA_SHA256}) — refusing to run an unverified binary" >&2
+      exit 1
+    fi
+    chmod +x /tmp/fetch_data
+
+    echo "[license-sync] authenticating"
+    # stdout is "<session_id> <jwt_token>"; nothing is cached across runs.
+    token=$(/tmp/fetch_data --base-url "${BASE_URL}" --email "${ADMIN_EMAIL}" --password "${ADMIN_PASSWORD}" | awk '{print $2}')
+    if [[ -z "${token}" ]]; then
+      echo "[license-sync] FATAL: no token returned from fetch_data" >&2
+      exit 1
+    fi
+
+    echo "[license-sync] fetching license"
+    license_json=$(curl -fsS -H "cookie: x-api-key=${token}" "${BASE_URL}/v1/license")
+    licensed_pods=$(echo "${license_json}" | jq -r '.features["Number of flash pods"] // empty')
+
+    if ! [[ "${licensed_pods}" =~ ^[0-9]+$ ]]; then
+      echo "[license-sync] FATAL: license did not return a valid integer for 'Number of flash pods' (got: '${licensed_pods}')" >&2
+      exit 1
+    fi
+
+    current_max=$(kubectl get scaledobject "${SCALED_OBJECT_NAME}" -n "${NAMESPACE}" -o jsonpath='{.spec.maxReplicaCount}')
+
+    if [[ "${licensed_pods}" == "${current_max}" ]]; then
+      echo "[license-sync] no change: maxReplicaCount already ${current_max}"
+      exit 0
+    fi
+
+    echo "[license-sync] license entitlement changed: maxReplicaCount ${current_max} -> ${licensed_pods}"
+    kubectl patch scaledobject "${SCALED_OBJECT_NAME}" -n "${NAMESPACE}" --type=merge -p "{\"spec\":{\"maxReplicaCount\":${licensed_pods}}}"
+    echo "[license-sync] patched successfully"
+{{- end }}

@@ -1,0 +1,23 @@
+{{- if .Values.flash.licenseSync.enabled }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ template "logiq-flash.fullname" . }}-license-sync
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ template "logiq-flash.name" . }}
+    chart: {{ template "logiq-flash.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+rules:
+# Scoped to exactly this one ScaledObject — nothing else.
+- apiGroups:
+  - keda.sh
+  resources:
+  - scaledobjects
+  resourceNames:
+  - {{ template "logiq-flash.name" . }}
+  verbs:
+  - get
+  - patch
+{{- end }}

@@ -1,0 +1,125 @@
+{{- if .Values.envoyGateway.enabled }}
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ .Release.Name }}-flash-http
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "logiq.labels" . | nindent 4 }}
+spec:
+  parentRefs:
+  - group: gateway.networking.k8s.io
+    kind: Gateway
+    name: {{ .Release.Name }}-gateway
+    sectionName: {{ if .Values.gateway.tls.enabled }}https{{ else }}http{{ end }}
+
+  {{- if .Values.global.domain }}
+  hostnames:
+  - {{ .Values.global.domain | quote }}
+  {{- end }}
+
+  rules:
+  # Health and readiness probes used by Kubernetes and load balancers.
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /live
+    backendRefs:
+      - group: ''
+        kind: Service
+        name: logiq-flash
+        port: 8080
+        weight: 1
+
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /ready
+    backendRefs:
+      - group: ''
+        kind: Service
+        name: logiq-flash
+        port: 8080
+        weight: 1
+
+  # OpenTelemetry ingestion endpoints.
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /v1/logs
+    backendRefs:
+      - group: ''
+        kind: Service
+        name: logiq-flash
+        port: 9999
+        weight: 1
+
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /v1/traces
+    backendRefs:
+      - group: ''
+        kind: Service
+        name: logiq-flash
+        port: 9999
+        weight: 1
+
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /v1/metrics
+    backendRefs:
+      - group: ''
+        kind: Service
+        name: logiq-flash
+        port: 9999
+        weight: 1
+
+  # Prometheus remote-write receive endpoint.
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /v1/receive/prometheus
+    backendRefs:
+      - group: ''
+        kind: Service
+        name: logiq-flash
+        port: 9999
+        weight: 1
+
+  # JSON ingestion endpoints.
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /v1/json_batch
+    backendRefs:
+      - group: ''
+        kind: Service
+        name: logiq-flash
+        port: 9999
+        weight: 1
+
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /v1/json
+    backendRefs:
+      - group: ''
+        kind: Service
+        name: logiq-flash
+        port: 9999
+        weight: 1
+
+  # Jaeger-compatible trace ingestion.
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /api/traces
+    backendRefs:
+      - group: ''
+        kind: Service
+        name: logiq-flash
+        port: 14268
+        weight: 1
+{{- end }}

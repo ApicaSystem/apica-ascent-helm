@@ -19,64 +19,6 @@ spec:
   {{- end }}
 
   rules:
-  # Health and readiness probes used by Kubernetes and load balancers.
-  # Port 8080 is the liveness-port exposed by logiq-flash service
-  - matches:
-    - path:
-        type: PathPrefix
-        value: /live
-    backendRefs:
-      - group: ''
-        kind: Service
-        name: logiq-flash
-        port: 8080
-        weight: 1
-
-  - matches:
-    - path:
-        type: PathPrefix
-        value: /ready
-    backendRefs:
-      - group: ''
-        kind: Service
-        name: logiq-flash
-        port: 8080
-        weight: 1
-
-  # OpenTelemetry ingestion endpoints.
-  - matches:
-    - path:
-        type: PathPrefix
-        value: /v1/logs
-    backendRefs:
-      - group: ''
-        kind: Service
-        name: logiq-flash
-        port: 9999
-        weight: 1
-
-  - matches:
-    - path:
-        type: PathPrefix
-        value: /v1/traces
-    backendRefs:
-      - group: ''
-        kind: Service
-        name: logiq-flash
-        port: 9999
-        weight: 1
-
-  - matches:
-    - path:
-        type: PathPrefix
-        value: /v1/metrics
-    backendRefs:
-      - group: ''
-        kind: Service
-        name: logiq-flash
-        port: 9999
-        weight: 1
-
   # Distributed tracing UI (Jaeger-style UI exposed by ML service).
   - matches:
     - path:
@@ -96,18 +38,6 @@ spec:
         port: 16686
         weight: 1
     {{- end }}
-
-  # Prometheus remote-write receive endpoint (must come before /v1 route)
-  - matches:
-    - path:
-        type: PathPrefix
-        value: /v1/receive/prometheus
-    backendRefs:
-      - group: ''
-        kind: Service
-        name: logiq-flash
-        port: 9999
-        weight: 1
 
   # Thanos remote-write receive endpoint (optional, enabled per deployment).
   {{- if .Values.global.chart.thanos }}
@@ -143,31 +73,17 @@ spec:
         weight: 1
     {{- end }}
 
-  # JSON ingestion endpoints (must come before general /v1 route).
-  - matches:
-    - path:
-        type: PathPrefix
-        value: /v1/json_batch
-    backendRefs:
-      - group: ''
-        kind: Service
-        name: logiq-flash
-        port: 9999
-        weight: 1
-
-  - matches:
-    - path:
-        type: PathPrefix
-        value: /v1/json
-    backendRefs:
-      - group: ''
-        kind: Service
-        name: logiq-flash
-        port: 9999
-        weight: 1
-
-
-  # API v1 endpoints (general routing - must come AFTER all specific /v1/* routes).
+  # /v1/json_batch and /v1/json are NOT defined here — they live only in
+  # envoy-httproute-flash.yaml. Both routes attach to the same Gateway listener, and Gateway
+  # API does not let two HTTPRoutes both claim the same path on one listener: the duplicate
+  # previously here silently won over envoy-httproute-flash.yaml's copy (confirmed empirically
+  # 2026-10-07 — real traffic landed on this route's cluster, not the dedicated one), which
+  # routed real traffic to the same backend but broke KEDA's ingest metric: it queries only the
+  # dedicated route's envoy_cluster_name, so it read 0 while ingestion was actually ~6 GB/hr.
+  #
+  # /v1 catch-all for ML; specific flash /v1/* rules in envoy-httproute-flash.yaml take
+  # priority since they are not duplicated here. API v1 endpoints (general routing) — must
+  # come AFTER all specific /v1/* routes.
   - matches:
     - path:
         type: PathPrefix
@@ -239,6 +155,19 @@ spec:
   {{- end }}
   {{- end }}
 
+  # General API endpoints (organization, etc.)
+  # Must come after specific /api routes (/api/v1/receive, /api/traces).
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /api
+    backendRefs:
+      - group: ''
+        kind: Service
+        name: coffee
+        port: 80
+        weight: 1
+
   # Static assets are cacheable and immutable; must be evaluated before "/" route.
   - matches:
     - path:
@@ -275,4 +204,3 @@ spec:
         port: 80
         weight: 1
 {{- end }}
-

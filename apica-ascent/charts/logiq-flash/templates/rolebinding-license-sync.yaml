@@ -1,0 +1,20 @@
+{{- if .Values.flash.licenseSync.enabled }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ template "logiq-flash.fullname" . }}-license-sync
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ template "logiq-flash.name" . }}
+    chart: {{ template "logiq-flash.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ template "logiq-flash.fullname" . }}-license-sync
+subjects:
+- kind: ServiceAccount
+  name: {{ template "logiq-flash.fullname" . }}-license-sync
+  namespace: {{ .Release.Namespace }}
+{{- end }}

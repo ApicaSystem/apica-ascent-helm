@@ -1,0 +1,80 @@
+{{- if .Values.flash.licenseSync.enabled }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ template "logiq-flash.fullname" . }}-license-sync
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ template "logiq-flash.name" . }}
+    chart: {{ template "logiq-flash.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  schedule: {{ .Values.flash.licenseSync.schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: {{ .Values.flash.licenseSync.successfulJobsHistoryLimit }}
+  failedJobsHistoryLimit: {{ .Values.flash.licenseSync.failedJobsHistoryLimit }}
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: {{ .Values.flash.licenseSync.activeDeadlineSeconds }}
+      backoffLimit: 2
+      template:
+        metadata:
+          labels:
+            app: {{ template "logiq-flash.name" . }}
+        spec:
+          restartPolicy: Never
+          serviceAccountName: {{ template "logiq-flash.fullname" . }}-license-sync
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+          - name: license-sync
+            image: "{{ .Values.flash.licenseSync.image.repository }}:{{ .Values.flash.licenseSync.image.tag }}"
+            command: ["/bin/bash", "/scripts/sync-license.sh"]
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              capabilities:
+                drop:
+                - ALL
+            env:
+            # kubectl's discovery cache needs a writable $HOME; root fs is read-only.
+            - name: HOME
+              value: /tmp
+            - name: DOMAIN
+              value: {{ required "global.domain must be set for flash.licenseSync" .Values.global.domain | quote }}
+            - name: NAMESPACE
+              value: {{ .Release.Namespace }}
+            - name: SCALED_OBJECT_NAME
+              value: {{ template "logiq-flash.name" . }}
+            - name: FETCH_DATA_URL
+              value: {{ .Values.flash.licenseSync.fetchDataUrl | quote }}
+            - name: FETCH_DATA_SHA256
+              value: {{ .Values.flash.licenseSync.fetchDataSha256 | quote }}
+            - name: ADMIN_EMAIL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ template "logiq-flash.fullname" . }}
+                  key: admin_email
+            - name: ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ template "logiq-flash.fullname" . }}
+                  key: admin_password
+            volumeMounts:
+            - name: script
+              mountPath: /scripts
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+          volumes:
+          - name: script
+            configMap:
+              name: {{ template "logiq-flash.fullname" . }}-license-sync
+              defaultMode: 0555
+          - name: tmp
+            emptyDir: {}
+{{- end }}

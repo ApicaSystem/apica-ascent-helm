@@ -25,8 +25,6 @@ sync:
     minAvailable: 1
 
 # Zone-only spread — hard podAntiAffinity (podPerNode) already covers hostname.
-# preStop is 30s (vs 15s elsewhere) — flash has more persistent TCP connections.
-# terminationGracePeriodSeconds stays at 120s (set in template, not here).
 flash:
   topologySpreadConstraints:
     enabled: true
@@ -35,12 +33,69 @@ flash:
   updateStrategy:
     type: RollingUpdate
     maxUnavailable: 1
-  preStopSleepSeconds: 30
   workersPerCPU: 150
   # N-1 for replicaCount=2
   pdb:
     enabled: true
     minAvailable: 1
+
+  # Graceful shutdown via PreStop flush before SIGTERM.
+  # Budget: flushCurlTimeoutSeconds(900) + status-poll-max(60) + SIGTERM-buffer(60) + overhead(30) = 1050
+  flushCurlTimeoutSeconds: 900
+  flushAppTimeoutSeconds: 600
+  terminationGracePeriodSeconds: 1050
+
+  # KEDA autoscaling for flash; requires KEDA in-cluster. Query documented in keda-flash.yaml.
+  # The HPA owns spec.replicas once enabled — Argo must ignore /spec/replicas or every sync
+  # resets the count (see statefulSet.yaml).
+  keda:
+    enabled: false
+    minReplicas: 2
+    maxReplicas: 20
+    # Bytes/sec per pod: 596523 = 2 GB/hr, 20% below flash's own per-pod cap
+    # (max_bytes_per_sec in global.environment.rate_limit_flags) so pods scale before hitting
+    # their limit. Must stay <= that cap, or scale-up can stall under sustained load.
+    threshold: "596523"
+    fallbackReplicas: 2
+    # currentReplicasIfHigher: never scales down during an outage, only up to fallbackReplicas.
+    fallbackBehavior: currentReplicasIfHigher
+    # Must span >= 2 Envoy scrapes (metrics.envoyPodMonitor.interval) or rate() returns no data.
+    rateWindow: 2m
+    # Inert while minReplicas > 0 (KEDA warns it's irrelevant); kept for if scale-to-zero is
+    # ever used.
+    pollingInterval: 15
+    failureThreshold: 3            # consecutive failures before falling back to fallbackReplicas
+    # Disabled in keda-flash.yaml — PerfectScale owns resource sizing. Kept here for reference.
+    # targetMemoryUtilizationPercentage: 90
+    # targetCPUUtilizationPercentage: 90
+    # Empty string auto-derives: http://prometheus-operated.<release-namespace>.svc:9090
+    # Override if Prometheus is in a different namespace or uses a non-operator setup.
+    prometheusAddress: ""
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      podsValue: 1
+      podsPeriodSeconds: 150
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      podsValue: 4
+      podsPeriodSeconds: 60
+
+  # Caps keda.maxReplicas to this environment's license entitlement ("Number of flash pods"),
+  # via a CronJob (see cronjob-license-sync.yaml) — KEDA has no way to drive maxReplicaCount
+  # from a metric, so an external periodic patch is the only way to move it.
+  licenseSync:
+    enabled: false
+    schedule: "*/10 * * * *"
+    image:
+      # Fully-qualified — this cluster rejects an unqualified "alpine/k8s" as ambiguous.
+      repository: docker.io/alpine/k8s
+      tag: "1.36.5"
+    fetchDataUrl: "https://harness-supporting-scripts.s3.amazonaws.com/fetch_data"
+    # SHA-256 pin so a run fails closed if this binary ever changes unexpectedly.
+    fetchDataSha256: "0082400884d1cff53b9b9771dfa5ce90fcebd580dd39fe661f4893bb49311bf4"
+    activeDeadlineSeconds: 60
+    successfulJobsHistoryLimit: 3
+    failedJobsHistoryLimit: 5
 
 ml:
   topologySpreadConstraints:
@@ -82,6 +137,13 @@ metrics:
     enabled: false
     selector:
       release: prometheus
+
+  # PodMonitor that scrapes Envoy proxy pods on port 19001 (/stats/prometheus).
+  # Required for flash.keda to have data. Prometheus picks this up automatically
+  # (podMonitorSelector: {} in the Prometheus CR).
+  envoyPodMonitor:
+    enabled: false
+    interval: 15s
 
 secrets_name:
 pullSecretName: 
@@ -206,12 +268,13 @@ logflow_only:
   enabled: false
   args: ""
 
-resources: 
-   sidecarTracing: {}
-
-   sidecarTracingMl: {}   
-
-   sidecar: {}
+resources:
+  ingest: {}
+  ml: {}
+  sync: {}
+  sidecarQuery: {}
+  sidecarMlTracing: {}
+  sidecarTracing: {}
 
 
 
