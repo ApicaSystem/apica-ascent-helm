@@ -34,6 +34,12 @@ spec:
           - name: license-sync
             image: "{{ .Values.flash.licenseSync.image.repository }}:{{ .Values.flash.licenseSync.image.tag }}"
             command: ["/bin/bash", "/scripts/sync-license.sh"]
+            resources:
+              requests:
+                cpu: 50m
+                memory: 64Mi
+              limits:
+                memory: 128Mi
             securityContext:
               allowPrivilegeEscalation: false
               readOnlyRootFilesystem: true

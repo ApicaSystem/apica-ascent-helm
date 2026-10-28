@@ -103,17 +103,9 @@ spec:
         weight: 1
     {{- end }}
 
-  # Jaeger-compatible trace ingestion.
-  - matches:
-    - path:
-        type: PathPrefix
-        value: /api/traces
-    backendRefs:
-      - group: ''
-        kind: Service
-        name: logiq-flash
-        port: 14268
-        weight: 1
+  # /api/traces is NOT defined here — it lives only in envoy-httproute-flash.yaml, same reason
+  # as /v1/json above: it's ingest volume KEDA's metric tracks, so it must not be duplicated
+  # onto this route's cluster name.
 
   # Datadog agent ingest
   - matches:
@@ -154,19 +146,6 @@ spec:
         port: {{ .backend.service.port.number }}
   {{- end }}
   {{- end }}
-
-  # General API endpoints (organization, etc.)
-  # Must come after specific /api routes (/api/v1/receive, /api/traces).
-  - matches:
-    - path:
-        type: PathPrefix
-        value: /api
-    backendRefs:
-      - group: ''
-        kind: Service
-        name: coffee
-        port: 80
-        weight: 1
 
   # Static assets are cacheable and immutable; must be evaluated before "/" route.
   - matches:
