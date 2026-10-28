@@ -202,6 +202,10 @@ thanos:
   global:
     objstore:
       secretName: thanos-objstore-secret
+  query:
+    endpoints:
+      static:
+        - prometheus-operated:10901
   receive:
     service:
       remoteWritePort: 19291
