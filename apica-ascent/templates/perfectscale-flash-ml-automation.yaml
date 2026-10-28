@@ -11,6 +11,7 @@ spec:
     name: logiq-flash-ml
   automation:
     operational:
+      # ml has no HPA (removed — no ingest-style metric, would have fought this resize).
       automationMode: "Enabled"
     containers:
       logiq-flash-ml:
