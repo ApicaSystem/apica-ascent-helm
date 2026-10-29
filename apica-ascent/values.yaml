@@ -207,7 +207,7 @@ thanos:
       sdConfig:
         config: |
           endpoints:
-            - address: prometheus-operated.{{ .Release.Namespace }}.svc.cluster.local:10901
+            - address: dnssrv+_grpc._tcp.prometheus-operated.{{ .Release.Namespace }}.svc.cluster.local
   receive:
     service:
       remoteWritePort: 19291
