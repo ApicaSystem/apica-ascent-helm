@@ -16,9 +16,6 @@ spec:
   serviceMonitorSelector:
     matchLabels:
       release: prometheus
-  serviceMonitorNamespaceSelector:
-    matchNames:
-      - {{ .Release.Namespace }}
   ruleSelector: {}
   {{- if .Values.prometheus.prometheus.persistence.enabled }}
   storage:
