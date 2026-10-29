@@ -61,12 +61,12 @@ logiq-flash:
   # no longer conflicting, since flash's HPA has no Resource/Utilization trigger.
   flash:
     keda:
-      enabled: true
+      enabled: false
       # prometheusAddress: "http://prometheus-operated.<namespace>.svc:9090"  # auto-derived if empty
       # pollingInterval: 15
       # failureThreshold: 3
     licenseSync:
-      enabled: true
+      enabled: false
   # ml/sync have no HPA (removed: no ingest-style metric exists for them, and a plain
   # Resource/Utilization HPA would fight PerfectScale's in-place resizing the same way flash's
   # did). Replica count is fixed at replicaCountMl/replicaCountSync; PerfectScale manages their
