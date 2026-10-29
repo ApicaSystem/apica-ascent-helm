@@ -204,8 +204,10 @@ thanos:
       secretName: thanos-objstore-secret
   query:
     endpoints:
-      static:
-        - prometheus-operated:10901
+      sdConfig:
+        config: |
+          endpoints:
+            - address: prometheus-operated.{{ .Release.Namespace }}.svc.cluster.local:10901
   receive:
     service:
       remoteWritePort: 19291
