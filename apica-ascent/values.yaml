@@ -420,6 +420,8 @@ prometheus:
     persistence:
       enabled: true
       size: 20Gi
+    image:
+      repository: bitnamilegacy/alertmanager
   prometheus:
     enabled: true
     resources:
@@ -432,6 +434,8 @@ prometheus:
     persistence:
       enabled: true
       size: 20Gi
+    image:
+      repository: bitnamilegacy/prometheus
     thanos:
       create: true
       objectStorageConfig:
@@ -443,11 +447,15 @@ prometheus:
           memory: 100Mi
         limits:
           memory: 200Mi
+      image:
+        repository: bitnamilegacy/thanos
   operator:
     enabled: true
     replicaCount: 1
     kubeletService:
       enabled: false
+    image:
+      repository: bitnamilegacy/prometheus-operator
   kube-state-metrics:
     serviceMonitor:
       enabled: false
