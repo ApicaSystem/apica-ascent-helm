@@ -482,6 +482,10 @@ prometheus:
     enabled: false
     service:
       enabled: false
+  blackboxExporter:
+    enabled: false
+    image:
+      repository: bitnamilegacy/blackbox-exporter
   exporters:
     node-exporter:
       enabled: false
