@@ -436,6 +436,11 @@ prometheus:
       size: 20Gi
     image:
       repository: bitnamilegacy/prometheus
+    additionalArgs:
+      - name: storage.tsdb.min-block-duration
+        value: 2h
+      - name: storage.tsdb.max-block-duration
+        value: 2h
     thanos:
       create: true
       objectStorageConfig:
