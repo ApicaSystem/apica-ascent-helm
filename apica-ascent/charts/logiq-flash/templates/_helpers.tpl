@@ -51,3 +51,60 @@ Integer division is intentional, as fractional CPUs round down.
 {{- $redishash := printf "redis://%s:%s" .Values.global.environment.redis_host .Values.global.environment.redis_port -}}
 {{- printf "%s-%s" $pghash $redishash | sha256sum -}}
 {{- end -}}
+
+{{/*
+Convert a Prometheus duration ("30s", "2m", "1m30s", "500ms") to milliseconds.
+Fails the render on anything that is not a valid duration.
+*/}}
+{{- define "logiq-flash.durationMs" -}}
+{{- $d := toString . -}}
+{{- if not (regexMatch "^([0-9]+(ms|s|m|h|d|w|y))+$" $d) -}}
+{{- fail (printf "logiq-flash: %q is not a valid Prometheus duration (examples: 30s, 2m, 1m30s)" $d) -}}
+{{- end -}}
+{{- $units := dict "ms" 1 "s" 1000 "m" 60000 "h" 3600000 "d" 86400000 "w" 604800000 "y" 31536000000 -}}
+{{- $total := 0 -}}
+{{- range regexFindAll "[0-9]+(ms|s|m|h|d|w|y)" $d -1 -}}
+{{- $n := regexFind "^[0-9]+" . -}}
+{{- $total = add $total (mul ($n | int64) (get $units (trimPrefix $n .))) -}}
+{{- end -}}
+{{- $total -}}
+{{- end -}}
+
+{{/*
+Settings shared by every endpoint of the flash, flash-ml and flash-sync ServiceMonitors:
+interval, scrapeTimeout, relabelings and metricRelabelings from metrics.serviceMonitor.
+Render with: {{- include "logiq-flash.serviceMonitorEndpointSettings" . | nindent 4 }}
+*/}}
+{{- define "logiq-flash.serviceMonitorEndpointSettings" -}}
+{{- $sm := .Values.metrics.serviceMonitor -}}
+{{- $interval := $sm.interval | default "2m" -}}
+interval: {{ $interval }}
+{{- with $sm.scrapeTimeout }}
+{{- if gt (include "logiq-flash.durationMs" . | int64) (include "logiq-flash.durationMs" $interval | int64) }}
+{{- fail (printf "logiq-flash: metrics.serviceMonitor.scrapeTimeout (%s) must not be longer than metrics.serviceMonitor.interval (%s)" . $interval) }}
+{{- end }}
+scrapeTimeout: {{ . }}
+{{- end }}
+{{- with $sm.relabelings }}
+relabelings:
+{{- toYaml . | nindent 2 }}
+{{- end }}
+{{- with $sm.metricRelabelings }}
+metricRelabelings:
+{{- toYaml . | nindent 2 }}
+{{- end }}
+{{- end -}}
+
+{{/*
+Extra metadata labels for the ServiceMonitors: metrics.serviceMonitor.selector (existing)
+plus metrics.serviceMonitor.labels (labels wins on a duplicate key). Render with:
+{{- with (include "logiq-flash.serviceMonitorLabels" . | trim) }}
+{{- . | nindent 4 }}
+{{- end }}
+*/}}
+{{- define "logiq-flash.serviceMonitorLabels" -}}
+{{- $l := merge (dict) (.Values.metrics.serviceMonitor.labels | default dict) (.Values.metrics.serviceMonitor.selector | default dict) -}}
+{{- range $key := keys $l | sortAlpha }}
+{{ $key }}: {{ get $l $key | quote }}
+{{- end }}
+{{- end -}}

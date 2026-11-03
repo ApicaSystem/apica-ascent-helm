@@ -64,6 +64,14 @@ spec:
       targetPort: {{ .Values.fluentforward.port }}
       protocol: TCP
       name: {{ .Values.fluentforward.name }}
+    - port: {{ .Values.s2stls.port }}
+      targetPort: {{ .Values.s2stls.port }}
+      protocol: TCP
+      name: {{ .Values.s2stls.name }}
+    - port: {{ .Values.s2s.port }}
+      targetPort: {{ .Values.s2s.port }}
+      protocol: TCP
+      name: {{ .Values.s2s.name }}
     - port: {{ .Values.liveness_port.port }}
       targetPort: {{ .Values.liveness_port.port }}
       protocol: TCP
