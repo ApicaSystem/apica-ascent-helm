@@ -15,8 +15,8 @@ logiq-flash:
   metrics:
     serviceMonitor:
       enabled: true
-    selector:
-      release: prometheus
+      selector:
+        release: prometheus
   resources:
     ingest:
       requests:
