@@ -1,0 +1,47 @@
+# Render-test fixture: a large Flash fleet with every new knob set. The numbers
+# are arbitrary test values, not a recommended or tested sizing.
+logiq-flash:
+  replicaCount: 40
+  resources:
+    ingest:
+      requests:
+        cpu: "4"
+        memory: 8000Mi
+      limits:
+        memory: 12Gi
+  flash:
+    podManagementPolicy: Parallel
+    workersPerCPU: 150          # -> -workers 600
+    extraArgs: "-test_ingest_flag=1"
+    query:
+      extraArgs: "-test_query_flag=1"
+  ml:
+    extraArgs: "-test_ml_flag=1"
+  sync:
+    extraArgs: "-test_sync_flag=1"
+  metrics:
+    serviceMonitor:
+      interval: 30s
+      scrapeTimeout: 25s
+
+global:
+  environment:
+    rate_limit_flags: "-max_bytes_per_sec=2000000"
+
+cnpg:
+  cluster:
+    postgresql:
+      parameters:
+        max_connections: "1000"
+
+envoyGateway:
+  envoyProxy:
+    provider:
+      service:
+        annotations:
+          service.beta.kubernetes.io/oci-load-balancer-shape-flex-max: "1000"
+
+perfectscale:
+  enabled: true
+  flash:
+    enabled: false

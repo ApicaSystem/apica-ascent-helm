@@ -1,0 +1,29 @@
+{{- /*
+Render-time checks. This template renders nothing; it only fails the render.
+
+Postgres connection budget (validation.postgresConnections): when the chart runs
+CNPG, fail if the Flash fleet can open more connections than max_connections
+allows. Flash's pools are hardcoded in the StatefulSet args:
+  logiq-flash pod: 5 (ingest, -pg_max_open_Conns 5) + 10 (query sidecar) = 15
+  flash-ml pod:    5
+  flash-sync pod:  5
+headroom covers everything else (flash-discovery, coffee, casdoor, CNPG itself,
+admin sessions). Without this check, a fleet larger than the budget fails at
+runtime with "pq: sorry, too many clients already" and crash loops.
+When KEDA scales flash (PR #132), use its maxReplicaCount instead of replicaCount.
+*/ -}}
+{{- $check := (.Values.validation | default dict).postgresConnections | default dict }}
+{{- /* Helm treats a missing global.chart.logiq-flash condition as enabled. */}}
+{{- $flashEnabled := ne (toString (index (.Values.global.chart | default dict) "logiq-flash")) "false" }}
+{{- if and .Values.cnpg.enabled $flashEnabled (ne (toString $check.enabled) "false") }}
+{{- $flash := index .Values "logiq-flash" | default dict }}
+{{- $replicas := $flash.replicaCount | default 2 | int }}
+{{- $ml := $flash.replicaCountMl | default 2 | int }}
+{{- $sync := $flash.replicaCountSync | default 2 | int }}
+{{- $headroom := $check.headroom | default 50 | int }}
+{{- $max := dig "cluster" "postgresql" "parameters" "max_connections" "100" .Values.cnpg | int }}
+{{- $needed := add (mul $replicas 15) (mul $ml 5) (mul $sync 5) $headroom }}
+{{- if gt $needed $max }}
+{{- fail (printf "Postgres connections: %d logiq-flash pods x 15 + %d flash-ml x 5 + %d flash-sync x 5 + %d headroom = %d, but cnpg.cluster.postgresql.parameters.max_connections is %d. Raise max_connections to at least %d, lower the replica counts, or set validation.postgresConnections.enabled: false to skip this check." $replicas $ml $sync $headroom $needed $max $needed) }}
+{{- end }}
+{{- end }}

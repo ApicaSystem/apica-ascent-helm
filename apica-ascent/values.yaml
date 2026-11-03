@@ -763,6 +763,16 @@ vault:
   authMount: "k8s-clustername"
   kafkaClientCertDomain: example.com
 
+# Render-time checks (templates/validate.yaml). They render nothing; they only
+# fail helm template / install / upgrade with an explanation.
+validation:
+  postgresConnections:
+    # With cnpg.enabled, fail when logiq-flash x 15 + flash-ml x 5 +
+    # flash-sync x 5 + headroom exceeds cnpg max_connections.
+    enabled: true
+    # Connections reserved for everything else (discovery, coffee, casdoor, CNPG).
+    headroom: 50
+
 perfectscale:
   enabled: false
   # Flash WorkloadAutomationConfig (used only when perfectscale.enabled is true).

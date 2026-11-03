@@ -78,9 +78,10 @@ Render with: {{- include "logiq-flash.serviceMonitorEndpointSettings" . | ninden
 {{- define "logiq-flash.serviceMonitorEndpointSettings" -}}
 {{- $sm := .Values.metrics.serviceMonitor -}}
 {{- $interval := $sm.interval | default "2m" -}}
+{{- $intervalMs := include "logiq-flash.durationMs" $interval | int64 -}}
 interval: {{ $interval }}
 {{- with $sm.scrapeTimeout }}
-{{- if gt (include "logiq-flash.durationMs" . | int64) (include "logiq-flash.durationMs" $interval | int64) }}
+{{- if gt (include "logiq-flash.durationMs" . | int64) $intervalMs }}
 {{- fail (printf "logiq-flash: metrics.serviceMonitor.scrapeTimeout (%s) must not be longer than metrics.serviceMonitor.interval (%s)" . $interval) }}
 {{- end }}
 scrapeTimeout: {{ . }}
