@@ -590,8 +590,20 @@ global:
     redis: true
     s3gateway: false
     grafana: false
-
 cnpg:
+  mode: replica
+  replica:
+    bootstrap:
+      source: object_store
+    origin:
+      objectStore:
+        clusterName: vso-test-cnpg          # serverName of the inmuoc-oke-01d backups
+        provider: s3
+        destinationPath: s3://ascent-vso-test-db-backup/
+        endpointURL: https://axmwgykzxj25.compat.objectstorage.ap-mumbai-1.oraclecloud.com
+        secret:
+          create: false
+          name: vso-test-cnpg-backup-s3-creds
   # -- Set to true to deploy a CloudNativePG cluster via the cnpg/cluster subchart.
   enabled: true
 
@@ -611,7 +623,6 @@ cnpg:
   # -- Cluster mode of operation.
   # "standalone" creates a fresh cluster.
   # "recovery" bootstraps from an existing Postgres instance via import (use for migration from Bitnami).
-  mode: standalone
 
   # -- Recovery / migration configuration. Required when mode is "recovery".
   # Two recovery methods are supported:
@@ -709,7 +720,7 @@ cnpg:
     s3:
       region: ""
       bucket: ""
-      path: "/"
+      path: "/new_migration"
       accessKey: ""
       secretKey: ""
     destinationPath: ""
