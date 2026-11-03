@@ -401,6 +401,32 @@ envoyGateway:
         # Envoy listener, internal RELP ingest keeps working.
         description: RELP log ingestion
 
+  # ==========================================================================
+  # Splunk S2S ingestion through Envoy - ports 9996 (plain TCP) and 9997 (TLS,
+  # terminated by Flash with its server certificate). Universal and Heavy
+  # Forwarders ship here. Each port gets a Gateway listener and a TCPRoute to
+  # logiq-flash; the ports are always open on the logiq-flash Service.
+  #
+  # NEW IN 3.2.x: on by default, so an upgrade opens 9996/9997 on the load
+  # balancer. Set enabled: false to keep them closed. Do NOT also list
+  # tcp-9996/tcp-9997 in listeners.tcp - the render fails on duplicates.
+  # Flash builds without S2S refuse connections on these ports.
+  # ==========================================================================
+  s2sIngestion:
+    # -- false = S2S not reachable through Envoy (in-cluster access unaffected).
+    enabled: true
+    ports:
+      - name: tcp-9996
+        port: 9996
+        protocol: TCP
+        service: logiq-flash
+        description: Splunk S2S (plain TCP)
+      - name: tcp-9997
+        port: 9997
+        protocol: TCP
+        service: logiq-flash
+        description: Splunk S2S (TLS)
+
   # Compression configuration using BackendTrafficPolicy compressor field
   compressor:
     enabled: true
