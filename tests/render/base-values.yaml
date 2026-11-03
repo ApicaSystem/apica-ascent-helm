@@ -1,9 +1,0 @@
-# Minimum values the chart needs to render at all (CNPG backups require S3
-# settings). Dummy values only - used by tests/render/run.sh, never deployed.
-cnpg:
-  backups:
-    s3:
-      bucket: render-test
-      region: render-test
-      accessKey: render-test
-      secretKey: render-test

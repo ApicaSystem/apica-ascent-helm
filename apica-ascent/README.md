@@ -576,7 +576,7 @@ envoyGateway:
 | `logiq-flash.flash.extraArgs`, `logiq-flash.flash.query.extraArgs`, `logiq-flash.ml.extraArgs`, `logiq-flash.sync.extraArgs` | Flags for one container only, appended after `global.environment.extraflag`/`rate_limit_flags`. |
 | `logiq-flash.metrics.serviceMonitor.interval`, `scrapeTimeout`, `labels`, `relabelings`, `metricRelabelings`, `extraServiceMonitors` | Scrape settings for the Flash ServiceMonitors (default interval `2m`). |
 | `perfectscale.flash.enabled`, `perfectscale.flash.containers.<name>.maximumCores`/`maximumGiB` | PerfectScale caps for Flash (default 2 cores / 8 GiB). `enabled: false` sets the automation to `Disabled`. |
-| `cnpg.cluster.postgresql.parameters.max_connections` | Each Flash pod opens up to 15 Postgres connections. The render fails when the fleet needs more than `max_connections` (`validation.postgresConnections`). |
+| `cnpg.cluster.postgresql.parameters.max_connections` | Each Flash pod opens up to 15 Postgres connections (flash-ml and flash-sync pods 5 each), plus headroom for other clients. Size it for the largest fleet you run, or Flash crash-loops with `too many clients already`. |
 
 ## 4 Teardown
 
