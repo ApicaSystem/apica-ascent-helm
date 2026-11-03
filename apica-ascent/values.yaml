@@ -765,3 +765,23 @@ vault:
 
 perfectscale:
   enabled: false
+  # Flash WorkloadAutomationConfig (used only when perfectscale.enabled is true).
+  flash:
+    # false = render the config with automationMode "Disabled", so PerfectScale
+    # leaves logiq-flash alone. (Removing the config would not: PerfectScale then
+    # applies the cluster defaults.) Turn off for large Flash sizings, where
+    # PerfectScale could undo a raised memory limit or lower the CPU request that
+    # -workers is computed from.
+    enabled: true
+    # Upper bounds PerfectScale may size each container to. maximumGiB caps
+    # both the memory request and the limit.
+    containers:
+      logiq-flash:
+        maximumCores: 2
+        maximumGiB: 8
+      logiq-flash-query:
+        maximumCores: 2
+        maximumGiB: 8
+      logiq-flash-tracing:
+        maximumCores: 1
+        maximumGiB: 1
