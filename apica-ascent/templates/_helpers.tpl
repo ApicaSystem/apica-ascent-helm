@@ -73,3 +73,16 @@ Generate a certificate pair shared with coffee/flash
 tls.crt: {{ $cert.Cert | b64enc }}
 tls.key: {{ $cert.Key | b64enc }}
 {{- end -}}
+
+{{/*
+Whether unauthenticated trace/RELP ingestion (14250/14268/20514) is exposed
+through the Envoy Gateway. Normalizes .Values.envoyGateway.traceIngestion.enabled
+(bool or string, unset defaults to false) to the literal string "true"/"false".
+Single source of truth so envoy-gateway.yaml, envoy-httproute.yaml,
+envoy-tcproute.yaml and envoy-httproutefilter.yaml can't drift from each other.
+Usage: {{- if eq (include "logiq.traceIngestionEnabled" .) "true" }}
+*/}}
+{{- define "logiq.traceIngestionEnabled" -}}
+{{- $trace := .Values.envoyGateway.traceIngestion | default dict -}}
+{{- eq (lower (toString (default false $trace.enabled))) "true" -}}
+{{- end -}}

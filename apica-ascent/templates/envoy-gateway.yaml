@@ -71,4 +71,24 @@ spec:
       namespaces:
         from: Same
   {{- end }}
+
+  # ============================================================================
+  # Trace Ingestion Listeners - Jaeger gRPC/HTTP collector ports
+  # These accept traces without authentication, so they are opt-in and stay
+  # closed unless envoyGateway.traceIngestion.enabled is explicitly set.
+  # ============================================================================
+  {{- $trace := .Values.envoyGateway.traceIngestion | default dict }}
+  {{- if eq (include "logiq.traceIngestionEnabled" .) "true" }}
+  {{- range $trace.ports }}
+  - name: {{ .name }}
+    protocol: {{ .protocol | default "TCP" }}
+    port: {{ .port }}
+    allowedRoutes:
+      kinds:
+      - group: gateway.networking.k8s.io
+        kind: TCPRoute
+      namespaces:
+        from: Same
+  {{- end }}
+  {{- end }}
 {{- end }}
