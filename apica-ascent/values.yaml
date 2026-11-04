@@ -311,6 +311,7 @@ prometheus:
       limits:
         memory: 15Gi
     replicaCount: 2
+    retention: 30d
     persistence:
       enabled: true
       size: 20Gi
@@ -327,6 +328,11 @@ prometheus:
           memory: 200Mi
 
 kube-prometheus-stack:
+  # The monitoring.coreos.com CRDs are cluster-wide and owned by the
+  # cluster-level kube-prometheus-stack (tf_ascent helm_cluster_services);
+  # one release per environment must not install or upgrade them too.
+  crds:
+    enabled: false
   # Disable built-in Prometheus/Alertmanager CRs — managed by prometheus-cr.yaml / alertmanager-cr.yaml
   prometheus:
     enabled: false
@@ -337,6 +343,11 @@ kube-prometheus-stack:
   prometheusOperator:
     enabled: true
     replicaCount: 1
+    # Watch and reconcile only this environment's namespace, like the Bitnami
+    # operator did (--namespaces=<env>). Unscoped, every environment's operator
+    # would reconcile every other environment's Prometheus/Alertmanager CRs.
+    namespaces:
+      releaseNamespace: true
     kubeletService:
       enabled: false
   kubeStateMetrics:

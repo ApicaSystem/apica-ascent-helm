@@ -10,6 +10,9 @@ spec:
   serviceAccountName: {{ .Release.Namespace }}-prometheus
   scrapeInterval: {{ .Values.prometheus.prometheus.scrapeInterval | default "30s" }}
   evaluationInterval: {{ .Values.prometheus.prometheus.evaluationInterval | default "30s" }}
+  # Without this the operator defaults to 24h and deletes older local blocks on
+  # first start after the upgrade from the Bitnami chart (which ran with 30d)
+  retention: {{ .Values.prometheus.prometheus.retention | default "30d" | quote }}
   replicas: {{ .Values.prometheus.prometheus.replicaCount }}
   resources:
     {{- toYaml .Values.prometheus.prometheus.resources | nindent 4 }}
