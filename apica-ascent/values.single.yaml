@@ -367,6 +367,7 @@ prometheus:
       limits:
         memory: 2000Mi
     replicaCount: 1
+    retention: 30d
     persistence:
       enabled: true
       size: 20Gi
@@ -397,6 +398,8 @@ prometheus:
       enabled: false
     image:
       repository: bitnamilegacy/prometheus-operator
+    extraArgs:
+    - --namespaces={{ .Release.Namespace }}
   kube-state-metrics:
     serviceMonitor:
       enabled: false
