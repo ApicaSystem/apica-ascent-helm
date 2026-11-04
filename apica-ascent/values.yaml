@@ -713,6 +713,10 @@ cnpg:
       parameters:
         pg_stat_statements.max: "5000"
         pg_stat_statements.track: all
+        # Budget for Flash: up to 15 connections per logiq-flash pod (ingest 5 +
+        # query sidecar 10), 5 per flash-ml and 5 per flash-sync pod, plus
+        # headroom for discovery, coffee, casdoor and CNPG. Too low and Flash
+        # crash-loops with "pq: sorry, too many clients already".
         max_connections: "400"
         shared_buffers: "1024MB"
     additionalLabels:

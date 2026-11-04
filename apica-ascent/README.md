@@ -556,6 +556,28 @@ helm upgrade --install apica --namespace apica \
 
 The Thanos instance is auto configured to use the configured object storage endpoints
 
+### 3.15 Splunk S2S ingestion and high-throughput Flash
+
+**S2S ports.** Flash serves the Splunk-to-Splunk protocol for Universal and Heavy Forwarders on 9996 (plain TCP) and 9997 (TLS). The ports are always open on the `logiq-flash` Services. The Envoy Gateway exposes them by default through `envoyGateway.s2sIngestion`:
+
+```yaml
+envoyGateway:
+  s2sIngestion:
+    enabled: false   # keep 9996/9997 off the load balancer
+```
+
+> Do not list `tcp-9996`/`tcp-9997` in `envoyGateway.listeners.tcp`: the render fails on duplicate listener names or ports. Flash versions without S2S refuse connections on these ports.
+
+**Large Flash fleets.** The settings that matter when scaling Flash out:
+
+| Value | Purpose |
+| :--- | :--- |
+| `logiq-flash.flash.podManagementPolicy` | `OrderedReady` (default) or `Parallel`. **Immutable** on a live StatefulSet: run `kubectl -n <ns> delete sts logiq-flash --cascade=orphan` before the upgrade that changes it. Pods and PVCs are kept. |
+| `logiq-flash.flash.extraArgs`, `logiq-flash.flash.query.extraArgs`, `logiq-flash.ml.extraArgs`, `logiq-flash.sync.extraArgs` | Flags for one container only, appended after `global.environment.extraflag`/`rate_limit_flags`. |
+| `logiq-flash.metrics.serviceMonitor.interval`, `scrapeTimeout`, `labels`, `relabelings`, `metricRelabelings`, `extraServiceMonitors` | Scrape settings for the Flash ServiceMonitors (default interval `2m`). |
+| `perfectscale.flash.enabled`, `perfectscale.flash.containers.<name>.maximumCores`/`maximumGiB` | PerfectScale caps for Flash (default 2 cores / 8 GiB). `enabled: false` sets the automation to `Disabled`. |
+| `cnpg.cluster.postgresql.parameters.max_connections` | Each Flash pod opens up to 15 Postgres connections (flash-ml and flash-sync pods 5 each), plus headroom for other clients. Size it for the largest fleet you run, or Flash crash-loops with `too many clients already`. |
+
 ## 4 Teardown
 
 If and when you want to decommission the installation using the following commands
