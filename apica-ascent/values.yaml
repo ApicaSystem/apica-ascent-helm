@@ -464,6 +464,12 @@ prometheus:
       enabled: false
     image:
       repository: bitnamilegacy/prometheus-operator
+    # Watch only this environment's namespace, as the old chart did
+    # (--namespaces={{ .Release.Namespace }}). Unset, this operator reconciles
+    # every environment's Prometheus/Alertmanager on the cluster and fights
+    # their own operators. operator.namespaces is not templated; extraArgs is.
+    extraArgs:
+      - --namespaces={{ .Release.Namespace }}
   kube-state-metrics:
     serviceMonitor:
       enabled: false
