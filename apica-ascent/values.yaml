@@ -431,6 +431,9 @@ prometheus:
       limits:
         memory: 15Gi
     replicaCount: 2
+    # The Bitnami chart defaults to 10d; the 2.32 instances ran 30d, and a
+    # shorter value would delete cloned blocks on the first start
+    retention: 30d
     persistence:
       enabled: true
       size: 20Gi
