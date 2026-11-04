@@ -1,3 +1,6 @@
+# Copyright Broadcom, Inc. All Rights Reserved.
+# SPDX-License-Identifier: APACHE-2.0
+
 ## @section Global parameters
 ## Global Docker image parameters
 ## Please, note that this will override the image parameters, including dependencies, configured to use the global value
@@ -6,7 +9,6 @@
 
 ## @param global.imageRegistry Global Docker image registry
 ## @param global.imagePullSecrets Global Docker registry secret names as an array
-## @param global.storageClass Global StorageClass for Persistent Volume(s)
 ##
 global:
   imageRegistry: ""
@@ -15,17 +17,35 @@ global:
   ##   - myRegistryKeySecretName
   ##
   imagePullSecrets: []
-  storageClass: ""
-
+  ## Security parameters
+  ##
+  security:
+    ## @param global.security.allowInsecureImages Allows skipping image verification
+    allowInsecureImages: false
+  ## Compatibility adaptations for Kubernetes platforms
+  ##
+  compatibility:
+    ## Compatibility adaptations for Openshift
+    ##
+    openshift:
+      ## @param global.compatibility.openshift.adaptSecurityContext Adapt the securityContext sections of the deployment to make them compatible with Openshift restricted-v2 SCC: remove runAsUser, runAsGroup and fsGroup and let the platform use their allowed default IDs. Possible values: auto (apply if the detected running cluster is Openshift), force (perform the adaptation always), disabled (do not perform adaptation)
+      ##
+      adaptSecurityContext: auto
 ## @section Common parameters
 ##
 
+## @param kubeVersion Force target Kubernetes version (using Helm capabilities if not set)
+##
+kubeVersion: ""
 ## @param nameOverride String to partially override `kube-state-metrics.name` template with a string (will prepend the release name)
 ##
 nameOverride: ""
 ## @param fullnameOverride String to fully override `kube-state-metrics.fullname` template with a string
 ##
 fullnameOverride: ""
+## @param namespaceOverride String to fully override common.names.namespace
+##
+namespaceOverride: ""
 ## @param commonLabels Add labels to all the deployed resources
 ##
 commonLabels: {}
@@ -35,10 +55,26 @@ commonAnnotations: {}
 ## @param extraDeploy Array of extra objects to deploy with the release
 ##
 extraDeploy: []
-
+## Enable diagnostic mode in the deployment(s)/statefulset(s)
+##
+diagnosticMode:
+  ## @param diagnosticMode.enabled Enable diagnostic mode (all probes will be disabled and the command will be overridden)
+  ##
+  enabled: false
+  ## @param diagnosticMode.command Command to override all containers in the the deployment(s)/statefulset(s)
+  ##
+  command:
+    - sleep
+  ## @param diagnosticMode.args Args to override all containers in the the deployment(s)/statefulset(s)
+  ##
+  args:
+    - infinity
 ## @section kube-state-metrics parameters
 ##
 
+## @param automountServiceAccountToken Mount Service Account token in pod
+##
+automountServiceAccountToken: true
 ## @param hostAliases Add deployment host aliases
 ## https://kubernetes.io/docs/concepts/services-networking/add-entries-to-pod-etc-hosts-with-host-aliases/
 ##
@@ -50,38 +86,37 @@ rbac:
   ## @param rbac.create Whether to create & use RBAC resources or not
   ##
   create: true
-  ## @param rbac.apiVersion Version of the RBAC API
-  ##
-  apiVersion: v1beta1
   ## @param rbac.pspEnabled Whether to create a PodSecurityPolicy and bound it with RBAC. WARNING: PodSecurityPolicy is deprecated in Kubernetes v1.21 or later, unavailable in v1.25 or later
   ##
   pspEnabled: true
 ## Service account for kube-state-metrics to use.
 ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/
+## @param serviceAccount.create Specifies whether a ServiceAccount should be created
+## @param serviceAccount.name Name of the service account to use. If not set and create is true, a name is generated using the fullname template.
+## @param serviceAccount.automountServiceAccountToken Automount service account token for the server service account
+## @param serviceAccount.annotations Annotations for service account. Evaluated as a template. Only used if `create` is `true`.
 ##
 serviceAccount:
-  ## @param serviceAccount.create Specify whether to create a ServiceAccount for kube-state-metrics
-  ##
   create: true
-  ## @param serviceAccount.name The name of the ServiceAccount to create
-  ## If not set and create is true, a name is generated using the kube-state-metrics.fullname template
-  ##
   name: ""
+  automountServiceAccountToken: false
+  annotations: {}
 ## Bitnami kube-state-metrics image version
-## ref: https://hub.docker.com/r/bitnamilegacy/kube-state-metrics/tags/
-## @param image.registry kube-state-metrics image registry
-## @param image.repository kube-state-metrics image repository
-## @param image.tag kube-state-metrics Image tag (immutable tags are recommended)
+## ref: https://hub.docker.com/r/bitnami/kube-state-metrics/tags/
+## @param image.registry [default: REGISTRY_NAME] kube-state-metrics image registry
+## @param image.repository [default: REPOSITORY_NAME/kube-state-metrics] kube-state-metrics image repository
+## @skip image.tag kube-state-metrics image tag (immutable tags are recommended)
+## @param image.digest kube-state-metrics image digest in the way sha256:aa.... Please note this parameter, if set, will override the tag
 ## @param image.pullPolicy kube-state-metrics image pull policy
 ## @param image.pullSecrets Specify docker-registry secret names as an array
 ##
 image:
   registry: docker.io
-  repository: bitnamilegacy/kube-state-metrics
-  tag: 2.3.0
+  repository: bitnami/kube-state-metrics
+  tag: 2.14.0-debian-12-r5
+  digest: ""
   ## Specify a imagePullPolicy
-  ## Defaults to 'Always' if image tag is 'latest', else set to 'IfNotPresent'
-  ## ref: https://kubernetes.io/docs/user-guide/images/#pre-pulling-images
+  ## ref: https://kubernetes.io/docs/concepts/containers/images/#pre-pulled-images
   ##
   pullPolicy: IfNotPresent
   ## Optionally specify an array of imagePullSecrets.
@@ -93,9 +128,70 @@ image:
   ##
   pullSecrets: []
 ## @param extraArgs Additional command line arguments to pass to kube-state-metrics
-##
+## Example:
+## extraArgs:
+##    metric-labels-allowlist: pods=[*]
 extraArgs: {}
-## @param namespaces Comma-separated list of namespaces to be enabled. Defaults to all namespaces
+## @param command Override default container command (useful when using custom images)
+##
+command: []
+## @param args Override default container args (useful when using custom images)
+##
+args: []
+## @param lifecycleHooks for the kube-state-metrics container(s) to automate configuration before or after startup
+##
+lifecycleHooks: {}
+## @param extraEnvVars Array with extra environment variables to add to kube-state-metrics nodes
+## e.g:
+## extraEnvVars:
+##   - name: FOO
+##     value: "bar"
+##
+extraEnvVars: []
+## @param extraEnvVarsCM Name of existing ConfigMap containing extra env vars for kube-state-metrics pod(s)
+##
+extraEnvVarsCM: ""
+## @param extraEnvVarsSecret Name of existing Secret containing extra env vars for kube-state-metrics pod(s)
+##
+extraEnvVarsSecret: ""
+## @param extraVolumes Optionally specify extra list of additional volumes for the kube-state-metrics pod(s)
+##
+extraVolumes: []
+## @param extraVolumeMounts Optionally specify extra list of additional volumeMounts for the kube-state-metrics container(s)
+##
+extraVolumeMounts: []
+## @param sidecars Add additional sidecar containers to the kube-state-metrics pod(s)
+## e.g:
+## sidecars:
+##   - name: your-image-name
+##     image: your-image
+##     imagePullPolicy: Always
+##     ports:
+##       - name: portname
+##         containerPort: 1234
+##
+sidecars: []
+## @param initContainers Add additional init containers to the kube-state-metrics pod(s)
+## ref: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/
+## e.g:
+## initContainers:
+##  - name: your-image-name
+##    image: your-image
+##    imagePullPolicy: Always
+##    command: ['sh', '-c', 'echo "hello world"']
+##
+initContainers: []
+## Pod Disruption Budget configuration
+## ref: https://kubernetes.io/docs/tasks/run-application/configure-pdb
+## @param pdb.create Enable/disable a Pod Disruption Budget creation
+## @param pdb.minAvailable Minimum number/percentage of pods that should remain scheduled
+## @param pdb.maxUnavailable Maximum number/percentage of pods that may be made unavailable. Defaults to `1` if both `pdb.minAvailable` and `pdb.maxUnavailable` are empty.
+##
+pdb:
+  create: true
+  minAvailable: ""
+  maxUnavailable: ""
+## @param namespaces Comma-separated list of namespaces to be enabled. Defaults to all namespaces. Evaluated as a template.
 ##
 namespaces: ""
 ## kube-state-metrics resources to be enabled
@@ -108,6 +204,7 @@ namespaces: ""
 ## @param kubeResources.horizontalpodautoscalers Enable the `horizontalpodautoscalers` resource
 ## @param kubeResources.ingresses Enable the `ingresses` resource
 ## @param kubeResources.jobs Enable the `jobs` resource
+## @param kubeResources.leases Enable the `leases` resource
 ## @param kubeResources.limitranges Enable the `limitranges` resource
 ## @param kubeResources.mutatingwebhookconfigurations Enable the `mutatingwebhookconfigurations` resource
 ## @param kubeResources.namespaces Enable the `namespaces` resource
@@ -138,6 +235,7 @@ kubeResources:
   horizontalpodautoscalers: true
   ingresses: true
   jobs: true
+  leases: true
   limitranges: true
   mutatingwebhookconfigurations: true
   namespaces: true
@@ -157,34 +255,132 @@ kubeResources:
   verticalpodautoscalers: false
   validatingwebhookconfigurations: false
   volumeattachments: true
-## @param securityContext.enabled Enable security context
-## @param securityContext.fsGroup Group ID for the container filesystem
-## @param securityContext.runAsUser User ID for the container
+## Configure Pods Security Context
+## ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-pod
+## @param podSecurityContext.enabled Enabled kube-state-metrics pods' Security Context
+## @param podSecurityContext.fsGroupChangePolicy Set filesystem group change policy
+## @param podSecurityContext.sysctls Set kernel settings using the sysctl interface
+## @param podSecurityContext.supplementalGroups Set filesystem extra groups
+## @param podSecurityContext.fsGroup Set kube-state-metrics pod's Security Context fsGroup
 ##
-securityContext:
+podSecurityContext:
   enabled: true
-  runAsUser: 1001
+  fsGroupChangePolicy: Always
+  sysctls: []
+  supplementalGroups: []
   fsGroup: 1001
+## Configure Container Security Context
+## ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-pod
+## @param containerSecurityContext.enabled Enabled containers' Security Context
+## @param containerSecurityContext.seLinuxOptions [object,nullable] Set SELinux options in container
+## @param containerSecurityContext.runAsUser Set containers' Security Context runAsUser
+## @param containerSecurityContext.runAsGroup Set containers' Security Context runAsGroup
+## @param containerSecurityContext.runAsNonRoot Set container's Security Context runAsNonRoot
+## @param containerSecurityContext.privileged Set container's Security Context privileged
+## @param containerSecurityContext.readOnlyRootFilesystem Set container's Security Context readOnlyRootFilesystem
+## @param containerSecurityContext.allowPrivilegeEscalation Set container's Security Context allowPrivilegeEscalation
+## @param containerSecurityContext.capabilities.drop List of capabilities to be dropped
+## @param containerSecurityContext.seccompProfile.type Set container's Security Context seccomp profile
+##
+containerSecurityContext:
+  enabled: true
+  seLinuxOptions: {}
+  runAsUser: 1001
+  runAsGroup: 1001
+  runAsNonRoot: true
+  privileged: false
+  readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop: ["ALL"]
+  seccompProfile:
+    type: "RuntimeDefault"
+## Container ports 
+## @param containerPorts.http HTTP container port
+## @param containerPorts.telemetry Telemetry container port
+containerPorts:
+  http: 8080
+  telemetry: 8081
+## Network Policies
+## Ref: https://kubernetes.io/docs/concepts/services-networking/network-policies/
+##
+networkPolicy:
+  ## @param networkPolicy.enabled Specifies whether a NetworkPolicy should be created
+  ##
+  enabled: true
+  ## @param networkPolicy.kubeAPIServerPorts [array] List of possible endpoints to kube-apiserver (limit to your cluster settings to increase security)
+  ##
+  kubeAPIServerPorts: [443, 6443, 8443]
+  ## @param networkPolicy.allowExternal Don't require server label for connections
+  ## The Policy model to apply. When set to false, only pods with the correct
+  ## server label will have network access to the ports server is listening
+  ## on. When true, server will accept connections from any source
+  ## (with the correct destination port).
+  ##
+  allowExternal: true
+  ## @param networkPolicy.allowExternalEgress Allow the pod to access any range of port and all destinations.
+  ##
+  allowExternalEgress: true
+  ## @param networkPolicy.extraIngress [array] Add extra ingress rules to the NetworkPolicy
+  ## e.g:
+  ## extraIngress:
+  ##   - ports:
+  ##       - port: 1234
+  ##     from:
+  ##       - podSelector:
+  ##           - matchLabels:
+  ##               - role: frontend
+  ##       - podSelector:
+  ##           - matchExpressions:
+  ##               - key: role
+  ##                 operator: In
+  ##                 values:
+  ##                   - frontend
+  extraIngress: []
+  ## @param networkPolicy.extraEgress [array] Add extra ingress rules to the NetworkPolicy
+  ## e.g:
+  ## extraEgress:
+  ##   - ports:
+  ##       - port: 1234
+  ##     to:
+  ##       - podSelector:
+  ##           - matchLabels:
+  ##               - role: frontend
+  ##       - podSelector:
+  ##           - matchExpressions:
+  ##               - key: role
+  ##                 operator: In
+  ##                 values:
+  ##                   - frontend
+  ##
+  extraEgress: []
+  ## @param networkPolicy.ingressNSMatchLabels [object] Labels to match to allow traffic from other namespaces
+  ## @param networkPolicy.ingressNSPodMatchLabels [object] Pod labels to match to allow traffic from other namespaces
+  ##
+  ingressNSMatchLabels: {}
+  ingressNSPodMatchLabels: {}
 ## kube-state-metrics Service
 ##
 service:
   ## @param service.type Kubernetes service type
   ##
   type: ClusterIP
-  ## @param service.port kube-state-metrics service port
+  ## @param service.ports.http kube-state-metrics service port
   ##
-  port: 8080
+  ports:
+    http: 8080
+  ## @param service.nodePorts.http Specify the nodePort value for the LoadBalancer and NodePort service types.
+  ## ref: https://kubernetes.io/docs/concepts/services-networking/service/#type-nodeport
+  ## e.g:
+  ## nodePort: 30080
+  ##
+  nodePorts:
+    http: ""
   ## @param service.clusterIP Specific cluster IP when service type is cluster IP. Use `None` for headless service
   ## e.g:
   ## clusterIP: None
   ##
   clusterIP: ""
-  ## @param service.nodePort Specify the nodePort value for the LoadBalancer and NodePort service types.
-  ## ref: https://kubernetes.io/docs/concepts/services-networking/service/#type-nodeport
-  ## e.g:
-  ## nodePort: 30080
-  ##
-  nodePort: ""
   ## @param service.loadBalancerIP `loadBalancerIP` if service type is `LoadBalancer`
   ## ref: https://kubernetes.io/docs/concepts/services-networking/service/#internal-load-balancer
   ##
@@ -196,39 +392,69 @@ service:
   ## - 10.10.10.0/24
   ##
   loadBalancerSourceRanges: []
+  ## @param service.externalTrafficPolicy kube-state-metrics service external traffic policy
+  ## ref http://kubernetes.io/docs/tasks/access-application-cluster/create-external-load-balancer/#preserving-the-client-source-ip
+  ##
+  externalTrafficPolicy: Cluster
+  ## @param service.extraPorts Extra ports to expose (normally used with the `sidecar` value)
+  ##
+  extraPorts: []
   ## @param service.annotations Additional annotations for kube-state-metrics service
   ##
   annotations: {}
   ## @param service.labels Additional labels for kube-state-metrics service
   ##
   labels: {}
+  ## @param service.sessionAffinity Session Affinity for Kubernetes service, can be "None" or "ClientIP"
+  ## If "ClientIP", consecutive client requests will be directed to the same Pod
+  ## ref: https://kubernetes.io/docs/concepts/services-networking/service/#virtual-ips-and-service-proxies
+  ##
+  sessionAffinity: None
+  ## @param service.sessionAffinityConfig Additional settings for the sessionAffinity
+  ## sessionAffinityConfig:
+  ##   clientIP:
+  ##     timeoutSeconds: 300
+  ##
+  sessionAffinityConfig: {}
 ## @param hostNetwork Enable hostNetwork mode
 ##
 hostNetwork: false
 ## @param priorityClassName Priority class assigned to the Pods
 ##
 priorityClassName: ""
+## @param schedulerName Name of the k8s scheduler (other than default)
+## ref: https://kubernetes.io/docs/tasks/administer-cluster/configure-multiple-schedulers/
+##
+schedulerName: ""
+## @param terminationGracePeriodSeconds In seconds, time the given to the kube-state-metrics pod needs to terminate gracefully
+## ref: https://kubernetes.io/docs/concepts/workloads/pods/pod/#termination-of-pods
+##
+terminationGracePeriodSeconds: ""
+## @param topologySpreadConstraints Topology Spread Constraints for pod assignment
+## https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints/
+## The value is evaluated as a template
+##
+topologySpreadConstraints: []
 ## Resource requests and limits
-## ref: https://kubernetes.io/docs/user-guide/compute-resources/
+## ref: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
 ## choice for the user. This also increases chances charts run on environments with little
 ## resources, such as Minikube. If you do want to specify resources, uncomment the following
 ## lines, adjust them as necessary, and remove the curly braces after 'resources:'.
-## @param resources.limits The resources limits for the container
-## @param resources.requests The requested resources for the container
+## @param resourcesPreset Set container resources according to one common preset (allowed values: none, nano, micro, small, medium, large, xlarge, 2xlarge). This is ignored if resources is set (resources is recommended for production).
+## More information: https://github.com/bitnami/charts/blob/main/bitnami/common/templates/_resources.tpl#L15
 ##
-resources:
-  ## Example:
-  ## limits:
-  ##    cpu: 100m
-  ##    memory: 128Mi
-  ##
-  limits: {}
-  ## Examples:
-  ## requests:
-  ##    cpu: 100m
-  ##    memory: 128Mi
-  ##
-  requests: {}
+resourcesPreset: "nano"
+## @param resources Set container requests and limits for different resources like CPU or memory (essential for production workloads)
+## Example:
+## resources:
+##   requests:
+##     cpu: 2
+##     memory: 512Mi
+##   limits:
+##     cpu: 3
+##     memory: 1024Mi
+##
+resources: {}
 ## @param replicaCount Desired number of controller pods
 ##
 replicaCount: 1
@@ -280,7 +506,7 @@ nodeAffinityPreset:
 ##
 affinity: {}
 ## @param nodeSelector Node labels for pod assignment
-## ref: https://kubernetes.io/docs/user-guide/node-selection/
+## ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/
 ##
 nodeSelector: {}
 ## @param tolerations Tolerations for pod assignment
@@ -319,6 +545,31 @@ readinessProbe:
   timeoutSeconds: 5
   failureThreshold: 6
   successThreshold: 1
+## Configure extra options for startup probe
+## ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/#configure-probes
+## @param startupProbe.enabled Turn on and off startup probe
+## @param startupProbe.initialDelaySeconds Delay before startup probe is initiated
+## @param startupProbe.periodSeconds How often to perform the probe
+## @param startupProbe.timeoutSeconds When the probe times out
+## @param startupProbe.failureThreshold Minimum consecutive failures for the probe
+## @param startupProbe.successThreshold Minimum consecutive successes for the probe
+##
+startupProbe:
+  enabled: false
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 6
+  successThreshold: 1
+## @param customStartupProbe Custom liveness probe for the Web component
+##
+customStartupProbe: {}
+## @param customLivenessProbe Custom liveness probe for the Web component
+##
+customLivenessProbe: {}
+## @param customReadinessProbe Custom readiness probe for the Web component
+##
+customReadinessProbe: {}
 ## ServiceMonitor configuration
 ##
 serviceMonitor:
@@ -346,7 +597,7 @@ serviceMonitor:
   ##
   scrapeTimeout: ""
   ## @param serviceMonitor.selector ServiceMonitor selector labels
-  ## ref: https://github.com/bitnami/charts/tree/master/bitnami/prometheus-operator#prometheus-configuration
+  ## ref: https://github.com/bitnami/charts/tree/main/bitnami/prometheus-operator#prometheus-configuration
   ## e.g:
   ## selector:
   ##   prometheus: my-prometheus
@@ -366,3 +617,23 @@ serviceMonitor:
   ## ref: https://github.com/coreos/prometheus-operator/blob/master/Documentation/api.md#relabelconfig
   ##
   metricRelabelings: []
+  ## @param serviceMonitor.labels Extra labels for the ServiceMonitor
+  ##
+  labels: {}
+  ## @param serviceMonitor.extraParameters Any extra parameter to be added to the endpoint configured in the ServiceMonitor
+  ## (e.g. tlsConfig for further customization of the HTTPS behavior)
+  ## ref: https://github.com/prometheus-operator/prometheus-operator/blob/main/Documentation/api.md#monitoring.coreos.com/v1.Endpoint
+  ##
+  extraParameters: {}
+  ## @param serviceMonitor.sampleLimit Per-scrape limit on number of scraped samples that will be accepted.
+  ##
+  sampleLimit: ""
+## selfMonitor configuration
+##
+selfMonitor:
+  ## @param selfMonitor.enabled Creates a selfMonitor to monitor kube-state-metrics itself
+  ##
+  enabled: false
+  ## @param selfMonitor.telemetryNodePort Kube-state-metrics Node Port
+  ##
+  telemetryNodePort: ""
