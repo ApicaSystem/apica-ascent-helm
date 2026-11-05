@@ -15,8 +15,8 @@ logiq-flash:
   metrics:
     serviceMonitor:
       enabled: true
-    selector:
-      release: prometheus
+      selector:
+        release: prometheus
   resources:
     ingest:
       requests:
@@ -401,6 +401,32 @@ envoyGateway:
         # Envoy listener, internal RELP ingest keeps working.
         description: RELP log ingestion
 
+  # ==========================================================================
+  # Splunk S2S ingestion through Envoy - ports 9996 (plain TCP) and 9997 (TLS,
+  # terminated by Flash with its server certificate). Universal and Heavy
+  # Forwarders ship here. Each port gets a Gateway listener and a TCPRoute to
+  # logiq-flash; the ports are always open on the logiq-flash Service.
+  #
+  # NEW IN 3.2.x: on by default, so an upgrade opens 9996/9997 on the load
+  # balancer. Set enabled: false to keep them closed. Do NOT also list
+  # tcp-9996/tcp-9997 in listeners.tcp - the render fails on duplicates.
+  # Flash builds without S2S refuse connections on these ports.
+  # ==========================================================================
+  s2sIngestion:
+    # -- false = S2S not reachable through Envoy (in-cluster access unaffected).
+    enabled: true
+    ports:
+      - name: tcp-9996
+        port: 9996
+        protocol: TCP
+        service: logiq-flash
+        description: Splunk S2S (plain TCP)
+      - name: tcp-9997
+        port: 9997
+        protocol: TCP
+        service: logiq-flash
+        description: Splunk S2S (TLS)
+
   # Compression configuration using BackendTrafficPolicy compressor field
   compressor:
     enabled: true
@@ -715,6 +741,10 @@ cnpg:
       parameters:
         pg_stat_statements.max: "5000"
         pg_stat_statements.track: all
+        # Budget for Flash: up to 15 connections per logiq-flash pod (ingest 5 +
+        # query sidecar 10), 5 per flash-ml and 5 per flash-sync pod, plus
+        # headroom for discovery, coffee, casdoor and CNPG. Too low and Flash
+        # crash-loops with "pq: sorry, too many clients already".
         max_connections: "400"
         shared_buffers: "1024MB"
     additionalLabels:
@@ -767,3 +797,23 @@ vault:
 
 perfectscale:
   enabled: false
+  # Flash WorkloadAutomationConfig (used only when perfectscale.enabled is true).
+  flash:
+    # false = render the config with automationMode "Disabled", so PerfectScale
+    # leaves logiq-flash alone. (Removing the config would not: PerfectScale then
+    # applies the cluster defaults.) Turn off for large Flash sizings, where
+    # PerfectScale could undo a raised memory limit or lower the CPU request that
+    # -workers is computed from.
+    enabled: true
+    # Upper bounds PerfectScale may size each container to. maximumGiB caps
+    # both the memory request and the limit.
+    containers:
+      logiq-flash:
+        maximumCores: 2
+        maximumGiB: 8
+      logiq-flash-query:
+        maximumCores: 2
+        maximumGiB: 8
+      logiq-flash-tracing:
+        maximumCores: 1
+        maximumGiB: 1
