@@ -1,6 +1,6 @@
 dependencies:
 - name: cluster
-  repository: ""
+  repository: https://cloudnative-pg.github.io/charts
   version: 0.6.1
 - name: flash-coffee
   repository: ""
@@ -23,5 +23,5 @@ dependencies:
 - name: thanos
   repository: oci://ghcr.io/thanos-community/helm-charts
   version: 0.46.0
-digest: sha256:d1851a42a33de33ee13973a8bc1c90b621ba662042be964734069af55c731643
-generated: "2026-11-06T15:02:30.916175+05:30"
+digest: sha256:131d382c05da14437f3002b8445ccd8b0d9c1d76ea36e1e845789d7a0efabcb5
+generated: "2026-10-02T15:26:27.315795-04:00"
