@@ -16,9 +16,11 @@ spec:
   replicas: {{ .Values.prometheus.prometheus.replicaCount }}
   resources:
     {{- toYaml .Values.prometheus.prometheus.resources | nindent 4 }}
-  serviceMonitorSelector:
-    matchLabels:
-      release: prometheus
+  # Every ServiceMonitor/PodMonitor in this namespace (Thanos, CNPG, redis,
+  # operator, self-monitoring, flash), as the Bitnami Prometheus did; the
+  # operator only watches this namespace.
+  serviceMonitorSelector: {}
+  podMonitorSelector: {}
   ruleSelector: {}
   {{- if .Values.prometheus.prometheus.persistence.enabled }}
   storage:

@@ -5,7 +5,7 @@ data:
       - name: metamonitoring
         rules:
           - alert: PrometheusDown
-            expr: absent(up{prometheus="apica-ascent/apica-ascent-prometheus-prometheus"})
+            expr: absent(up{prometheus="{{ .Release.Namespace }}/{{ .Release.Namespace }}-prometheus-prometheus"})
             for: 5m
             labels:
               severity: critical
