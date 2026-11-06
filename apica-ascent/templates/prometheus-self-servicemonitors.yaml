@@ -1,0 +1,35 @@
+{{- if .Values.global.chart.prometheus }}
+# Self-monitoring for Prometheus and Alertmanager (kube-prometheus-stack's own
+# monitors are off together with its Prometheus/Alertmanager CRs).
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ .Release.Namespace }}-prometheus-prometheus
+  namespace: {{ .Release.Namespace }}
+  labels:
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      operated-prometheus: "true"
+  endpoints:
+    - port: web
+      path: /metrics
+{{- if .Values.prometheus.alertmanager.enabled }}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ .Release.Namespace }}-prometheus-alertmanager
+  namespace: {{ .Release.Namespace }}
+  labels:
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      operated-alertmanager: "true"
+  endpoints:
+    - port: web
+      path: /metrics
+{{- end }}
+{{- end }}

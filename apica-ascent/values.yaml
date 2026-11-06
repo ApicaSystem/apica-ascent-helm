@@ -198,6 +198,10 @@ thanos:
   global:
     objstore:
       secretName: thanos-objstore-secret
+    # ServiceMonitors for every Thanos component, as the Bitnami chart had;
+    # the thanos-component-absent alerts fire without them.
+    serviceMonitor:
+      enabled: true
   query:
     endpoints:
       sdConfig:
@@ -218,6 +222,54 @@ thanos:
               - alertmanager-operated.{{ .Release.Namespace }}.svc.cluster.local:9093
             scheme: http
             api_version: v2
+    # The importer runs `kubectl get prometheusrules -A`: every environment's
+    # and the cluster's rules end up in this ruler, and this environment's own
+    # rules are already evaluated by Prometheus. Load only the env's ruler
+    # rules (thanos-ruler-configmap, where flash also writes SLO rules), like
+    # the Bitnami ruler did.
+    autoImportPrometheusRules:
+      enabled: false
+    rules:
+      # the chart's ExampleAlwaysFiring rule; the schema requires the key
+      example-alerts.yaml: |
+        groups: []
+    extraVolumes:
+      - name: ruler-config
+        configMap:
+          name: thanos-ruler-configmap
+    extraVolumeMounts:
+      - name: ruler-config
+        mountPath: /etc/thanos/ruler-config
+    extraArgs:
+      - --rule-file=/etc/thanos/ruler-config/*.yml
+    # Thanos Ruler reads rule files only at start or on /-/reload; reload when
+    # the configmap changes (e.g. flash adds an SLO).
+    extraContainers:
+      - name: rules-reloader
+        image: docker.io/busybox:1.36.1
+        command:
+          - /bin/sh
+          - -c
+          - |
+            prev=$(cat /etc/thanos/ruler-config/*.yml 2>/dev/null | md5sum)
+            while true; do
+              sleep 30
+              cur=$(cat /etc/thanos/ruler-config/*.yml 2>/dev/null | md5sum)
+              if [ "$cur" != "$prev" ] && wget -q -O /dev/null --post-data= http://localhost:10902/-/reload; then
+                echo "rules changed, reloaded Thanos Ruler"
+                prev=$cur
+              fi
+            done
+        resources:
+          requests:
+            cpu: 5m
+            memory: 8Mi
+          limits:
+            memory: 32Mi
+        volumeMounts:
+          - name: ruler-config
+            mountPath: /etc/thanos/ruler-config
+            readOnly: true
 
 # Gateway API configuration
 gateway:
