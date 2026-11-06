@@ -222,11 +222,10 @@ thanos:
               - alertmanager-operated.{{ .Release.Namespace }}.svc.cluster.local:9093
             scheme: http
             api_version: v2
-    # The importer runs `kubectl get prometheusrules -A`: every environment's
-    # and the cluster's rules end up in this ruler, and this environment's own
-    # rules are already evaluated by Prometheus. Load only the env's ruler
-    # rules (thanos-ruler-configmap, where flash also writes SLO rules), like
-    # the Bitnami ruler did.
+    # The chart's importer runs `kubectl get prometheusrules -A` with a
+    # ClusterRole, so every environment's and the cluster's rules ended up in
+    # this ruler. It is replaced by the sidecar below, which imports only this
+    # environment's namespace (Role/RoleBinding in templates/thanos-ruler-rbac.yaml).
     autoImportPrometheusRules:
       enabled: false
     rules:
@@ -237,39 +236,60 @@ thanos:
       - name: ruler-config
         configMap:
           name: thanos-ruler-configmap
+      - name: imported-rules
+        emptyDir: {}
     extraVolumeMounts:
+      # ruler.yml and the SLO rules flash writes, as the Bitnami ruler had
       - name: ruler-config
         mountPath: /etc/thanos/ruler-config
+      - name: imported-rules
+        mountPath: /etc/thanos/imported-rules
     extraArgs:
       - --rule-file=/etc/thanos/ruler-config/*.yml
-    # Thanos Ruler reads rule files only at start or on /-/reload; reload when
-    # the configmap changes (e.g. flash adds an SLO).
-    # Keeps the importer's container name: Argo (RespectIgnoreDifferences on
-    # containers[].resources) re-adds the resources of a removed container,
+      - --rule-file=/etc/thanos/imported-rules/*.yaml
+    # Keeps the chart importer's container name: Argo (RespectIgnoreDifferences
+    # on containers[].resources) re-adds the resources of a removed container,
     # leaving an entry without an image that the API server rejects.
     extraContainers:
       - name: prometheus-rule-importer
-        image: docker.io/busybox:1.36.1
+        image: docker.io/alpine/kubectl:latest
         command:
           - /bin/sh
           - -c
           - |
-            prev=$(cat /etc/thanos/ruler-config/*.yml 2>/dev/null | md5sum)
+            NS=$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace)
+            echo "Importing PrometheusRules from namespace $NS only"
+            prev=""
             while true; do
-              sleep 30
-              cur=$(cat /etc/thanos/ruler-config/*.yml 2>/dev/null | md5sum)
-              if [ "$cur" != "$prev" ] && wget -q -O /dev/null --post-data= http://localhost:10902/-/reload; then
-                echo "rules changed, reloaded Thanos Ruler"
-                prev=$cur
+              if kubectl get prometheusrules.monitoring.coreos.com -n "$NS" \
+                  -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' > /tmp/names; then
+                rm -f /tmp/new/*.yaml; mkdir -p /tmp/new
+                while read -r name; do
+                  [ -n "$name" ] && kubectl get prometheusrule "$name" -n "$NS" -o jsonpath='{.spec}' > "/tmp/new/${NS}-${name}.yaml"
+                done < /tmp/names
+                rm -f /etc/thanos/imported-rules/*.yaml
+                cp /tmp/new/*.yaml /etc/thanos/imported-rules/ 2>/dev/null || true
+              else
+                echo "listing PrometheusRules failed, keeping the previous rules"
               fi
+              cur=$(cat /etc/thanos/imported-rules/*.yaml /etc/thanos/ruler-config/*.yml 2>/dev/null | md5sum)
+              if [ "$cur" != "$prev" ]; then
+                if curl -sf -X POST http://localhost:10902/-/reload; then
+                  echo "Rules changed ($(ls /etc/thanos/imported-rules | wc -l) imported), reloaded Thanos Ruler"
+                  prev=$cur
+                fi
+              fi
+              sleep 60
             done
         resources:
           requests:
             cpu: 5m
-            memory: 8Mi
-          limits:
             memory: 32Mi
+          limits:
+            memory: 128Mi
         volumeMounts:
+          - name: imported-rules
+            mountPath: /etc/thanos/imported-rules
           - name: ruler-config
             mountPath: /etc/thanos/ruler-config
             readOnly: true

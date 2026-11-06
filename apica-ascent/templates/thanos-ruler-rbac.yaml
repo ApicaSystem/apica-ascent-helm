@@ -1,0 +1,31 @@
+{{- if and .Values.global.chart.thanos .Values.thanos.ruler.enabled }}
+# Read access to this namespace's PrometheusRules only, for the ruler's
+# prometheus-rule-importer sidecar (values.yaml thanos.ruler.extraContainers).
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ .Release.Name }}-thanos-ruler-rule-importer
+  namespace: {{ .Release.Namespace }}
+rules:
+  - apiGroups:
+      - monitoring.coreos.com
+    resources:
+      - prometheusrules
+    verbs:
+      - get
+      - list
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ .Release.Name }}-thanos-ruler-rule-importer
+  namespace: {{ .Release.Namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ .Release.Name }}-thanos-ruler-rule-importer
+subjects:
+  - kind: ServiceAccount
+    name: {{ .Release.Name }}-thanos-thanos
+    namespace: {{ .Release.Namespace }}
+{{- end }}
