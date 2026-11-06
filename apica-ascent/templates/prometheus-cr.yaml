@@ -8,6 +8,8 @@ metadata:
     release: prometheus
 spec:
   serviceAccountName: {{ .Release.Namespace }}-prometheus
+  # Alert links (generatorURL) must resolve from coffee; the default is the pod hostname
+  externalUrl: http://prometheus-operated.{{ .Release.Namespace }}:9090/
   scrapeInterval: {{ .Values.prometheus.prometheus.scrapeInterval | default "30s" }}
   evaluationInterval: {{ .Values.prometheus.prometheus.evaluationInterval | default "30s" }}
   # Without this the operator defaults to 24h and deletes older local blocks on

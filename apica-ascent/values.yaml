@@ -209,6 +209,15 @@ thanos:
       remoteWritePort: 19291
   ruler:
     enabled: true
+    # The chart default (alertmanager.monitoring.svc) does not exist; send to
+    # this environment's Alertmanager, like the Bitnami ruler did.
+    alertmanagers:
+      config: |
+        alertmanagers:
+          - static_configs:
+              - alertmanager-operated.{{ .Release.Namespace }}.svc.cluster.local:9093
+            scheme: http
+            api_version: v2
 
 # Gateway API configuration
 gateway:
