@@ -244,8 +244,11 @@ thanos:
       - --rule-file=/etc/thanos/ruler-config/*.yml
     # Thanos Ruler reads rule files only at start or on /-/reload; reload when
     # the configmap changes (e.g. flash adds an SLO).
+    # Keeps the importer's container name: Argo (RespectIgnoreDifferences on
+    # containers[].resources) re-adds the resources of a removed container,
+    # leaving an entry without an image that the API server rejects.
     extraContainers:
-      - name: rules-reloader
+      - name: prometheus-rule-importer
         image: docker.io/busybox:1.36.1
         command:
           - /bin/sh
