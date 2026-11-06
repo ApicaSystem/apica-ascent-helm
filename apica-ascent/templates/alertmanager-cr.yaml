@@ -8,6 +8,12 @@ metadata:
     release: prometheus
 spec:
   replicas: {{ .Values.prometheus.alertmanager.replicaCount }}
+  # Without fsGroup the pod runs as nobody and cannot write to its volume
+  securityContext:
+    fsGroup: 2000
+    runAsGroup: 2000
+    runAsNonRoot: true
+    runAsUser: 1000
   {{- if .Values.prometheus.alertmanager.persistence.enabled }}
   storage:
     volumeClaimTemplate:

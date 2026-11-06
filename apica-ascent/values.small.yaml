@@ -261,8 +261,6 @@ thanos:
       memory: 200Mi
   ruler:
     enabled: true
-    alertmanagers:
-    - prometheus-alertmanager
     existingConfigmap: thanos-ruler-configmap
     requests:
       memory: 100Mi
