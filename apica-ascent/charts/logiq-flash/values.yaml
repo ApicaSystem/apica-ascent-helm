@@ -29,7 +29,6 @@ sync:
 
 # Zone-only spread — hard podAntiAffinity (podPerNode) already covers hostname.
 # preStop is 30s (vs 15s elsewhere) — flash has more persistent TCP connections.
-# terminationGracePeriodSeconds stays at 120s (set in template, not here).
 flash:
   topologySpreadConstraints:
     enabled: true
@@ -39,6 +38,12 @@ flash:
     type: RollingUpdate
     maxUnavailable: 1
   preStopSleepSeconds: 30
+  # Includes preStopSleepSeconds; the render fails unless it is longer. What is
+  # left after preStop (90s by default) is the SIGTERM drain window, so keep it
+  # above Flash's -s2s_drain_deadline (85s default) when changing either value.
+  terminationGracePeriodSeconds: 120
+  # -workers = workersPerCPU × whole CPUs in resources.ingest.requests.cpu,
+  # with a floor of 150 (a sub-1-CPU request would otherwise render 0).
   workersPerCPU: 150
   # N-1 for replicaCount=2
   pdb:

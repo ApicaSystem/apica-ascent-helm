@@ -43,9 +43,9 @@ spec:
         release: {{ .Release.Name }}
     spec:
       serviceAccountName: logiq-flash
-      # 120s kept intentionally — flash drains active TCP connections from log shippers.
+      # Default 120s: flash drains active TCP connections from log shippers.
       # preStop(30s) fills the LB-drain gap; budget: 30s preStop + 90s SIGTERM = 120s.
-      terminationGracePeriodSeconds: 120
+      terminationGracePeriodSeconds: {{ include "logiq-flash.flashTerminationGracePeriod" . }}
 
       # Zone-only spread — hard podAntiAffinity already covers the hostname dimension.
       {{- if .Values.flash.topologySpreadConstraints.enabled }}

@@ -35,15 +35,32 @@ Create chart name and version as used by the chart label.
 Compute the -workers count as workersPerCPU × CPU request in whole CPUs.
 CPU request may be expressed as milliCPUs (e.g. "1250m") or whole CPUs (e.g. "2").
 Integer division is intentional, as fractional CPUs round down.
+The result has a floor of 150: a CPU request below one whole CPU would otherwise
+render -workers 0, and Flash then rejects every S2S connection.
 */}}
 {{- define "logiq-flash.flashWorkers" -}}
 {{- $cpuStr := .Values.resources.ingest.requests.cpu | toString -}}
 {{- $perCPU := .Values.flash.workersPerCPU | int64 -}}
+{{- $workers := 0 -}}
 {{- if hasSuffix "m" $cpuStr -}}
-{{- mul $perCPU (div (trimSuffix "m" $cpuStr | int64) 1000) -}}
+{{- $workers = mul $perCPU (div (trimSuffix "m" $cpuStr | int64) 1000) -}}
 {{- else -}}
-{{- mul $perCPU ($cpuStr | int64) -}}
+{{- $workers = mul $perCPU ($cpuStr | int64) -}}
 {{- end -}}
+{{- max $workers 150 -}}
+{{- end -}}
+
+{{/*
+Ingest pod terminationGracePeriodSeconds. preStop runs inside the grace period,
+so it must be shorter; the remainder is Flash's SIGTERM drain window.
+*/}}
+{{- define "logiq-flash.flashTerminationGracePeriod" -}}
+{{- $grace := .Values.flash.terminationGracePeriodSeconds | int64 -}}
+{{- $preStop := .Values.flash.preStopSleepSeconds | int64 -}}
+{{- if le $grace $preStop -}}
+{{- fail (printf "logiq-flash: flash.terminationGracePeriodSeconds (%d) must be longer than flash.preStopSleepSeconds (%d)" $grace $preStop) -}}
+{{- end -}}
+{{- $grace -}}
 {{- end -}}
 
 {{- define "logiq-flash.confighash" -}}

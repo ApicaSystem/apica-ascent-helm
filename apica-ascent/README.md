@@ -573,6 +573,8 @@ envoyGateway:
 | Value | Purpose |
 | :--- | :--- |
 | `logiq-flash.flash.podManagementPolicy` | `OrderedReady` (default) or `Parallel`. **Immutable** on a live StatefulSet: run `kubectl -n <ns> delete sts logiq-flash --cascade=orphan` before the upgrade that changes it. Pods and PVCs are kept. |
+| `logiq-flash.flash.terminationGracePeriodSeconds` | Ingest pod grace period (default `120`). It includes `flash.preStopSleepSeconds` (default `30`), and the render fails unless it is longer. Keep the remainder above Flash's `-s2s_drain_deadline` (default `85s`) so S2S drains before the pod is killed. |
+| `logiq-flash.flash.workersPerCPU` | `-workers` = `workersPerCPU` × whole CPUs in `resources.ingest.requests.cpu` (default 150), with a floor of 150. |
 | `logiq-flash.flash.extraArgs`, `logiq-flash.flash.query.extraArgs`, `logiq-flash.ml.extraArgs`, `logiq-flash.sync.extraArgs` | Flags for one container only, appended after `global.environment.extraflag`/`rate_limit_flags`. |
 | `logiq-flash.metrics.serviceMonitor.interval`, `scrapeTimeout`, `labels`, `relabelings`, `metricRelabelings`, `extraServiceMonitors` | Scrape settings for the Flash ServiceMonitors (default interval `2m`). |
 | `perfectscale.flash.enabled`, `perfectscale.flash.containers.<name>.maximumCores`/`maximumGiB` | PerfectScale caps for Flash (default 2 cores / 8 GiB). `enabled: false` sets the automation to `Disabled`. |
