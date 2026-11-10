@@ -23,10 +23,12 @@ sync:
   pdb:
     enabled: true
     minAvailable: 1
+  # Extra flags for the flash-sync container only. The sync node gets no
+  # global.environment.extraflag / rate_limit_flags.
+  extraArgs: ""
 
 # Zone-only spread — hard podAntiAffinity (podPerNode) already covers hostname.
 # preStop is 30s (vs 15s elsewhere) — flash has more persistent TCP connections.
-# terminationGracePeriodSeconds stays at 120s (set in template, not here).
 flash:
   topologySpreadConstraints:
     enabled: true
@@ -36,11 +38,30 @@ flash:
     type: RollingUpdate
     maxUnavailable: 1
   preStopSleepSeconds: 30
+  # Includes preStopSleepSeconds; the render fails unless it is longer. What is
+  # left after preStop (90s by default) is the SIGTERM drain window, so keep it
+  # above Flash's -s2s_drain_deadline (85s default) when changing either value.
+  terminationGracePeriodSeconds: 120
+  # -workers = workersPerCPU × whole CPUs in resources.ingest.requests.cpu,
+  # with a floor of 150 (a sub-1-CPU request would otherwise render 0).
   workersPerCPU: 150
   # N-1 for replicaCount=2
   pdb:
     enabled: true
     minAvailable: 1
+  # OrderedReady (Kubernetes default) or Parallel. Parallel starts and stops all
+  # pods at once, which large fleets need to scale in reasonable time.
+  # IMMUTABLE on a live StatefulSet: to change it, run
+  #   kubectl -n <ns> delete sts logiq-flash --cascade=orphan
+  # and then sync/upgrade. Pods and PVCs are kept and adopted by the new sts.
+  podManagementPolicy: OrderedReady
+  # Extra flags for the logiq-flash ingest container only, appended after
+  # global.environment.extraflag and rate_limit_flags (a repeated flag takes the
+  # last value). Use this for ingest-only flags such as -max_bytes_per_sec.
+  extraArgs: ""
+  query:
+    # Extra flags for the logiq-flash-query sidecar only, appended last.
+    extraArgs: ""
 
 ml:
   topologySpreadConstraints:
@@ -60,6 +81,8 @@ ml:
   pdb:
     enabled: true
     minAvailable: 1
+  # Extra flags for the logiq-flash-ml container only, appended last.
+  extraArgs: ""
 
 image:
   repository: logiqai/flash
@@ -80,8 +103,22 @@ sidecarTracingMl:
 metrics:
   serviceMonitor:
     enabled: false
+    # Labels added to every flash ServiceMonitor; also what Prometheus selects on.
     selector:
       release: prometheus
+    # Extra labels for every flash ServiceMonitor (wins over selector on a duplicate key).
+    labels: {}
+    # Scrape settings applied to every endpoint of the flash, flash-ml and
+    # flash-sync ServiceMonitors. scrapeTimeout must not exceed interval.
+    interval: 2m
+    scrapeTimeout: ""
+    relabelings: []
+    metricRelabelings: []
+    # Additional ServiceMonitors, rendered when enabled is true. Each entry:
+    #   - name: flash-fast-scrape        # required
+    #     labels: {}                     # optional
+    #     spec: {...}                    # required, full ServiceMonitor spec
+    extraServiceMonitors: []
 
 secrets_name:
 pullSecretName: 
@@ -167,6 +204,18 @@ filebeat:
 filebeatls:
   port: 25225
   name: filebeatls
+
+# Splunk S2S listener (Universal and Heavy Forwarders). TLS on 9997 with the
+# Flash server certificate, plain TCP on 9996 for lab use. Always exposed on the
+# flash container and Services; Flash versions without S2S just refuse
+# connections on these ports.
+s2stls:
+  port: 9997
+  name: s2stls
+
+s2s:
+  port: 9996
+  name: s2s
 
 raftHttp:
   port: 4001

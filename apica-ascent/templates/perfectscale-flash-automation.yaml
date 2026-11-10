@@ -1,4 +1,11 @@
 {{- if .Values.perfectscale.enabled }}
+{{- /*
+perfectscale.flash.enabled: false renders automationMode "Disabled" instead of
+dropping this CR. Without a WorkloadAutomationConfig, PerfectScale applies the
+cluster defaults and would still resize logiq-flash.
+*/}}
+{{- $psFlash := .Values.perfectscale.flash | default dict }}
+{{- $containers := $psFlash.containers | default dict }}
 ---
 apiVersion: perfectscale.io/v1
 kind: WorkloadAutomationConfig
@@ -11,9 +18,14 @@ spec:
     name: logiq-flash
   automation:
     operational:
-      automationMode: "Enabled"
+      automationMode: {{ ternary "Enabled" "Disabled" (ne (toString $psFlash.enabled) "false") | quote }}
     containers:
-      logiq-flash:
+      {{- range $name := list "logiq-flash" "logiq-flash-query" "logiq-flash-tracing" }}
+      {{- $c := get $containers $name | default dict }}
+      {{- if not (and (hasKey $c "maximumCores") (hasKey $c "maximumGiB")) }}
+      {{- fail (printf "perfectscale.flash.containers.%s needs maximumCores and maximumGiB" $name) }}
+      {{- end }}
+      {{ $name }}:
         operational:
           restrictions:
             cpuManagement:
@@ -21,68 +33,21 @@ spec:
                 increaseEnabled: true
                 decreaseEnabled: true
                 minimumCores: -1
-                maximumCores: 2
+                maximumCores: {{ $c.maximumCores }}
               limit:
                 keepLimit: false
             memoryManagement:
               request:
                 minimumGiB: -1
-                maximumGiB: 8
+                maximumGiB: {{ $c.maximumGiB }}
               limit:
                 increaseEnabled: true
                 decreaseEnabled: true
                 minimumGiB: -1
-                maximumGiB: 8
+                maximumGiB: {{ $c.maximumGiB }}
                 memoryLeakDetection:
                   maxMemoryIncreaseIterations:
                     daily: 3
                     weekly: 6
-      logiq-flash-query:
-        operational:
-          restrictions:
-            cpuManagement:
-              request:
-                increaseEnabled: true
-                decreaseEnabled: true
-                minimumCores: -1
-                maximumCores: 2
-              limit:
-                keepLimit: false
-            memoryManagement:
-              request:
-                minimumGiB: -1
-                maximumGiB: 8
-              limit:
-                increaseEnabled: true
-                decreaseEnabled: true
-                minimumGiB: -1
-                maximumGiB: 8
-                memoryLeakDetection:
-                  maxMemoryIncreaseIterations:
-                    daily: 3
-                    weekly: 6
-      logiq-flash-tracing:
-        operational:
-          restrictions:
-            cpuManagement:
-              request:
-                increaseEnabled: true
-                decreaseEnabled: true
-                minimumCores: -1
-                maximumCores: 1
-              limit:
-                keepLimit: false
-            memoryManagement:
-              request:
-                minimumGiB: -1
-                maximumGiB: 1
-              limit:
-                increaseEnabled: true
-                decreaseEnabled: true
-                minimumGiB: -1
-                maximumGiB: 1
-                memoryLeakDetection:
-                  maxMemoryIncreaseIterations:
-                    daily: 3
-                    weekly: 6
+      {{- end }}
 {{- end }}
