@@ -51,6 +51,18 @@ render -workers 0, and Flash then rejects every S2S connection.
 {{- end -}}
 
 {{/*
+Per-container extra args (flash.extraArgs, flash.query.extraArgs, ml.extraArgs,
+sync.extraArgs), rendered with a leading space. Renders nothing when the value
+is unset, blank, or the literal "null" that a Harness pipeline sends for a
+variable it has no value for.
+Usage: {{- include "logiq-flash.extraArgs" .Values.flash.extraArgs }}
+*/}}
+{{- define "logiq-flash.extraArgs" -}}
+{{- $args := trim (toString (default "" .)) -}}
+{{- if and $args (ne $args "null") }} {{ $args }}{{- end -}}
+{{- end -}}
+
+{{/*
 Ingest pod terminationGracePeriodSeconds. preStop runs inside the grace period,
 so it must be shorter; the remainder is Flash's SIGTERM drain window.
 */}}
