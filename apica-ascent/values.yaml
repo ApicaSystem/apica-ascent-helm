@@ -400,6 +400,11 @@ envoyGateway:
         # it was in scope for SO-10170; disabling only removes its public
         # Envoy listener, internal RELP ingest keeps working.
         description: RELP log ingestion
+        # -- Envoy sends a PROXY v2 header carrying the client address. Flash's
+        #    plaintext ingest ports trust the first PROXY header on a connection,
+        #    so without this a client could send its own and claim any address.
+        #    Only set this for ports whose flash listener accepts PROXY headers.
+        proxyProtocol: true
 
   # Compression configuration using BackendTrafficPolicy compressor field
   compressor:
