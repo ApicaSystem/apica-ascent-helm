@@ -340,6 +340,7 @@ envoyGateway:
       protocol: TCP
       service: logiq-flash
       description: RELP log ingestion
+      proxyProtocol: true
   compressor:
     enabled: true
     quality: 6

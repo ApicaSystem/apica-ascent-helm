@@ -74,6 +74,26 @@ spec:
           name: {{ .service | default "logiq-flash" }}
           port: {{ .port }}
           weight: 1
+{{- if .proxyProtocol }}
+---
+# Have Envoy send its own PROXY header so the client can't supply one.
+# mergeType keeps the Gateway-level BackendTrafficPolicy settings for this route.
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: BackendTrafficPolicy
+metadata:
+  name: {{ $.Release.Name }}-{{ .name }}-proxy-protocol
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    {{- include "logiq.labels" $ | nindent 4 }}
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: TCPRoute
+      name: {{ $.Release.Name }}-{{ .name }}
+  mergeType: StrategicMerge
+  proxyProtocol:
+    version: V2
+{{- end }}
 {{- end }}
 {{- end }}
 {{- end }}
