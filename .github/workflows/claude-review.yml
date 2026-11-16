@@ -53,7 +53,7 @@ jobs:
           prompt: |
             Review this pull request.
 
-            You have a hard budget of 30 agent turns; the run is killed when it
+            You have a hard budget of 50 agent turns; the run is killed when it
             is exhausted. Work incrementally so partial results survive: post
             each inline comment as soon as you confirm the issue — never save
             findings for the end. Read the diff first, then only the
@@ -94,7 +94,7 @@ jobs:
             approve the pull request.
           claude_args: >-
             --model vertex_ai/claude-sonnet-4-6
-            --max-turns 30
+            --max-turns 50
             --allowedTools "Read,Grep,Glob,mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr review:*)"
 
       - name: Notify on incomplete review
@@ -138,6 +138,6 @@ jobs:
           anthropic_api_key: ${{ secrets.ANTHROPIC_AUTH_TOKEN || secrets.LITELLM_API_KEY }}
           claude_args: >-
             --model vertex_ai/claude-sonnet-4-6
-            --max-turns 30
+            --max-turns 50
             --append-system-prompt "When reviewing or answering questions about code in this pull request, first read .github/resources/CLAUDE.md if it exists and follow its documented conventions, focus areas, and known-intentional settings to avoid false positives."
             --allowedTools "Read,Grep,Glob,LS,mcp__github_comment__update_claude_comment,mcp__github_inline_comment__create_inline_comment,Bash(gh pr view:*),Bash(gh pr diff:*)"
