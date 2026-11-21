@@ -4,8 +4,8 @@ kind: ServiceMonitor
 metadata:
   labels:
     app: {{ template "logiq-flash.name" . }}-ml
-    {{- range $key, $value := .Values.metrics.serviceMonitor.selector }}
-    {{ $key }}: {{ $value | quote }}
+    {{- with (include "logiq-flash.serviceMonitorLabels" . | trim) }}
+    {{- . | nindent 4 }}
     {{- end }}
   name: prometheus-{{ .Release.Namespace }}-{{ template "logiq-flash.name" . }}-ml
   namespace: {{ .Release.Namespace }}
@@ -18,7 +18,7 @@ spec:
       username:
         key: admin_email
         name: {{ template "logiq-flash.fullname" . }}
-    interval: 2m
+    {{- include "logiq-flash.serviceMonitorEndpointSettings" . | nindent 4 }}
     path: /metrics
     scheme: https
     targetPort: 9998
@@ -31,7 +31,7 @@ spec:
       username:
         key: admin_email
         name: {{ template "logiq-flash.fullname" . }}
-    interval: 2m
+    {{- include "logiq-flash.serviceMonitorEndpointSettings" . | nindent 4 }}
     path: /metrics
     scheme: https
     targetPort: 8899

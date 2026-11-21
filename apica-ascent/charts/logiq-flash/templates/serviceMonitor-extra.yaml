@@ -1,0 +1,31 @@
+{{- /*
+Extra ServiceMonitors from metrics.serviceMonitor.extraServiceMonitors, for scrape
+setups the built-in flash/flash-ml/flash-sync monitors do not cover (for example a
+faster interval on one port). Each entry:
+  name:   required, the ServiceMonitor name
+  labels: optional, merged over metrics.serviceMonitor.labels and .selector
+  spec:   required, rendered as given
+*/ -}}
+{{- if .Values.metrics.serviceMonitor.enabled }}
+{{- range $i, $sm := .Values.metrics.serviceMonitor.extraServiceMonitors }}
+{{- if not $sm.name }}
+{{- fail (printf "logiq-flash: metrics.serviceMonitor.extraServiceMonitors[%d] needs a name" $i) }}
+{{- end }}
+{{- if not $sm.spec }}
+{{- fail (printf "logiq-flash: metrics.serviceMonitor.extraServiceMonitors[%d] (%s) needs a spec" $i $sm.name) }}
+{{- end }}
+{{- $labels := merge (dict) ($sm.labels | default dict) ($.Values.metrics.serviceMonitor.labels | default dict) ($.Values.metrics.serviceMonitor.selector | default dict) (dict "app" (include "logiq-flash.name" $)) }}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ $sm.name }}
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    {{- range $key := keys $labels | sortAlpha }}
+    {{ $key }}: {{ get $labels $key | quote }}
+    {{- end }}
+spec:
+  {{- toYaml $sm.spec | nindent 2 }}
+{{- end }}
+{{- end }}

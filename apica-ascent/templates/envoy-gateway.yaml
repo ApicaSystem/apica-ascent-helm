@@ -73,13 +73,14 @@ spec:
   {{- end }}
 
   # ============================================================================
-  # Trace Ingestion Listeners - Jaeger gRPC/HTTP collector ports
-  # These accept traces without authentication, so they are opt-in and stay
-  # closed unless envoyGateway.traceIngestion.enabled is explicitly set.
+  # Gated ingestion listeners (logiq.gatedTcpPorts):
+  # - Trace ingestion (Jaeger gRPC/HTTP, RELP): unauthenticated, so opt-in via
+  #   envoyGateway.traceIngestion.enabled (default false).
+  # - Splunk S2S (9996 plain, 9997 TLS): on by default, opt out via
+  #   envoyGateway.s2sIngestion.enabled: false.
   # ============================================================================
-  {{- $trace := .Values.envoyGateway.traceIngestion | default dict }}
-  {{- if eq (include "logiq.traceIngestionEnabled" .) "true" }}
-  {{- range $trace.ports }}
+  {{- include "logiq.validateGatewayListeners" . }}
+  {{- range (include "logiq.gatedTcpPorts" . | fromYamlArray) }}
   - name: {{ .name }}
     protocol: {{ .protocol | default "TCP" }}
     port: {{ .port }}
@@ -89,6 +90,5 @@ spec:
         kind: TCPRoute
       namespaces:
         from: Same
-  {{- end }}
   {{- end }}
 {{- end }}
