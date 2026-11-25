@@ -397,8 +397,6 @@ prometheus:
     persistence:
       enabled: true
       size: 20Gi
-    image:
-      repository: bitnamilegacy/alertmanager
   prometheus:
     resources:
       requests:
