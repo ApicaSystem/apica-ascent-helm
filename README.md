@@ -57,6 +57,10 @@ apica-ascent/
 | `flash-coffee` | Query / analytics engine | always on |
 | `flash-discovery` | Service discovery | always on |
 | `logiqctl` | CLI init job | always on |
+| `redis` (valkey) | Session cache, log tailing | `global.chart.redis` |
+| `prometheus` (kube-prometheus-stack) | Metrics | `global.chart.prometheus` |
+| `thanos` | Long-term metrics storage | `global.chart.thanos` | 
+| `cnpg` (cloudnative-pg/cluster) | CloudNativePG Postgres cluster | `cnpg.enabled` |
 
 **Envoy Gateway** is wired up via ~15 custom templates (not a subchart). It
 provides the external LoadBalancer and handles HTTP, HTTPS, and TCP listeners
