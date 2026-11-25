@@ -18,6 +18,7 @@ spec:
   storage:
     volumeClaimTemplate:
       spec:
+        storageClassName: {{ .Values.global.persistence.storageClass }}
         accessModes:
           - ReadWriteOnce
         resources:

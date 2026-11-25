@@ -14,6 +14,10 @@ spec:
   # first start after the upgrade from the Bitnami chart (which ran with 30d)
   retention: {{ .Values.prometheus.prometheus.retention | default "30d" | quote }}
   replicas: {{ .Values.prometheus.prometheus.replicaCount }}
+  {{- if .Values.prometheus.prometheus.additionalArgs }}
+  additionalArgs:
+    {{- toYaml .Values.prometheus.prometheus.additionalArgs | nindent 4 }}
+  {{- end }}
   resources:
     {{- toYaml .Values.prometheus.prometheus.resources | nindent 4 }}
   # Every ServiceMonitor/PodMonitor in this namespace (Thanos, CNPG, redis,
@@ -26,6 +30,7 @@ spec:
   storage:
     volumeClaimTemplate:
       spec:
+        storageClassName: {{ .Values.global.persistence.storageClass }}
         accessModes:
           - ReadWriteOnce
         resources:
