@@ -46,7 +46,7 @@ apica-ascent/
 ├── values-test.yaml        # Live test deployment on OKE (cnpg-test namespace)
 ├── values.{small,medium,large,single}.yaml   # Sizing profiles
 ├── templates/              # ~37 templates; most are Envoy Gateway and PerfectScale
-└── charts/                 # Vendored subcharts (apica + cnpg/cluster)
+└── charts/                 # Vendored apica subcharts (third-party charts are downloaded)
 ```
 
 ## Components
@@ -151,118 +151,48 @@ work against OCI's S3-compatible endpoint:
 ```yaml
 cnpg:
   cluster:
-    awsDefaultRegion: us-ashburn-1          # must match the OCI region in the endpoint URL
-    awsRequestChecksumCalculation: when_required  # disables botocore 1.35+ trailing-checksum behaviour
+    env:
+      - name: AWS_DEFAULT_REGION           # must match the OCI region in the endpoint URL
+        value: us-ashburn-1
+      - name: AWS_REQUEST_CHECKSUM_CALCULATION  # disables botocore 1.35+ trailing-checksum behaviour
+        value: when_required
 ```
 
-These are named string fields (not array elements) so they can be overridden
-individually via `--set cnpg.cluster.awsDefaultRegion=<region>` or a GitOps
-string-value override. The cluster subchart patch (see patch #3 below) injects
-them as `AWS_DEFAULT_REGION` and `AWS_REQUEST_CHECKSUM_CALCULATION` env vars on
-the cluster pods, merged with any entries in `cluster.env`.
+Setting any element of `cnpg.cluster.env` (with `--set` or a GitOps
+parameter) replaces the whole list from values.yaml, so a per-environment
+override must pass all four parameters:
+
+```
+cnpg.cluster.env[0].name=AWS_DEFAULT_REGION
+cnpg.cluster.env[0].value=<region>
+cnpg.cluster.env[1].name=AWS_REQUEST_CHECKSUM_CALCULATION
+cnpg.cluster.env[1].value=when_required
+```
 
 Without `AWS_DEFAULT_REGION`: SigV4 signing uses `us-east-1`; OCI returns 403.
 Without `AWS_REQUEST_CHECKSUM_CALCULATION=when_required`: botocore 1.35+ adds
 trailing CRC32 checksums via `Transfer-Encoding: chunked`, omitting
 `Content-Length`; OCI returns `MissingContentLength` on every PutObject.
 
-#### Cluster subchart patches
+#### Node placement
 
-The vendored `cloudnative-pg/cluster` subchart at `apica-ascent/charts/cluster/`
-contains local patches that have not been upstreamed yet. When upgrading the
-subchart version, these must be reapplied manually.
-
-**1. `templates/_backup.tpl` — conditional compression fields**
-
-Both `wal.compression` and `data.compression` are wrapped in `{{- if }}` guards:
+`cnpg` is the upstream `cloudnative-pg/cluster` chart, downloaded like the other
+third-party dependencies. No upstream version (0.6.1 through 0.9.0) reads
+`global.nodeSelectors`, so the database node pool is set directly and must be
+kept in sync with `global.nodeSelectors.label` / `global.nodeSelectors.db`:
 
 ```yaml
-{{- if .Values.backups.wal.compression }}
-compression: {{ .Values.backups.wal.compression }}
-{{- end }}
+cnpg:
+  cluster:
+    affinity:
+      nodeSelector:
+        apica-node-pool: common
 ```
 
-**Why:** The CNPG CRD does not accept empty string or `null` for `compression`
-— the field must be omitted entirely to mean "no compression". The upstream
-template renders `compression: ` unconditionally, which the Kubernetes API
-rejects. The patch allows `compression: ""` in values to produce no field in
-the rendered manifest.
-
-**2. `templates/ca-bundle.yaml` — recovery endpoint CA Secret**
-
-A second Secret block has been added for `recovery.endpointCA`:
-
-```yaml
-{{- if and (eq .Values.mode "recovery") .Values.recovery.endpointCA.create }}
----
-apiVersion: v1
-kind: Secret
-metadata:
-  name: {{ .Values.recovery.endpointCA.name | default (printf "%s-recovery-ca-bundle" ...) | quote }}
-  ...
-{{- end }}
-```
-
-**Why:** The upstream template only creates a CA bundle Secret for
-`backups.endpointCA.create`. The `_barman_object_store.tpl` references a CA
-Secret for both backup and recovery paths, but without this patch the recovery
-CA Secret is never created, causing the cluster to fail to start when a custom
-CA is required for the recovery object store endpoint.
-
-**3. `templates/cluster.yaml` — named string fields for OCI env vars**
-
-The `{{- with .Values.cluster.env }}` block is replaced with logic that builds
-the env list from named scalar values before rendering:
-
-```yaml
-{{- $env := default list .Values.cluster.env }}
-{{- if .Values.cluster.awsDefaultRegion }}
-{{- $env = append $env (dict "name" "AWS_DEFAULT_REGION" "value" (.Values.cluster.awsDefaultRegion | toString)) }}
-{{- end }}
-{{- if .Values.cluster.awsRequestChecksumCalculation }}
-{{- $env = append $env (dict "name" "AWS_REQUEST_CHECKSUM_CALCULATION" "value" (.Values.cluster.awsRequestChecksumCalculation | toString)) }}
-{{- end }}
-{{- if $env }}
-env:
-  {{- toYaml $env | nindent 4 }}
-{{- end }}
-```
-
-**Why:** GitOps tools such as Harness can only override named string values in
-values.yaml — they cannot target array elements by index. The upstream template
-puts these env vars in `cluster.env` (an array), making them impossible to
-override without redefining the whole array. The patch extracts the two
-OCI-required env vars into named scalar fields (`awsDefaultRegion`,
-`awsRequestChecksumCalculation`) that can be targeted directly, then merges
-them with any remaining entries in `cluster.env`.
-
-**4. `templates/cluster.yaml` — nodeSelector derived from `global.nodeSelectors`**
-
-The `{{- with .Values.cluster.affinity }}` block is replaced with logic that
-merges a nodeSelector built from the parent chart's `global.nodeSelectors` into
-the affinity map:
-
-```yaml
-{{- $affinity := default dict .Values.cluster.affinity }}
-{{- if .Values.global.nodeSelectors.enabled }}
-{{- $affinity = merge $affinity (dict "nodeSelector" (dict (.Values.global.nodeSelectors.label | toString) (.Values.global.nodeSelectors.db | toString))) }}
-{{- end }}
-{{- if $affinity }}
-affinity:
-  {{- toYaml $affinity | nindent 4 }}
-{{- end }}
-```
-
-**Why:** The upstream template only accepts a static `cluster.affinity` map.
-Other components in the parent chart derive their node scheduling from
-`global.nodeSelectors` (label key + per-workload value), which Helm propagates
-automatically to all subcharts. Without this patch, the CNPG cluster node
-selector would have to be hardcoded separately from the global config, creating
-a duplication that drifts when environments change. The patch keeps
-`global.nodeSelectors.db` as the single source of truth for database workload
-scheduling, consistent with how the Bitnami postgres subchart works. Any
-additional affinity fields (e.g. `topologyKey`, which defaults to
-`topology.kubernetes.io/zone` in the subchart) are preserved via `merge`.
+Setting `global.nodeSelectors.enabled: false` does not remove it; set
+`cnpg.cluster.affinity.nodeSelector: {}` as well. Other affinity fields (e.g.
+`topologyKey`, which defaults to `topology.kubernetes.io/zone`) can be set
+alongside it.
 
 #### Failover characteristics
 

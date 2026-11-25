@@ -674,12 +674,22 @@ cnpg:
         - ro
         - r
     # Required for OCI Object Storage S3-compatible endpoint:
-    # - awsDefaultRegion: ensures SigV4 signing uses the correct region
-    # - awsRequestChecksumCalculation=when_required: disables botocore 1.35+ trailing
+    # - AWS_DEFAULT_REGION: ensures SigV4 signing uses the correct region.
+    #   Overriding any element replaces the whole list, so per-environment overrides must
+    #   set both entries: env[0].name/value (region) and env[1].name/value.
+    # - AWS_REQUEST_CHECKSUM_CALCULATION=when_required: disables botocore 1.35+ trailing
     #   checksum behavior which switches to chunked encoding; OCI requires Content-Length.
-    awsDefaultRegion: us-ashburn-1
-    awsRequestChecksumCalculation: when_required
-    # -- nodeSelector is derived automatically from global.nodeSelectors.label / global.nodeSelectors.db.
+    env:
+      - name: AWS_DEFAULT_REGION
+        value: us-ashburn-1
+      - name: AWS_REQUEST_CHECKSUM_CALCULATION
+        value: when_required
+    # The upstream cluster chart does not read global.nodeSelectors, so the
+    # database node pool is repeated here. Keep it in sync with
+    # global.nodeSelectors.label / global.nodeSelectors.db.
+    affinity:
+      nodeSelector:
+        apica-node-pool: common
     resources:
       requests:
         cpu: 500m
