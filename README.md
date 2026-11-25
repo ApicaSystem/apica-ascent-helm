@@ -103,8 +103,6 @@ High-availability Postgres cluster via the `cloudnative-pg/cluster` subchart
 For a fresh CNPG deployment:
 ```yaml
 global:
-  chart:
-    postgres: false       # disable Bitnami
   environment:
     postgres_host: "<release>-cnpg-rw"   # or pooler service if poolers are configured
     postgres_port: "5432"
