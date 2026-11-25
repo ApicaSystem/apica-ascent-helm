@@ -1,0 +1,58 @@
+{{- if .Values.global.chart.prometheus }}
+apiVersion: monitoring.coreos.com/v1
+kind: Prometheus
+metadata:
+  name: {{ .Release.Namespace }}-prometheus-prometheus
+  namespace: {{ .Release.Namespace }}
+  labels:
+    release: prometheus
+spec:
+  serviceAccountName: {{ .Release.Namespace }}-prometheus
+  scrapeInterval: {{ .Values.prometheus.prometheus.scrapeInterval | default "30s" }}
+  evaluationInterval: {{ .Values.prometheus.prometheus.evaluationInterval | default "30s" }}
+  # Without this the operator defaults to 24h and deletes older local blocks on
+  # first start after the upgrade from the Bitnami chart (which ran with 30d)
+  retention: {{ .Values.prometheus.prometheus.retention | default "30d" | quote }}
+  replicas: {{ .Values.prometheus.prometheus.replicaCount }}
+  {{- if .Values.prometheus.prometheus.additionalArgs }}
+  additionalArgs:
+    {{- toYaml .Values.prometheus.prometheus.additionalArgs | nindent 4 }}
+  {{- end }}
+  resources:
+    {{- toYaml .Values.prometheus.prometheus.resources | nindent 4 }}
+  # Every ServiceMonitor/PodMonitor in this namespace (Thanos, CNPG, redis,
+  # operator, self-monitoring, flash), as the Bitnami Prometheus did; the
+  # operator only watches this namespace.
+  serviceMonitorSelector: {}
+  podMonitorSelector: {}
+  ruleSelector: {}
+  {{- if .Values.prometheus.prometheus.persistence.enabled }}
+  storage:
+    volumeClaimTemplate:
+      spec:
+        storageClassName: {{ .Values.global.persistence.storageClass }}
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: {{ .Values.prometheus.prometheus.persistence.size }}
+  {{- end }}
+  securityContext:
+    fsGroup: 2000
+    runAsGroup: 2000
+    runAsNonRoot: true
+    runAsUser: 1000
+  {{- if .Values.prometheus.prometheus.thanos.create }}
+  thanos:
+    objectStorageConfig:
+      key: {{ .Values.prometheus.prometheus.thanos.objectStorageConfig.secretKey }}
+      name: {{ .Values.prometheus.prometheus.thanos.objectStorageConfig.secretName }}
+    resources:
+      {{- toYaml .Values.prometheus.prometheus.thanos.resources | nindent 6 }}
+  {{- end }}
+  alerting:
+    alertmanagers:
+      - namespace: {{ .Release.Namespace }}
+        name: alertmanager-operated
+        port: web
+{{- end }}

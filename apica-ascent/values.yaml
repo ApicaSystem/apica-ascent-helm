@@ -153,45 +153,9 @@ redis:
               - use
             resourceNames:
               - redis
-  securityContext:
-    enable: true
-    fsGroup: 1001
-    runAsUser: 1001
   serviceAccount:
     create: true
     name: redis
-
-postgres:
-  enabled: true
-  fullnameOverride: postgres
-  postgresqlPostgresPassword: postgres
-  postgresqlUsername: postgres
-  postgresqlDatabase: postgres
-  postgresqlPassword: postgres
-  postgresqlExtendedConf:
-    maxConnections: "400"
-    sharedBuffers: "1024MB"
-  metrics:
-    enabled: true
-    serviceMonitor:
-      enabled: true
-    additionalLabels:
-      release: prometheus
-  persistence:
-    size: 20Gi
-  resources:
-    limits:
-      memory: 20000Mi
-    requests:
-      memory: 4000Mi
-      cpu: 500m
-  securityContext:
-    enabled: true
-    fsGroup: 1001
-    runAsUser: 1001
-  serviceAccount:
-    enabled: true
-    name: postgres
 
 flash-coffee:
   service:
@@ -231,64 +195,84 @@ flash-coffee:
       caCert: "" # set to /coffee/certs/redis-ca.crt if needed; omit for publicly-signed certs
 
 thanos:
-  createObjstoreSecret: true
-  receive:
-    logLevel: info
-    service:
-      type: ClusterIP
-    enabled: true
-    requests:
-      memory: 100Mi
-      cpu: 50m
-    limits:
-      memory: 200Mi
-  query:
-    enabled: true
-    dnsDiscovery:
-      enabled: true
-    requests:
-      memory: 100Mi
-      cpu: 50m
-    limits:
-      memory: 200Mi
-  bucketweb:
-    enabled: true
-    requests:
-      memory: 100Mi
-      cpu: 50m
-    limits:
-      memory: 200Mi
-  compactor:
-    enabled: true
-    requests:
-      memory: 100Mi
-      cpu: 50m
-    limits:
-      memory: 200Mi
-    persistence:
-      enabled: true
-      size: 75Gi
-  metrics:
-    enabled: true
+  global:
+    objstore:
+      secretName: thanos-objstore-secret
+    # ServiceMonitors for every Thanos component, as the Bitnami chart had;
+    # the thanos-component-absent alerts fire without them.
     serviceMonitor:
       enabled: true
-  storegateway:
-    enabled: true
-    requests:
-      memory: 100Mi
-      cpu: 50m
-    limits:
-      memory: 200Mi
+  query:
+    endpoints:
+      sdConfig:
+        config: |
+          endpoints:
+            - address: dnssrv+_grpc._tcp.prometheus-operated.{{ .Release.Namespace }}.svc.cluster.local
+  receive:
+    service:
+      remoteWritePort: 19291
   ruler:
     enabled: true
+    # The chart default (alertmanager.monitoring.svc) does not exist; send to
+    # this environment's Alertmanager, like the Bitnami ruler did.
     alertmanagers:
-      - prometheus-alertmanager
-    existingConfigmap: thanos-ruler-configmap
-    requests:
-      memory: 100Mi
-      cpu: 50m
-    limits:
-      memory: 200Mi
+      config: |
+        alertmanagers:
+          - static_configs:
+              - alertmanager-operated.{{ .Release.Namespace }}.svc.cluster.local:9093
+            scheme: http
+            api_version: v2
+    # The importer runs `kubectl get prometheusrules -A`: every environment's
+    # and the cluster's rules end up in this ruler, and this environment's own
+    # rules are already evaluated by Prometheus. Load only the env's ruler
+    # rules (thanos-ruler-configmap, where flash also writes SLO rules), like
+    # the Bitnami ruler did.
+    autoImportPrometheusRules:
+      enabled: false
+    rules:
+      # the chart's ExampleAlwaysFiring rule; the schema requires the key
+      example-alerts.yaml: |
+        groups: []
+    extraVolumes:
+      - name: ruler-config
+        configMap:
+          name: thanos-ruler-configmap
+    extraVolumeMounts:
+      - name: ruler-config
+        mountPath: /etc/thanos/ruler-config
+    extraArgs:
+      - --rule-file=/etc/thanos/ruler-config/*.yml
+    # Thanos Ruler reads rule files only at start or on /-/reload; reload when
+    # the configmap changes (e.g. flash adds an SLO).
+    # Keeps the importer's container name: Argo (RespectIgnoreDifferences on
+    # containers[].resources) re-adds the resources of a removed container,
+    # leaving an entry without an image that the API server rejects.
+    extraContainers:
+      - name: prometheus-rule-importer
+        image: docker.io/busybox:1.36.1
+        command:
+          - /bin/sh
+          - -c
+          - |
+            prev=$(cat /etc/thanos/ruler-config/*.yml 2>/dev/null | md5sum)
+            while true; do
+              sleep 30
+              cur=$(cat /etc/thanos/ruler-config/*.yml 2>/dev/null | md5sum)
+              if [ "$cur" != "$prev" ] && wget -q -O /dev/null --post-data= http://localhost:10902/-/reload; then
+                echo "rules changed, reloaded Thanos Ruler"
+                prev=$cur
+              fi
+            done
+        resources:
+          requests:
+            cpu: 5m
+            memory: 8Mi
+          limits:
+            memory: 32Mi
+        volumeMounts:
+          - name: ruler-config
+            mountPath: /etc/thanos/ruler-config
+            readOnly: true
 
 # Gateway API configuration
 gateway:
@@ -406,24 +390,14 @@ envoyGateway:
     enabled: true
     # Compression quality (1-9, where 6 is default, 9 is best compression)
     quality: 6
-apicaTLSSecret:
-  enabled: true
-
 prometheus:
-  nameOverride: prometheus
-  persistence:
-    enabled: true
-    size: 20Gi
   alertmanager:
     enabled: true
     replicaCount: 1
     persistence:
       enabled: true
       size: 20Gi
-    image:
-      repository: bitnamilegacy/alertmanager
   prometheus:
-    enabled: true
     resources:
       requests:
         memory: 15Gi
@@ -431,14 +405,10 @@ prometheus:
       limits:
         memory: 15Gi
     replicaCount: 2
-    # The Bitnami chart defaults to 10d; the 2.32 instances ran 30d, and a
-    # shorter value would delete the older local blocks on the first start
     retention: 30d
     persistence:
       enabled: true
       size: 20Gi
-    image:
-      repository: bitnamilegacy/prometheus
     additionalArgs:
       - name: storage.tsdb.min-block-duration
         value: 2h
@@ -455,28 +425,40 @@ prometheus:
           memory: 100Mi
         limits:
           memory: 200Mi
-      image:
-        repository: bitnamilegacy/thanos
-  operator:
+
+kube-prometheus-stack:
+  # The monitoring.coreos.com CRDs are cluster-wide and owned by the
+  # cluster-level kube-prometheus-stack (tf_ascent helm_cluster_services);
+  # one release per environment must not install or upgrade them too.
+  crds:
+    enabled: false
+  # Disable built-in Prometheus/Alertmanager CRs — managed by prometheus-cr.yaml / alertmanager-cr.yaml
+  prometheus:
+    enabled: false
+  alertmanager:
+    enabled: false
+  grafana:
+    enabled: false
+  prometheusOperator:
     enabled: true
     replicaCount: 1
+    # Watch and reconcile only this environment's namespace, like the Bitnami
+    # operator did (--namespaces=<env>). Unscoped, every environment's operator
+    # would reconcile every other environment's Prometheus/Alertmanager CRs.
+    namespaces:
+      releaseNamespace: true
     kubeletService:
       enabled: false
-    image:
-      repository: bitnamilegacy/prometheus-operator
-    # Watch only this environment's namespace, as the old chart did
-    # (--namespaces={{ .Release.Namespace }}). Unset, this operator reconciles
-    # every environment's Prometheus/Alertmanager on the cluster and fights
-    # their own operators. operator.namespaces is not templated; extraArgs is.
-    extraArgs:
-      - --namespaces={{ .Release.Namespace }}
+  kubeStateMetrics:
+    enabled: false
   kube-state-metrics:
     serviceMonitor:
       enabled: false
-  node-exporter:
-    serviceMonitor:
-      enabled: false
+  nodeExporter:
+    enabled: false
   kubeApiServer:
+    enabled: false
+  kubeEtcd:
     enabled: false
   kubeControllerManager:
     enabled: false
@@ -496,18 +478,6 @@ prometheus:
     enabled: false
     service:
       enabled: false
-  blackboxExporter:
-    enabled: false
-    image:
-      repository: bitnamilegacy/blackbox-exporter
-  exporters:
-    node-exporter:
-      enabled: false
-    kube-state-metrics:
-      enabled: false
-
-grafana:
-  fullnameOverride: grafana
 
 logiqctl:
   image:
@@ -520,7 +490,7 @@ global:
     allowInsecureImages: true
   domain: null
   # Set this to the hostname of a private registry for air-gapped environments
-  imageRegistry: "docker.io"
+  imageRegistry: ""
   kubeDistributor:
     enabled: false
   cloudProvider: aws
@@ -563,13 +533,13 @@ global:
     logiq_flash_host: logiq-flash
     logiq_flash_port: 9999
     redis_opts: true
-    redis_host: "redis-master"
+    redis_host: "redis"
     redis_port: "6379"
     redis_tls:
       enabled: false  # set to true to enable TLS for redis connections
       skip_verify: false
     # When migrating to CNPG, update these values to point to the new CNPG service.
-    postgres_host: "postgres"
+    postgres_host: "apica-ascent-cnpg-rw"
     postgres_port: "5432"
     postgres_user: "postgres"
     postgres_password: "postgres"
@@ -613,11 +583,14 @@ global:
   persistence:
     storageClass: oci-bv
   chart:
+    flash-coffee: true
+    flash-discovery: true
+    logiq-flash: true
+    logiqctl: true
     prometheus: true
-    postgres: true
     redis: true
     s3gateway: false
-    grafana: false
+    thanos: true
 
 cnpg:
   # -- Set to true to deploy a CloudNativePG cluster via the cnpg/cluster subchart.
@@ -699,12 +672,22 @@ cnpg:
         - ro
         - r
     # Required for OCI Object Storage S3-compatible endpoint:
-    # - awsDefaultRegion: ensures SigV4 signing uses the correct region
-    # - awsRequestChecksumCalculation=when_required: disables botocore 1.35+ trailing
+    # - AWS_DEFAULT_REGION: ensures SigV4 signing uses the correct region.
+    #   Overriding any element replaces the whole list, so per-environment overrides must
+    #   set both entries: env[0].name/value (region) and env[1].name/value.
+    # - AWS_REQUEST_CHECKSUM_CALCULATION=when_required: disables botocore 1.35+ trailing
     #   checksum behavior which switches to chunked encoding; OCI requires Content-Length.
-    awsDefaultRegion: us-ashburn-1
-    awsRequestChecksumCalculation: when_required
-    # -- nodeSelector is derived automatically from global.nodeSelectors.label / global.nodeSelectors.db.
+    env:
+      - name: AWS_DEFAULT_REGION
+        value: us-ashburn-1
+      - name: AWS_REQUEST_CHECKSUM_CALCULATION
+        value: when_required
+    # The upstream cluster chart does not read global.nodeSelectors, so the
+    # database node pool is repeated here. Keep it in sync with
+    # global.nodeSelectors.label / global.nodeSelectors.db.
+    affinity:
+      nodeSelector:
+        apica-node-pool: common
     resources:
       requests:
         cpu: 500m
