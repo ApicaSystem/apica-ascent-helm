@@ -57,12 +57,6 @@ apica-ascent/
 | `flash-coffee` | Query / analytics engine | always on |
 | `flash-discovery` | Service discovery | always on |
 | `logiqctl` | CLI init job | always on |
-| `postgres` (bitnami) | Metadata DB | `global.chart.postgres` |
-| `redis` (bitnami) | Session cache, log tailing | `global.chart.redis` |
-| `prometheus` (bitnami kube-prometheus) | Metrics | `global.chart.prometheus` |
-| `grafana` (bitnami) | Dashboards | `global.chart.grafana` (off by default) |
-| `thanos` | Long-term metrics storage | `thanos.*` |
-| `cnpg` (cloudnative-pg/cluster) | CloudNativePG Postgres cluster | `cnpg.enabled` |
 
 **Envoy Gateway** is wired up via ~15 custom templates (not a subchart). It
 provides the external LoadBalancer and handles HTTP, HTTPS, and TCP listeners
@@ -95,22 +89,14 @@ global:
     rate_limit_flags: "-rl_type=tokenbucket -max_bytes_per_sec=346729"
 ```
 
-## Database: Bitnami vs CNPG
-
-Two Postgres options. In steady state only one should be active. During
-migration from Bitnami to CNPG both run simultaneously — see
-[Migration from Bitnami](#migration-from-bitnami).
-
-### Bitnami (`global.chart.postgres: true`)
-
-Simple single-instance Postgres. Set `cnpg.enabled: false`.
+## Database: CNPG
 
 ### CloudNativePG (`cnpg.enabled: true`, default)
 
 High-availability Postgres cluster via the `cloudnative-pg/cluster` subchart
 (v0.6.1, alias `cnpg`).
 
-For a fresh CNPG deployment (no existing Bitnami data):
+For a fresh CNPG deployment:
 ```yaml
 global:
   chart:
@@ -220,30 +206,6 @@ cnpg:
 ```
 Application connects to `<release>-<pooler-name>-rw` instead of
 `<release>-cnpg-rw`.
-
-#### Migration from Bitnami
-
-**Both `global.chart.postgres: true` and `cnpg.enabled: true` must be set
-simultaneously during migration** — Bitnami must be running so CNPG can import
-from it.
-
-Do all of the following in a **single `helm upgrade`** (not two separate
-upgrades):
-- Set `cnpg.enabled: true` and `cnpg.mode: recovery`
-- Set `global.environment.postgres_host` to `<release>-cnpg-rw`
-- Keep `global.chart.postgres: true`
-
-Switching `postgres_host` to CNPG in a later upgrade would create a window
-where Bitnami continues receiving writes after the CNPG snapshot was taken —
-those writes would be lost.
-
-Once the CNPG cluster reaches `Cluster in healthy state`, do a second upgrade
-setting `global.chart.postgres: false` to decommission Bitnami.
-
-Note: the `postgres` database is reserved in CNPG and is **not imported** —
-only user databases (`coffee`, `flash`, etc.) are migrated. Verify no
-application schema lives in the `postgres` database before running migration
-(the default Ascent setup stores none there).
 
 #### Restoring from backup
 
